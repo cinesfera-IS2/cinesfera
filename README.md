@@ -1,2 +1,2 @@
-# cinesfera
-Red social de películas - Proyecto Ingeniería de Software 2
+## Stack tecnológico
+Pendiente de definición.
