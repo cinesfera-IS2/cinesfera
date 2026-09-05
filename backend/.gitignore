@@ -1,1 +1,6 @@
 __pycache__
+*.py[cod]
+
+# Entornos virtuales
+.venv/
+backend/.venv/
