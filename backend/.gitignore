@@ -1,6 +1,15 @@
+# Archivos generados por Python
 __pycache__
 *.py[cod]
 
 # Entornos virtuales
 .venv/
 backend/.venv/
+
+# Variables de entorno
+.env
+
+# Herramientas y sistema
+.pytest_cache/
+.vscode/
+.DS_Store
