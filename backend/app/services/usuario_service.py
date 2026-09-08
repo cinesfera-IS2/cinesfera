@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import generar_hash_password
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioRegistro
+from app.core.enums import EstadoUsuario, RolUsuario
 
 
 class EmailDuplicadoError(Exception):
@@ -34,8 +35,8 @@ def registrar_usuario(
         password_hash=generar_hash_password(
             datos.password
         ),
-        rol="usuario",
-        estado="activo"
+        rol=RolUsuario.USUARIO,
+        estado=EstadoUsuario.ACTIVO
     )
 
     db.add(usuario)
