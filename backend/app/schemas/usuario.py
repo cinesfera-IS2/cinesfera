@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.enums import EstadoUsuario, RolUsuario
+
 
 class UsuarioRegistro(BaseModel):
     nombre: str = Field(
@@ -35,6 +37,6 @@ class UsuarioRespuesta(BaseModel):
     nombre: str
     email: EmailStr
     foto_url: str | None
-    rol: str
-    estado: str
+    rol: RolUsuario
+    estado: EstadoUsuario
     fecha_registro: datetime

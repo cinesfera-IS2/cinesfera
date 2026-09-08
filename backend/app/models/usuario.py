@@ -2,9 +2,13 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, String, Text, func, text
-from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
+from sqlalchemy.dialects.postgresql import (
+    ENUM as PostgreSQLEnum,
+    UUID as PostgreSQLUUID
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.enums import EstadoUsuario, RolUsuario
 from app.database import Base
 
 
@@ -40,16 +44,38 @@ class Usuario(Base):
         nullable=True
     )
 
-    rol: Mapped[str] = mapped_column(
-        String(20),
+    rol: Mapped[RolUsuario] = mapped_column(
+        PostgreSQLEnum(
+            RolUsuario,
+            name="rol_usuario",
+            schema="public",
+            create_type=False,
+            values_callable=lambda enum: [
+                elemento.value
+                for elemento in enum
+            ]
+        ),
         nullable=False,
-        server_default=text("'usuario'")
+        server_default=text(
+            "'usuario'::public.rol_usuario"
+        )
     )
 
-    estado: Mapped[str] = mapped_column(
-        String(20),
+    estado: Mapped[EstadoUsuario] = mapped_column(
+        PostgreSQLEnum(
+            EstadoUsuario,
+            name="estado_usuario",
+            schema="public",
+            create_type=False,
+            values_callable=lambda enum: [
+                elemento.value
+                for elemento in enum
+            ]
+        ),
         nullable=False,
-        server_default=text("'activo'")
+        server_default=text(
+            "'activo'::public.estado_usuario"
+        )
     )
 
     fecha_registro: Mapped[datetime] = mapped_column(
