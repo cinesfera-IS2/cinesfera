@@ -23,7 +23,7 @@ def registrar_usuario(
         )
     )
 
-    if usuario_existente:
+    if usuario_existente is not None:
         raise EmailDuplicadoError(
             "El email ya está registrado"
         )
