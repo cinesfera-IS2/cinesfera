@@ -39,6 +39,16 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Oculta la barra de scroll del carrusel "Joyas de la cartelera" sin quitar el scroll. */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Halo azul que corona el hero en "Pagina Bienvenida" */
 @utility hero-halo {
   background:
