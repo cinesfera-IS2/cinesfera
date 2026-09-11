@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.usuario import UsuarioRegistro, UsuarioRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
+    NombreUsuarioDuplicadoError,
     registrar_usuario
 )
 
@@ -29,7 +30,10 @@ def registrar(
     try:
         return registrar_usuario(db, datos)
 
-    except EmailDuplicadoError as error:
+    except (
+        EmailDuplicadoError,
+        NombreUsuarioDuplicadoError
+    ) as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error)

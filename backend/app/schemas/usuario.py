@@ -12,6 +12,17 @@ class UsuarioRegistro(BaseModel):
         max_length=100
     )
 
+    apellido: str = Field(
+        min_length=2,
+        max_length=50
+    )
+
+    nombre_usuario: str = Field(
+        min_length=3,
+        max_length=30,
+        pattern=r"^[a-z0-9._]+$"
+    )
+    
     email: EmailStr
 
     password: str = Field(
@@ -19,10 +30,26 @@ class UsuarioRegistro(BaseModel):
         max_length=128
     )
 
-    @field_validator("nombre")
+    @field_validator("nombre", "apellido", mode="before")
     @classmethod
-    def limpiar_nombre(cls, nombre: str) -> str:
-        return nombre.strip()
+    def limpiar_nombre_apellido(cls, valor: str) -> str:
+        if isinstance(valor, str):
+            return valor.strip()
+
+        return valor
+
+
+    @field_validator("nombre_usuario", mode="before")
+    @classmethod
+    def normalizar_nombre_usuario(
+        cls,
+        nombre_usuario: str
+    ) -> str:
+        if isinstance(nombre_usuario, str):
+            return nombre_usuario.strip().lower()
+
+        return nombre_usuario
+
 
     @field_validator("email", mode="before")
     @classmethod
@@ -35,6 +62,8 @@ class UsuarioRespuesta(BaseModel):
 
     id: UUID
     nombre: str
+    apellido: str
+    nombre_usuario: str
     email: EmailStr
     foto_url: str | None
     rol: RolUsuario

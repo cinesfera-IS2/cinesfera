@@ -23,8 +23,20 @@ class Usuario(Base):
     )
 
     nombre: Mapped[str] = mapped_column(
-        Text,
+    String(50),
+    nullable=False
+    )
+
+    apellido: Mapped[str] = mapped_column(
+        String(50),
         nullable=False
+    )
+
+    nombre_usuario: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        index=True
     )
 
     email: Mapped[str] = mapped_column(
