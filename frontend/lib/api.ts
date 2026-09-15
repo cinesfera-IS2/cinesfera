@@ -4,7 +4,7 @@
  * El valor sale de `NEXT_PUBLIC_API_URL`, que Next.js resuelve según el
  * entorno:
  *   - `next dev`   -> .env.local      -> http://localhost:8000
- *   - `next build` -> .env.production -> https://cinesfera-api.onrender.com
+ *   - `next build` -> .env.production -> https://cinesfera.onrender.com
  *
  * Nadie más debería escribir la URL del backend a mano.
  */

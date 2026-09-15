@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: cinesfera-api
+    name: cinesfera
     runtime: python
     plan: free
     region: oregon
@@ -25,12 +25,11 @@ services:
 
       # URL pública del servicio (se deriva del `name` de arriba).
       - key: API_URL
-        value: https://cinesfera-api.onrender.com
+        value: https://cinesfera.onrender.com
 
       # Orígenes del frontend habilitados por CORS (separados por coma).
-      # Editalo en el dashboard cuando publiques el frontend.
       - key: CORS_ORIGINS
-        value: http://localhost:3000
+        value: https://cinesfera-three.vercel.app
 
       # --- Base de datos (Supabase) ---
       # `sync: false` = Render los pide al crear el Blueprint y los guarda

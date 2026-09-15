@@ -53,7 +53,7 @@ manda `.env`, y en Render mandan las variables del servicio.
 | Variable | Local | Deploy (Render) |
 | --- | --- | --- |
 | `ENVIRONMENT` | `local` | `production` |
-| `API_URL` | `http://localhost:8000` | `https://cinesfera-api.onrender.com` |
+| `API_URL` | `http://localhost:8000` | `https://cinesfera.onrender.com` |
 | `CORS_ORIGINS` | `http://localhost:3000` | URL del frontend publicado |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Supabase | Supabase |
 | `DATABASE_URL` | *(opcional)* | *(opcional)* |
@@ -229,47 +229,59 @@ No realizan solicitudes HTTP ni verifican la conexión a una base de datos real.
 
 ## Deploy en Render
 
-El servicio está descrito en `render.yaml`, en la **raíz del repo** (Blueprint de
-Render). Eso define runtime, comandos y variables, así que no hay que configurar
-nada a mano en el dashboard.
+El backend está publicado en **https://cinesfera.onrender.com**.
 
 | | |
 | --- | --- |
-| Servicio | `cinesfera-api` (web, plan free) |
+| Servicio | `cinesfera` (web, plan free) |
 | Raíz | `backend/` |
 | Build | `pip install -r requirements.txt` |
 | Start | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 | Health check | `/health` |
-| URL | `https://cinesfera-api.onrender.com` |
+| URL | `https://cinesfera.onrender.com` |
 
-### Crear el servicio (una sola vez)
+El servicio ya está creado y conectado al repo, así que los deploys salen solos
+con cada push. `render.yaml` (en la raíz del repo) deja esa configuración
+escrita, para tenerla versionada y poder recrear el servicio si hiciera falta.
 
-1. Entrá a [dashboard.render.com](https://dashboard.render.com) con la cuenta del
-   equipo y conectá el repo de GitHub `cinesfera-IS2/cinesfera`.
-2. **New → Blueprint**, elegí el repo y la rama `main`. Render detecta
-   `render.yaml`.
-3. Render va a pedir los tres secretos marcados como `sync: false`. Copiá los
-   valores de tu `.env` local:
-   - `DB_HOST`
-   - `DB_USER`
-   - `DB_PASSWORD`
-4. **Apply**. El primer build tarda unos minutos.
+### Variables a cargar en Render
 
-### Después del deploy
+En **Render → cinesfera → Environment**, estas tres hay que agregarlas a mano:
 
-Verificá que responda:
+| Variable | Valor |
+| --- | --- |
+| `ENVIRONMENT` | `production` |
+| `API_URL` | `https://cinesfera.onrender.com` |
+| `CORS_ORIGINS` | `https://cinesfera-three.vercel.app` |
+
+Las de la base (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) ya
+están cargadas. **Nunca** se escriben en el repo.
+
+Además, en **Settings** conviene dejar el *Health Check Path* en `/health`, así
+Render sabe cuándo el servicio quedó arriba.
+
+### Verificar el deploy
 
 ```bash
-curl https://cinesfera-api.onrender.com/health
+curl https://cinesfera.onrender.com/health
 # {"status":"ok"}
 ```
 
-Y la documentación queda en `https://cinesfera-api.onrender.com/docs`.
+La documentación queda en `https://cinesfera.onrender.com/docs`.
 
-Cuando publiquen el frontend, actualizá `CORS_ORIGINS` en
-**Render → cinesfera-api → Environment** con la URL real del frontend
-(ej. `https://cinesfera.vercel.app`). Es la única variable que hay que tocar a
-mano; el resto sale del Blueprint.
+Para confirmar que CORS quedó bien, el preflight desde el origen del frontend
+tiene que devolver el header `access-control-allow-origin`:
+
+```bash
+curl -i -X OPTIONS https://cinesfera.onrender.com/auth/login \
+  -H "Origin: https://cinesfera-three.vercel.app" \
+  -H "Access-Control-Request-Method: POST" | grep -i access-control-allow-origin
+```
+
+> Los *preview deployments* de Vercel usan URLs distintas
+> (`cinesfera-three-git-<rama>-....vercel.app`) y **no** están en `CORS_ORIGINS`,
+> así que no van a poder llamar a la API. Si necesitan probar contra el backend
+> real desde una preview, agregá esa URL a la lista (separada por coma).
 
 ### Redeploys
 

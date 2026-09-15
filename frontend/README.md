@@ -33,7 +33,7 @@ variable `NEXT_PUBLIC_API_URL`, y Next.js elige el archivo según el comando:
 | Comando | Archivo que lee | A dónde apunta |
 | --- | --- | --- |
 | `pnpm dev` | `.env.development` | `http://localhost:8000` |
-| `pnpm build` / `pnpm start` | `.env.production` | `https://cinesfera-api.onrender.com` |
+| `pnpm build` / `pnpm start` | `.env.production` | `https://cinesfera.onrender.com` |
 
 Los dos archivos **se versionan**, porque solo tienen URLs públicas. No hay que
 copiar ni configurar nada al clonar el repo: `pnpm dev` ya apunta a tu backend
@@ -65,6 +65,23 @@ FastAPI en un `ApiError` con `status` y `message`. Si necesitás solo la URL,
 
 > Si levantás el frontend en un puerto distinto de 3000, agregá ese origen a
 > `CORS_ORIGINS` en `backend/.env` o el navegador va a bloquear las llamadas.
+
+## Deploy en Vercel
+
+El frontend está publicado en **https://cinesfera-three.vercel.app**, y habla con
+el backend de Render (**https://cinesfera.onrender.com**).
+
+**No hay que cargar ninguna variable en el dashboard de Vercel.** La URL del
+backend ya viene en `.env.production`, que está versionado, así que `next build`
+la toma sola en cada deploy.
+
+Si en algún momento quieren manejarla desde el dashboard igual
+(Vercel → Settings → Environment Variables), una `NEXT_PUBLIC_API_URL` cargada
+ahí **le gana** a `.env.production`. Sirve para apuntar un entorno a otro backend
+sin tocar el repo, pero ojo con que las dos fuentes queden desincronizadas.
+
+> Si cambia la URL del frontend, hay que actualizar `CORS_ORIGINS` en Render
+> (ver `backend/README.md`), o el navegador va a bloquear las llamadas.
 
 ## Levantar el servidor de desarrollo
 
