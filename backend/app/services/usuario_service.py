@@ -2,9 +2,9 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import generar_hash_password
+from app.core.security import generar_hash_password, verificar_password
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioRegistro
+from app.schemas.usuario import UsuarioLogin, UsuarioRegistro
 from app.core.enums import EstadoUsuario, RolUsuario
 
 
@@ -13,6 +13,38 @@ class EmailDuplicadoError(Exception):
 
 class NombreUsuarioDuplicadoError(Exception):
     pass
+
+
+class CredencialesInvalidasError(Exception):
+    pass
+
+
+def iniciar_sesion(
+    db: Session,
+    datos: UsuarioLogin
+) -> Usuario:
+    campo_identificador = (
+        Usuario.email
+        if "@" in datos.identificador
+        else Usuario.nombre_usuario
+    )
+
+    usuario = db.scalar(
+        select(Usuario).where(
+            func.lower(campo_identificador)
+            == datos.identificador
+        )
+    )
+
+    if usuario is None or not verificar_password(
+        datos.password,
+        usuario.password_hash
+    ):
+        raise CredencialesInvalidasError(
+            "Credenciales inválidas"
+        )
+
+    return usuario
 
 
 def registrar_usuario(

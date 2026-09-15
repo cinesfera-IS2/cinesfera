@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.usuario import UsuarioRegistro, UsuarioRespuesta
+from app.schemas.usuario import UsuarioLogin, UsuarioRegistro, UsuarioRespuesta
 from app.services.usuario_service import (
+    CredencialesInvalidasError,
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
+    iniciar_sesion,
     registrar_usuario
 )
 
@@ -16,6 +18,25 @@ router = APIRouter(
     prefix="/auth",
     tags=["Autenticación"]
 )
+
+
+@router.post(
+    "/login",
+    response_model=UsuarioRespuesta,
+    status_code=status.HTTP_200_OK
+)
+def login(
+    datos: UsuarioLogin,
+    db: Annotated[Session, Depends(get_db)]
+) -> UsuarioRespuesta:
+    try:
+        return iniciar_sesion(db, datos)
+
+    except CredencialesInvalidasError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(error)
+        ) from error
 
 
 @router.post(
