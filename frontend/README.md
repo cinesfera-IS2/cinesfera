@@ -27,28 +27,33 @@ npm install -g pnpm
 
 ## Conexión con el backend
 
-La URL del backend **no se escribe a mano en ningún componente**. Sale de la
-variable `NEXT_PUBLIC_API_URL`, y Next.js elige el archivo según el comando:
+La URL del backend **no se escribe a mano en ningún componente**: sale de la
+variable `NEXT_PUBLIC_API_URL`.
 
-| Comando | Archivo que lee | A dónde apunta |
+Los archivos `.env` **no se versionan**, así que cada entorno define la suya:
+
+| Entorno | De dónde sale el valor | A dónde apunta |
 | --- | --- | --- |
-| `pnpm dev` | `.env.development` | `http://localhost:8000` |
-| `pnpm build` / `pnpm start` | `.env.production` | `https://cinesfera.onrender.com` |
+| Local (`pnpm dev`) | Tu `.env.local` | `http://localhost:8000` |
+| Deploy (Vercel) | Vercel → Settings → Environment Variables | `https://cinesfera.onrender.com` |
 
-Los dos archivos **se versionan**, porque solo tienen URLs públicas. No hay que
-copiar ni configurar nada al clonar el repo: `pnpm dev` ya apunta a tu backend
-local y `pnpm build` al deployado.
+### Primera vez
 
-Si necesitás apuntar a otro lado **solo para vos** (por ejemplo, el backend en
-otro puerto), creá un `.env.local`: tiene prioridad sobre los dos y no se
-versiona.
+```bash
+cp .env.example .env.local
+```
 
-> ⚠️ Ojo con `.env.local`: Next.js lo lee **también** en `pnpm build`, y pisa a
-> `.env.production`. Por eso la URL de desarrollo vive en `.env.development` y
-> no en `.env.local`; si no, el build de producción terminaría apuntando a
-> `localhost`.
+`.env.local` es tuyo y no se sube al repo. Si apuntás tu backend a otro puerto,
+lo cambiás ahí y no afecta a nadie más.
 
-Para hablar con la API, usá los helpers de `lib/api.ts`:
+> Si no creás el archivo igual funciona: `lib/api.ts` cae por defecto a
+> `http://localhost:8000`. El fallback existe solo para desarrollo — en un build
+> de producción, si falta la variable, el build **falla a propósito** en vez de
+> generar un bundle que apunte a `localhost`.
+
+### Cómo llamar a la API
+
+Usá los helpers de `lib/api.ts`:
 
 ```ts
 import { apiFetch } from "@/lib/api";
@@ -71,14 +76,15 @@ FastAPI en un `ApiError` con `status` y `message`. Si necesitás solo la URL,
 El frontend está publicado en **https://cinesfera-three.vercel.app**, y habla con
 el backend de Render (**https://cinesfera.onrender.com**).
 
-**No hay que cargar ninguna variable en el dashboard de Vercel.** La URL del
-backend ya viene en `.env.production`, que está versionado, así que `next build`
-la toma sola en cada deploy.
+Hay que cargar **una sola variable** en Vercel → Settings → Environment
+Variables:
 
-Si en algún momento quieren manejarla desde el dashboard igual
-(Vercel → Settings → Environment Variables), una `NEXT_PUBLIC_API_URL` cargada
-ahí **le gana** a `.env.production`. Sirve para apuntar un entorno a otro backend
-sin tocar el repo, pero ojo con que las dos fuentes queden desincronizadas.
+| Variable | Valor | Entornos |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `https://cinesfera.onrender.com` | Production, Preview, Development |
+
+Conviene marcar los tres entornos: si no, los *preview deployments* de las ramas
+quedan sin la variable y el build falla.
 
 > Si cambia la URL del frontend, hay que actualizar `CORS_ORIGINS` en Render
 > (ver `backend/README.md`), o el navegador va a bloquear las llamadas.
@@ -110,8 +116,8 @@ frontend/
 ├── lib/
 │   └── api.ts          # URL del backend + helpers de fetch
 ├── public/             # Archivos estáticos
-├── .env.development    # URL del backend para `pnpm dev` (se versiona)
-├── .env.production     # URL del backend deployado, para `pnpm build`
+├── .env.example        # Plantilla (lo único .env que se versiona)
+├── .env.local          # Tu config local (NO se versiona)
 ├── package.json
 └── next.config.ts
 ```

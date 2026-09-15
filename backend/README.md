@@ -50,6 +50,9 @@ orden de prioridad:
 Por eso *no hay que tocar ninguna URL a mano al cambiar de entorno*: en local
 manda `.env`, y en Render mandan las variables del servicio.
 
+Ningún archivo `.env` se versiona. Lo único que está en el repo son las
+plantillas `.env.example` y `.env.production.example`, sin valores reales.
+
 | Variable | Local | Deploy (Render) |
 | --- | --- | --- |
 | `ENVIRONMENT` | `local` | `production` |
@@ -256,6 +259,9 @@ En **Render → cinesfera → Environment**, estas tres hay que agregarlas a man
 
 Las de la base (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) ya
 están cargadas. **Nunca** se escriben en el repo.
+
+Del lado del frontend, la contraparte es una sola variable en Vercel:
+`NEXT_PUBLIC_API_URL=https://cinesfera.onrender.com` (ver `frontend/README.md`).
 
 Además, en **Settings** conviene dejar el *Health Check Path* en `/health`, así
 Render sabe cuándo el servicio quedó arriba.
