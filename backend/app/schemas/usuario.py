@@ -57,6 +57,16 @@ class UsuarioRegistro(BaseModel):
         return email.strip().lower()
 
 
+class UsuarioLogin(BaseModel):
+    identificador: str
+    password: str
+
+    @field_validator("identificador")
+    @classmethod
+    def normalizar_identificador(cls, identificador: str) -> str:
+        return identificador.strip().lower()
+
+
 class UsuarioRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
