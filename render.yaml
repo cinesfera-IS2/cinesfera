@@ -1,0 +1,47 @@
+# Blueprint de Render para Cinesfera.
+# Render lee este archivo desde la raíz del repo.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: cinesfera-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    branch: main
+
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.4"
+
+      - key: ENVIRONMENT
+        value: production
+
+      # URL pública del servicio (se deriva del `name` de arriba).
+      - key: API_URL
+        value: https://cinesfera-api.onrender.com
+
+      # Orígenes del frontend habilitados por CORS (separados por coma).
+      # Editalo en el dashboard cuando publiques el frontend.
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
+
+      # --- Base de datos (Supabase) ---
+      # `sync: false` = Render los pide al crear el Blueprint y los guarda
+      # cifrados. Nunca quedan escritos en este archivo.
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false

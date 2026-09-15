@@ -1,29 +1,50 @@
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-from sqlalchemy import URL, create_engine
+from sqlalchemy import URL, create_engine, make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BACKEND_DIR / ".env")
+from app.core.config import settings
 
 
-DATABASE_URL = URL.create(
-    drivername="postgresql+psycopg",
-    username=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    host=os.getenv("DB_HOST"),
-    port=int(os.getenv("DB_PORT", "5432")),
-    database=os.getenv("DB_NAME", "postgres"),
-    query={"sslmode": "require"},
-)
+DRIVER = "postgresql+psycopg"
+
+
+def construir_database_url() -> URL:
+    """Arma la URL de conexión a la base de datos.
+
+    Si `DATABASE_URL` está definida (es lo que entrega Render o la
+    cadena de conexión de Supabase) se usa esa. Si no, se arma a partir
+    de `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`.
+    """
+    if settings.database_url:
+        url = make_url(settings.database_url)
+        url = url.set(drivername=DRIVER)
+
+        if "sslmode" not in url.query:
+            url = url.update_query_dict(
+                {"sslmode": settings.db_sslmode}
+            )
+
+        return url
+
+    return URL.create(
+        drivername=DRIVER,
+        username=settings.db_user,
+        password=settings.db_password,
+        host=settings.db_host,
+        port=settings.db_port,
+        database=settings.db_name,
+        query={"sslmode": settings.db_sslmode},
+    )
+
+
+DATABASE_URL = construir_database_url()
 
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=5,
+    pool_recycle=300
 )
 
 
