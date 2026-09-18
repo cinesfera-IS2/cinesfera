@@ -79,3 +79,7 @@ class UsuarioRespuesta(BaseModel):
     rol: RolUsuario
     estado: EstadoUsuario
     fecha_registro: datetime
+
+class TokenRespuesta(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

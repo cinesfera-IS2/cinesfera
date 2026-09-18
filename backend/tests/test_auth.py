@@ -11,8 +11,8 @@ from app.core.security import generar_hash_password
 from app.main import app
 from app.models.usuario import Usuario
 from app.routers.auth import login
-from app.schemas.usuario import UsuarioLogin, UsuarioRespuesta
-
+from app.schemas.usuario import TokenRespuesta, UsuarioLogin
+from unittest.mock import Mock, patch
 
 class InicioSesionTests(unittest.TestCase):
     @classmethod
@@ -37,23 +37,37 @@ class InicioSesionTests(unittest.TestCase):
 
     def test_inicio_correcto_por_email_o_nombre_usuario(self):
         for identificador, campo, normalizado in (
-            (" PERSONA@EXAMPLE.COM ", "email", "persona@example.com"),
-            (" PERSONA ", "nombre_usuario", "persona")
-        ):
+        (" PERSONA@EXAMPLE.COM ", "email", "persona@example.com"),
+        (" PERSONA ", "nombre_usuario", "persona")
+    ):
             with self.subTest(identificador=identificador):
                 self.db.scalar.return_value = self.usuario
-                resultado = login(
-                    UsuarioLogin(
-                        identificador=identificador,
-                        password=self.password
+
+                with patch(
+                    "app.routers.auth.generar_token_acceso",
+                    return_value="token-prueba"
+                ):
+                    resultado = login(
+                        UsuarioLogin(
+                            identificador=identificador,
+                            password=self.password
                     ),
                     self.db
                 )
 
-                self.assertIs(resultado, self.usuario)
+                self.assertIsInstance(resultado, TokenRespuesta)
+                self.assertEqual(
+                    resultado.access_token,
+                    "token-prueba"
+                )
+                self.assertEqual(resultado.token_type, "bearer")
+
                 consulta = self.db.scalar.call_args.args[0]
                 self.assertIn(campo, str(consulta.whereclause))
-                self.assertIn(normalizado, consulta.compile().params.values())
+                self.assertIn(
+                    normalizado,
+                    consulta.compile().params.values()
+                )
                 self.db.commit.assert_not_called()
 
     def test_credenciales_incorrectas_responden_el_mismo_error(self):
@@ -88,13 +102,22 @@ class InicioSesionTests(unittest.TestCase):
 
     def test_respuesta_publica_no_expone_password(self):
         self.db.scalar.return_value = self.usuario
-        resultado = login(
-            UsuarioLogin(identificador="persona", password=self.password),
+
+        with patch(
+            "app.routers.auth.generar_token_acceso",
+            return_value="token-prueba"
+        ):
+            resultado = login(
+                UsuarioLogin(
+                    identificador="persona", 
+                    password=self.password
+                ),
             self.db
         )
-        respuesta = UsuarioRespuesta.model_validate(resultado).model_dump()
+        respuesta = resultado.model_dump()
 
-        self.assertEqual(respuesta["id"], self.usuario.id)
+        self.assertEqual(respuesta["access_token"], "token-prueba")
+        self.assertEqual(respuesta["token_type"], "bearer")
         self.assertNotIn("password", respuesta)
         self.assertNotIn("password_hash", respuesta)
 
@@ -103,7 +126,7 @@ class InicioSesionTests(unittest.TestCase):
         respuesta = esquema["paths"]["/auth/login"]["post"]["responses"]["200"]
         self.assertEqual(
             respuesta["content"]["application/json"]["schema"]["$ref"],
-            "#/components/schemas/UsuarioRespuesta"
+            "#/components/schemas/TokenRespuesta"
         )
 
 
