@@ -104,8 +104,10 @@ fastapi dev app/main.py
 
 ## Inicio de sesión
 
-`POST /auth/login` valida las credenciales y devuelve los datos públicos del
-usuario. En esta etapa no emite tokens ni crea una sesión persistente.
+`POST /auth/login` valida las credenciales y devuelve `access_token` y
+`token_type: "bearer"`. Configurá `JWT_SECRET_KEY` en el entorno del backend.
+Enviá el token como `Authorization: Bearer <access_token>` para consultar
+`GET /auth/me` o actualizar el perfil.
 
 El cuerpo JSON requiere dos campos de texto:
 
@@ -158,8 +160,10 @@ Content-Type: application/json
 }
 ```
 
-Esperado: `200 OK` con `id`, `nombre`, `apellido`, `nombre_usuario`, `email`,
-`foto_url`, `rol`, `estado` y `fecha_registro`. No incluye contraseña ni hash.
+Esperado: `200 OK` con `access_token` y `token_type: "bearer"`.
+Usá ese token en `GET /auth/me` para obtener `id`, `nombre`, `apellido`,
+`nombre_usuario`, `email`, `foto_url`, `rol`, `estado` y `fecha_registro`.
+No incluye contraseña ni hash.
 
 #### 3. Inicio correcto por nombre de usuario
 
@@ -173,7 +177,7 @@ Content-Type: application/json
 }
 ```
 
-Esperado: `200 OK` con la misma cuenta del caso anterior.
+Esperado: `200 OK` con un token para la misma cuenta del caso anterior.
 También podés probar `" PERSONA.PRUEBA "` como identificador: debe funcionar.
 
 #### 4. Contraseña incorrecta
@@ -225,29 +229,42 @@ Desde `backend`, con el entorno virtual activado:
 python -m unittest discover -s tests -v
 ```
 
-Las pruebas usan `unittest`, consultas simuladas y hashes reales. Cubren la
-función del endpoint junto con el servicio, credenciales válidas e inválidas,
-normalización del identificador y exclusión de contraseña y hash en la respuesta.
-No realizan solicitudes HTTP ni verifican la conexión a una base de datos real.
+Las pruebas usan `unittest`, hashes reales y pruebas unitarias con consultas
+simuladas. Las pruebas HTTP de perfil usan `TestClient` y SQLite en memoria,
+con el login, emisión y validación de JWT y servicios reales. Verifican
+persistencia de datos y foto, eliminación de foto, duplicados, validación y
+rechazo de tokens inválidos, expirados o de usuarios inexistentes, además del
+bloqueo de cambios en perfiles ajenos. No conectan a Supabase ni al despliegue.
 
 ## Perfil de usuario
 
-Los endpoints de perfil trabajan con el UUID que devuelve el registro o el
-inicio de sesión:
+Los endpoints de perfil trabajan con el UUID que devuelve el registro o
+`GET /auth/me`:
 
 - `GET /usuarios/{usuario_id}/perfil`: obtiene los datos públicos del usuario.
-- `PATCH /usuarios/{usuario_id}/perfil`: modifica solamente los campos enviados.
+- `PATCH /usuarios/{usuario_id}/perfil`: requiere el token Bearer del login y
+  modifica solamente los campos enviados del usuario autenticado. El UUID de
+  la ruta debe coincidir con el usuario del token.
 
 El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email` y `foto_url`.
 El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
 URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
 Supabase Storage. Para quitar la foto actual se envía `"foto_url": null`.
 
+Para probar el flujo en Postman:
+
+1. Ejecutá `POST /auth/login` y copiá `access_token`.
+2. Seleccioná `Authorization > Bearer Token`, pegá el token y ejecutá
+   `GET /auth/me` para obtener el UUID de tu cuenta.
+3. Ejecutá el siguiente `PATCH` con ese UUID y el mismo Bearer Token.
+4. Consultá nuevamente `GET /auth/me` para verificar los cambios.
+
 Ejemplo:
 
 ```http
 PATCH http://localhost:8000/usuarios/UUID-DEL-USUARIO/perfil
 Content-Type: application/json
+Authorization: Bearer TOKEN-DEL-LOGIN
 
 {
   "nombre": "Persona",
@@ -260,13 +277,13 @@ Content-Type: application/json
 Respuestas relevantes:
 
 - `200 OK`: devuelve el perfil actualizado.
-- `404 Not Found`: no existe un usuario con ese UUID.
+- `401 Unauthorized`: falta el token, es inválido o expiró, o su usuario ya no existe.
+- `403 Forbidden`: el UUID solicitado corresponde a otro perfil.
 - `409 Conflict`: el email o el nombre de usuario ya pertenece a otra cuenta.
 - `422 Unprocessable Entity`: el cuerpo está vacío o algún dato no es válido.
 
-En esta etapa el login todavía no emite un token, por lo que estos endpoints
-reciben el UUID en la ruta. Cuando se incorpore autenticación persistente, la
-actualización deberá vincularse al usuario autenticado.
+El cambio de foto guarda la URL de una imagen ya subida. Este endpoint no
+recibe archivos ni realiza la subida a Storage.
 
 ## Deploy en Render
 
