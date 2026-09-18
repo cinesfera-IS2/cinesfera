@@ -230,6 +230,44 @@ función del endpoint junto con el servicio, credenciales válidas e inválidas,
 normalización del identificador y exclusión de contraseña y hash en la respuesta.
 No realizan solicitudes HTTP ni verifican la conexión a una base de datos real.
 
+## Perfil de usuario
+
+Los endpoints de perfil trabajan con el UUID que devuelve el registro o el
+inicio de sesión:
+
+- `GET /usuarios/{usuario_id}/perfil`: obtiene los datos públicos del usuario.
+- `PATCH /usuarios/{usuario_id}/perfil`: modifica solamente los campos enviados.
+
+El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email` y `foto_url`.
+El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
+URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
+Supabase Storage. Para quitar la foto actual se envía `"foto_url": null`.
+
+Ejemplo:
+
+```http
+PATCH http://localhost:8000/usuarios/UUID-DEL-USUARIO/perfil
+Content-Type: application/json
+
+{
+  "nombre": "Persona",
+  "apellido": "Actualizada",
+  "nombre_usuario": "persona.actualizada",
+  "foto_url": "https://ejemplo.com/fotos/perfil.jpg"
+}
+```
+
+Respuestas relevantes:
+
+- `200 OK`: devuelve el perfil actualizado.
+- `404 Not Found`: no existe un usuario con ese UUID.
+- `409 Conflict`: el email o el nombre de usuario ya pertenece a otra cuenta.
+- `422 Unprocessable Entity`: el cuerpo está vacío o algún dato no es válido.
+
+En esta etapa el login todavía no emite un token, por lo que estos endpoints
+reciben el UUID en la ruta. Cuando se incorpore autenticación persistente, la
+actualización deberá vincularse al usuario autenticado.
+
 ## Deploy en Render
 
 El backend está publicado en **https://cinesfera.onrender.com**.
