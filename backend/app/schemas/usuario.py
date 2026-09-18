@@ -88,6 +88,9 @@ class UsuarioRespuesta(BaseModel):
     estado: EstadoUsuario
     fecha_registro: datetime
 
+class TokenRespuesta(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 class UsuarioActualizacion(BaseModel):
     nombre: str | None = Field(
