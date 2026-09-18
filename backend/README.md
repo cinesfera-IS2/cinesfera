@@ -39,6 +39,41 @@
 
    Esto instala FastAPI junto con `fastapi-cli` y `uvicorn`, que son los que permiten levantar el servidor.
 
+## Variables de entorno
+
+La configuración vive en `app/core/config.py` y se lee de dos lugares, en este
+orden de prioridad:
+
+1. **Variables de entorno del sistema** (es lo que inyecta Render en el deploy).
+2. **El archivo `backend/.env`** (es lo que usás en tu máquina).
+
+Por eso *no hay que tocar ninguna URL a mano al cambiar de entorno*: en local
+manda `.env`, y en Render mandan las variables del servicio.
+
+Ningún archivo `.env` se versiona. Lo único que está en el repo son las
+plantillas `.env.example` y `.env.production.example`, sin valores reales.
+
+| Variable | Local | Deploy (Render) |
+| --- | --- | --- |
+| `ENVIRONMENT` | `local` | `production` |
+| `API_URL` | `http://localhost:8000` | `https://cinesfera.onrender.com` |
+| `CORS_ORIGINS` | `http://localhost:3000` | URL del frontend publicado |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Supabase | Supabase |
+| `DATABASE_URL` | *(opcional)* | *(opcional)* |
+
+`CORS_ORIGINS` acepta varios orígenes separados por coma. `DATABASE_URL`, si
+está definida, gana sobre las piezas `DB_*`; sirve para pegar directo la cadena
+de conexión que da Supabase.
+
+### Primera vez
+
+```bash
+cp .env.example .env
+```
+
+Después completá los datos de la base. El `.env` **no se versiona**.
+`.env.production.example` es solo la referencia de qué cargar en Render.
+
 ## Levantar el servidor
 
 Con el entorno virtual activado:
@@ -195,14 +230,131 @@ función del endpoint junto con el servicio, credenciales válidas e inválidas,
 normalización del identificador y exclusión de contraseña y hash en la respuesta.
 No realizan solicitudes HTTP ni verifican la conexión a una base de datos real.
 
+## Perfil de usuario
+
+Los endpoints de perfil trabajan con el UUID que devuelve el registro o el
+inicio de sesión:
+
+- `GET /usuarios/{usuario_id}/perfil`: obtiene los datos públicos del usuario.
+- `PATCH /usuarios/{usuario_id}/perfil`: modifica solamente los campos enviados.
+
+El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email` y `foto_url`.
+El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
+URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
+Supabase Storage. Para quitar la foto actual se envía `"foto_url": null`.
+
+Ejemplo:
+
+```http
+PATCH http://localhost:8000/usuarios/UUID-DEL-USUARIO/perfil
+Content-Type: application/json
+
+{
+  "nombre": "Persona",
+  "apellido": "Actualizada",
+  "nombre_usuario": "persona.actualizada",
+  "foto_url": "https://ejemplo.com/fotos/perfil.jpg"
+}
+```
+
+Respuestas relevantes:
+
+- `200 OK`: devuelve el perfil actualizado.
+- `404 Not Found`: no existe un usuario con ese UUID.
+- `409 Conflict`: el email o el nombre de usuario ya pertenece a otra cuenta.
+- `422 Unprocessable Entity`: el cuerpo está vacío o algún dato no es válido.
+
+En esta etapa el login todavía no emite un token, por lo que estos endpoints
+reciben el UUID en la ruta. Cuando se incorpore autenticación persistente, la
+actualización deberá vincularse al usuario autenticado.
+
+## Deploy en Render
+
+El backend está publicado en **https://cinesfera.onrender.com**.
+
+| | |
+| --- | --- |
+| Servicio | `cinesfera` (web, plan free) |
+| Raíz | `backend/` |
+| Build | `pip install -r requirements.txt` |
+| Start | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health check | `/health` |
+| URL | `https://cinesfera.onrender.com` |
+
+El servicio ya está creado y conectado al repo, así que los deploys salen solos
+con cada push. `render.yaml` (en la raíz del repo) deja esa configuración
+escrita, para tenerla versionada y poder recrear el servicio si hiciera falta.
+
+### Variables a cargar en Render
+
+En **Render → cinesfera → Environment**, estas tres hay que agregarlas a mano:
+
+| Variable | Valor |
+| --- | --- |
+| `ENVIRONMENT` | `production` |
+| `API_URL` | `https://cinesfera.onrender.com` |
+| `CORS_ORIGINS` | `https://cinesfera-three.vercel.app` |
+
+Las de la base (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) ya
+están cargadas. **Nunca** se escriben en el repo.
+
+Del lado del frontend, la contraparte es una sola variable en Vercel:
+`NEXT_PUBLIC_API_URL=https://cinesfera.onrender.com` (ver `frontend/README.md`).
+
+Además, en **Settings** conviene dejar el *Health Check Path* en `/health`, así
+Render sabe cuándo el servicio quedó arriba.
+
+### Verificar el deploy
+
+```bash
+curl https://cinesfera.onrender.com/health
+# {"status":"ok"}
+```
+
+La documentación queda en `https://cinesfera.onrender.com/docs`.
+
+Para confirmar que CORS quedó bien, el preflight desde el origen del frontend
+tiene que devolver el header `access-control-allow-origin`:
+
+```bash
+curl -i -X OPTIONS https://cinesfera.onrender.com/auth/login \
+  -H "Origin: https://cinesfera-three.vercel.app" \
+  -H "Access-Control-Request-Method: POST" | grep -i access-control-allow-origin
+```
+
+> Los *preview deployments* de Vercel usan URLs distintas
+> (`cinesfera-three-git-<rama>-....vercel.app`) y **no** están en `CORS_ORIGINS`,
+> así que no van a poder llamar a la API. Si necesitan probar contra el backend
+> real desde una preview, agregá esa URL a la lista (separada por coma).
+
+### Redeploys
+
+Cada push a `main` dispara un deploy automático. No hace falta hacer nada más.
+
+> **Nota sobre el plan free:** el servicio se duerme tras ~15 minutos sin
+> tráfico, así que la primera request después de un rato puede tardar ~50
+> segundos en responder. Es esperable, no es un error.
+
 ## Estructura del proyecto
 
 ```
-backend/
-├── app/
-│   └── main.py        # Punto de entrada de la aplicación FastAPI
-├── requirements.txt    # Dependencias del proyecto
-└── .venv/              # Entorno virtual local (no se versiona)
+cinesfera/
+├── render.yaml                 # Blueprint del deploy en Render
+└── backend/
+    ├── app/
+    │   ├── main.py             # App FastAPI: CORS, routers y /health
+    │   ├── database.py         # Motor y sesión de SQLAlchemy
+    │   ├── core/
+    │   │   └── config.py       # Settings: lee .env y variables de entorno
+    │   ├── models/             # Tablas (SQLAlchemy)
+    │   ├── schemas/            # Cuerpos y respuestas (Pydantic)
+    │   ├── services/           # Lógica de negocio
+    │   └── routers/            # Endpoints HTTP
+    ├── requirements.txt        # Dependencias del proyecto
+    ├── .env                    # Config local (NO se versiona)
+    ├── .env.example            # Plantilla del entorno local
+    ├── .env.production.example # Referencia de qué cargar en Render
+    └── .venv/                  # Entorno virtual local (no se versiona)
 ```
 
 ## Agregar una nueva dependencia

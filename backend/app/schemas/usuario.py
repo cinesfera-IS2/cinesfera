@@ -1,7 +1,15 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator
+)
 
 from app.core.enums import EstadoUsuario, RolUsuario
 
@@ -83,3 +91,64 @@ class UsuarioRespuesta(BaseModel):
 class TokenRespuesta(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+class UsuarioActualizacion(BaseModel):
+    nombre: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=50
+    )
+
+    apellido: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=50
+    )
+
+    nombre_usuario: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=30,
+        pattern=r"^[a-z0-9._]+$"
+    )
+
+    email: EmailStr | None = None
+
+    # Enviar null elimina la foto actual.
+    foto_url: AnyHttpUrl | None = None
+
+    @field_validator(
+        "nombre",
+        "apellido",
+        "nombre_usuario",
+        "email",
+        mode="before"
+    )
+    @classmethod
+    def rechazar_nulos(cls, valor: str | None) -> str:
+        if valor is None:
+            raise ValueError("El campo no puede ser nulo")
+
+        return valor
+
+    @field_validator("nombre", "apellido", mode="before")
+    @classmethod
+    def limpiar_nombre_apellido(cls, valor: str) -> str:
+        return valor.strip() if isinstance(valor, str) else valor
+
+    @field_validator("nombre_usuario", mode="before")
+    @classmethod
+    def normalizar_nombre_usuario(cls, valor: str) -> str:
+        return valor.strip().lower() if isinstance(valor, str) else valor
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalizar_email(cls, valor: str) -> str:
+        return valor.strip().lower() if isinstance(valor, str) else valor
+
+    @model_validator(mode="after")
+    def verificar_al_menos_un_cambio(self):
+        if not self.model_fields_set:
+            raise ValueError("Debe enviar al menos un campo para actualizar")
+
+        return self
