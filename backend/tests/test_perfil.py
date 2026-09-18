@@ -52,7 +52,8 @@ class PerfilTests(unittest.TestCase):
         resultado = modificar_perfil(
             self.usuario_id,
             datos,
-            self.db
+            self.db,
+            self.usuario
         )
 
         self.assertIs(resultado, self.usuario)
@@ -73,7 +74,8 @@ class PerfilTests(unittest.TestCase):
         modificar_perfil(
             self.usuario_id,
             UsuarioActualizacion(foto_url=None),
-            self.db
+            self.db,
+            self.usuario
         )
 
         self.assertIsNone(self.usuario.foto_url)
@@ -98,7 +100,8 @@ class PerfilTests(unittest.TestCase):
             modificar_perfil(
                 self.usuario_id,
                 UsuarioActualizacion(nombre_usuario="ocupado"),
-                self.db
+                self.db,
+                self.usuario
             )
 
         self.assertEqual(contexto.exception.status_code, 409)

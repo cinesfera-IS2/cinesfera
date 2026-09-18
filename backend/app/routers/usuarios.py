@@ -6,6 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import obtener_usuario_actual
+from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioActualizacion, UsuarioRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
@@ -48,8 +50,15 @@ def consultar_perfil(
 def modificar_perfil(
     usuario_id: UUID,
     datos: UsuarioActualizacion,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> UsuarioRespuesta:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para actualizar este perfil"
+        )
+
     try:
         return actualizar_perfil(db, usuario_id, datos)
     except UsuarioNoEncontradoError as error:
