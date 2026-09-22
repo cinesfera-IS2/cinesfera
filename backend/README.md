@@ -238,6 +238,29 @@ bloqueo de cambios en perfiles ajenos. No conectan a Supabase ni al despliegue.
 
 ## Perfil de usuario
 
+## Solicitudes de amistad
+
+Los tres endpoints requieren `Authorization: Bearer <access_token>` obtenido en
+`POST /auth/login`. En `amistades`, `usuario_id_1` es quien envía la solicitud y
+`usuario_id_2` quien la recibe.
+
+- `POST /amistades/solicitudes` con `{"destinatario_id":"UUID"}` crea una solicitud
+  `pendiente` y responde `201`. No permite enviarla a la propia cuenta (`400`),
+  a una cuenta inexistente (`404`) ni crear otra relación entre el mismo par de
+  usuarios en cualquier dirección (`409`).
+- `POST /amistades/solicitudes/{remitente_id}/aceptar` permite al destinatario
+  pasar una solicitud pendiente a `aceptada`.
+- `POST /amistades/solicitudes/{remitente_id}/rechazar` permite al destinatario
+  pasar una solicitud pendiente a `rechazada`.
+
+Las respuestas incluyen ambos UUID, `estado`, `fecha_solicitud` y
+`fecha_respuesta`. Las solicitudes inexistentes o dirigidas a otra cuenta
+responden `404`; una solicitud ya respondida responde `409`.
+
+Para probarlo en Postman, iniciá sesión con la cuenta A y enviá una solicitud
+con el UUID de B. Iniciá sesión con B y llamá a `/amistades/solicitudes/UUID-DE-A/aceptar`
+o `/rechazar`. Repetir la respuesta debe devolver `409`.
+
 ### Perfil público con reseñas
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
