@@ -242,6 +242,10 @@ bloqueo de cambios en perfiles ajenos. No conectan a Supabase ni al despliegue.
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
 nombre de usuario, foto, reputación y reseñas de cualquier usuario existente.
+También se puede consultar por nombre de usuario con
+`GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (por ejemplo,
+`/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
+minúsculas y exige el nombre completo; si no existe, responde `404`.
 No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
 iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
 `plataforma_id`, `calificacion`, `texto` y `fecha`. La reputación es la suma de

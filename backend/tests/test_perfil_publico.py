@@ -90,6 +90,20 @@ class PerfilPublicoTests(unittest.TestCase):
         respuesta = self.client.get(f"/usuarios/{uuid4()}/perfil-publico")
         self.assertEqual(respuesta.status_code, 404)
 
+    def test_busqueda_por_nombre_de_usuario(self):
+        respuesta = self.client.get(
+            "/usuarios/por-nombre/ANA/perfil-publico"
+        )
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertEqual(respuesta.json()["id"], str(self.usuario_id))
+        self.assertEqual(len(respuesta.json()["resenas"]), 2)
+        self.assertNotIn("email", respuesta.json())
+
+        inexistente = self.client.get(
+            "/usuarios/por-nombre/desconocida/perfil-publico"
+        )
+        self.assertEqual(inexistente.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

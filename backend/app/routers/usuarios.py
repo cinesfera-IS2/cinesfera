@@ -16,7 +16,8 @@ from app.services.usuario_service import (
     UsuarioNoEncontradoError,
     actualizar_perfil,
     obtener_perfil,
-    obtener_perfil_publico
+    obtener_perfil_publico,
+    obtener_perfil_publico_por_nombre
 )
 
 
@@ -24,6 +25,20 @@ router = APIRouter(
     prefix="/usuarios",
     tags=["Usuarios"]
 )
+
+
+@router.get(
+    "/por-nombre/{nombre_usuario}/perfil-publico",
+    response_model=PerfilPublicoRespuesta
+)
+def consultar_perfil_publico_por_nombre(
+    nombre_usuario: str,
+    db: Annotated[Session, Depends(get_db)]
+) -> PerfilPublicoRespuesta:
+    try:
+        return obtener_perfil_publico_por_nombre(db, nombre_usuario)
+    except UsuarioNoEncontradoError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.get("/{usuario_id}/perfil-publico", response_model=PerfilPublicoRespuesta)
