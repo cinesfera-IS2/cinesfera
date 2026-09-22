@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.security import generar_hash_password, verificar_password
 from app.models.usuario import Usuario
+from app.models.resena import Resena, ValoracionResena
+from app.schemas.perfil_publico import PerfilPublicoRespuesta, ResenaPublica
 from app.schemas.usuario import (
     UsuarioActualizacion,
     UsuarioLogin,
@@ -27,6 +29,49 @@ class CredencialesInvalidasError(Exception):
 
 class UsuarioNoEncontradoError(Exception):
     pass
+
+
+def obtener_perfil_publico(db: Session, usuario_id: UUID) -> PerfilPublicoRespuesta:
+    usuario = obtener_perfil(db, usuario_id)
+    return _construir_perfil_publico(db, usuario)
+
+
+def obtener_perfil_publico_por_nombre(
+    db: Session, nombre_usuario: str
+) -> PerfilPublicoRespuesta:
+    usuario = db.scalar(
+        select(Usuario).where(
+            func.lower(Usuario.nombre_usuario) == nombre_usuario.strip().lower()
+        )
+    )
+    if usuario is None:
+        raise UsuarioNoEncontradoError("Usuario no encontrado")
+    return _construir_perfil_publico(db, usuario)
+
+
+def _construir_perfil_publico(
+    db: Session, usuario: Usuario
+) -> PerfilPublicoRespuesta:
+    usuario_id = usuario.id
+    resenas = db.scalars(
+        select(Resena).where(Resena.usuario_id == usuario_id)
+        .order_by(Resena.fecha.desc(), Resena.id.desc())
+    ).all()
+    reputacion = db.scalar(
+        select(func.coalesce(func.sum(ValoracionResena.valor), 0))
+        .join(Resena, ValoracionResena.resena_id == Resena.id)
+        .where(Resena.usuario_id == usuario_id)
+    )
+    return PerfilPublicoRespuesta(
+        id=usuario.id,
+        nombre=usuario.nombre,
+        apellido=usuario.apellido,
+        nombre_usuario=usuario.nombre_usuario,
+        foto_url=usuario.foto_url,
+        reputacion=int(reputacion or 0),
+        resenas=[ResenaPublica.model_validate(resena, from_attributes=True)
+                 for resena in resenas]
+    )
 
 
 def obtener_perfil(
