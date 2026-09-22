@@ -9,12 +9,14 @@ from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioActualizacion, UsuarioRespuesta
+from app.schemas.perfil_publico import PerfilPublicoRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
     UsuarioNoEncontradoError,
     actualizar_perfil,
-    obtener_perfil
+    obtener_perfil,
+    obtener_perfil_publico
 )
 
 
@@ -22,6 +24,17 @@ router = APIRouter(
     prefix="/usuarios",
     tags=["Usuarios"]
 )
+
+
+@router.get("/{usuario_id}/perfil-publico", response_model=PerfilPublicoRespuesta)
+def consultar_perfil_publico(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)]
+) -> PerfilPublicoRespuesta:
+    try:
+        return obtener_perfil_publico(db, usuario_id)
+    except UsuarioNoEncontradoError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.get(

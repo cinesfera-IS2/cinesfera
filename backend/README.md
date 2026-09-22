@@ -238,6 +238,32 @@ bloqueo de cambios en perfiles ajenos. No conectan a Supabase ni al despliegue.
 
 ## Perfil de usuario
 
+### Perfil público con reseñas
+
+`GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
+nombre de usuario, foto, reputación y reseñas de cualquier usuario existente.
+No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
+iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
+`plataforma_id`, `calificacion`, `texto` y `fecha`. La reputación es la suma de
+`valoraciones_resena.valor` recibidas por todas las reseñas del usuario; si no
+tiene valoraciones, es `0`. No se devuelve el email ni la contraseña.
+
+Para probarlo vos misma en Postman:
+
+1. Conseguí el UUID de otra cuenta desde una respuesta de registro o desde la
+   tabla `usuarios` de Supabase.
+2. Creá una petición `GET` a
+   `http://localhost:8000/usuarios/UUID-DE-OTRA-CUENTA/perfil-publico`, con
+   `Authorization > No Auth` y sin body.
+3. Esperá `200 OK`. Verificá `nombre`, `foto_url`, `reputacion` y que las fechas
+   del arreglo `resenas` vayan de la más nueva a la más vieja. Si la cuenta no
+   tiene reseñas, `resenas` será `[]` y `reputacion` será `0`.
+4. Repetí con un UUID inexistente: debe responder `404 Not Found` con
+   `{"detail":"Usuario no encontrado"}`.
+
+La respuesta utiliza IDs de TMDB porque el esquema de la base no guarda el
+título ni el póster del contenido en `resenas`.
+
 Los endpoints de perfil trabajan con el UUID que devuelve el registro o
 `GET /auth/me`:
 
