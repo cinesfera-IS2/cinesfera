@@ -20,10 +20,13 @@ export function ReviewCard({ resena }: ReviewCardProps) {
       <div className="flex min-w-0 flex-col gap-2">
         <div>
           <h3 className="font-display text-base font-bold text-ink-100">
-            {resena.titulo}{" "}
-            <span className="font-sans text-sm font-normal text-ink-500">
-              ({resena.anio})
-            </span>
+            {resena.titulo}
+            {resena.anio && (
+              <span className="font-sans text-sm font-normal text-ink-500">
+                {" "}
+                ({resena.anio})
+              </span>
+            )}
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <StarRating puntaje={resena.puntaje} />
@@ -40,10 +43,12 @@ export function ReviewCard({ resena }: ReviewCardProps) {
           {resena.comentario}
         </p>
 
-        <p className="flex items-center gap-1.5 text-xs text-ink-500">
-          <HeartIcon weight="fill" className="size-3.5 text-rose-400/80" />
-          {resena.meGusta} me gusta
-        </p>
+        {resena.meGusta !== undefined && (
+          <p className="flex items-center gap-1.5 text-xs text-ink-500">
+            <HeartIcon weight="fill" className="size-3.5 text-rose-400/80" />
+            {resena.meGusta} me gusta
+          </p>
+        )}
       </div>
     </article>
   );

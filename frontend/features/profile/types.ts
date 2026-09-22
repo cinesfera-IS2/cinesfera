@@ -5,8 +5,11 @@ export type PerfilPublico = {
   nombreUsuario: string;
   nombre: string;
   apellido: string;
-  /** Dato privado: solo se muestra en el perfil propio. */
-  email: string;
+  /**
+   * Dato privado: el endpoint público no lo devuelve, así que solo va a estar
+   * cuando la sesión lo traiga para el perfil propio.
+   */
+  email?: string;
   fotoUrl?: string;
   rol: "usuario" | "admin";
   /** ISO `YYYY-MM-DD`. */
@@ -27,7 +30,8 @@ export type EstadisticasPerfil = {
 export type ResenaPerfil = {
   id: string;
   titulo: string;
-  anio: number;
+  /** Falta mientras el catálogo no resuelva el id de TMDB. */
+  anio?: number;
   /** De 0 a 5, en pasos de media estrella. */
   puntaje: number;
   /** ISO `YYYY-MM-DD`. */
@@ -35,7 +39,8 @@ export type ResenaPerfil = {
   comentario: string;
   /** Degradado de respaldo mientras no haya póster real. */
   posterGradient: string;
-  meGusta: number;
+  /** El backend todavía no expone los votos de cada reseña por separado. */
+  meGusta?: number;
 };
 
-export type SeccionPerfil = "resenas" | "vistas" | "listas";
+export type SeccionPerfil = "resenas";

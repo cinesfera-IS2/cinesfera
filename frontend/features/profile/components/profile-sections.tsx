@@ -2,8 +2,6 @@
 
 import {
   ChatCircleTextIcon,
-  EyeIcon,
-  ListBulletsIcon,
   PencilSimpleIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
@@ -22,16 +20,12 @@ type ProfileSectionsProps = {
 const PESTANAS: Array<{
   id: SeccionPerfil;
   etiqueta: string;
-  Icon: typeof EyeIcon;
-}> = [
-  { id: "resenas", etiqueta: "Reseñas", Icon: ChatCircleTextIcon },
-  { id: "vistas", etiqueta: "Vistas", Icon: EyeIcon },
-  { id: "listas", etiqueta: "Listas", Icon: ListBulletsIcon },
-];
+  Icon: typeof ChatCircleTextIcon;
+}> = [{ id: "resenas", etiqueta: "Reseñas", Icon: ChatCircleTextIcon }];
 
 /**
- * Solo "Reseñas" tiene contenido: "Vistas" y "Listas" quedan reservadas con su
- * cartel para no rehacer la navegación cuando existan.
+ * Por ahora "Reseñas" es la única sección. La navegación por pestañas se
+ * mantiene igual para que sumar otra sea agregar una entrada a `PESTANAS`.
  */
 export function ProfileSections({
   resenas,
@@ -91,22 +85,6 @@ export function ProfileSections({
             resenas={resenas}
             nombre={nombre}
             esPropio={esPropio}
-          />
-        )}
-
-        {activa === "vistas" && (
-          <EmptyState
-            Icon={EyeIcon}
-            titulo="El historial todavía no está disponible"
-            descripcion="Acá va a aparecer todo lo que la persona marcó como visto, con su puntaje y la fecha."
-          />
-        )}
-
-        {activa === "listas" && (
-          <EmptyState
-            Icon={ListBulletsIcon}
-            titulo="Las listas están en camino"
-            descripcion="Colecciones armadas a mano: maratones, pendientes, favoritas del año."
           />
         )}
       </div>

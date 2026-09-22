@@ -7,20 +7,20 @@ import {
   ProfileDetails,
   ProfileHero,
   ProfileSections,
-  obtenerPerfil,
-  obtenerResenas,
+  obtenerPerfilPublico,
 } from "@/features/profile";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/profile/[username]">): Promise<Metadata> {
   const { username } = await params;
-  const perfil = await obtenerPerfil(username);
+  const datos = await obtenerPerfilPublico(username);
 
-  if (!perfil) {
+  if (!datos) {
     return { title: "Perfil no encontrado — Cinesfera" };
   }
 
+  const { perfil } = datos;
   const nombreCompleto = `${perfil.nombre} ${perfil.apellido}`;
 
   return {
@@ -34,16 +34,14 @@ export default async function ProfilePage({
   params,
 }: PageProps<"/profile/[username]">) {
   const { username } = await params;
-  const perfil = await obtenerPerfil(username);
+  const datos = await obtenerPerfilPublico(username);
 
-  if (!perfil) {
+  if (!datos) {
     notFound();
   }
 
-  const [resenas, esPropio] = await Promise.all([
-    obtenerResenas(perfil.nombreUsuario),
-    esMiPerfil(perfil.nombreUsuario),
-  ]);
+  const { perfil, resenas } = datos;
+  const esPropio = await esMiPerfil(perfil.nombreUsuario);
 
   return (
     <>
