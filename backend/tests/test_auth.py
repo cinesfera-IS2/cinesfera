@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import Mock
 from uuid import uuid4
+from fastapi import Response
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -35,13 +36,16 @@ class InicioSesionTests(unittest.TestCase):
             fecha_registro=datetime.now(timezone.utc)
         )
 
+    
     def test_inicio_correcto_por_email_o_nombre_usuario(self):
         for identificador, campo, normalizado in (
-        (" PERSONA@EXAMPLE.COM ", "email", "persona@example.com"),
-        (" PERSONA ", "nombre_usuario", "persona")
-    ):
+            (" PERSONA@EXAMPLE.COM ", "email", "persona@example.com"),
+            (" PERSONA ", "nombre_usuario", "persona")
+        ):
             with self.subTest(identificador=identificador):
                 self.db.scalar.return_value = self.usuario
+
+                respuesta_http = Response()
 
                 with patch(
                     "app.routers.auth.generar_token_acceso",
@@ -51,24 +55,45 @@ class InicioSesionTests(unittest.TestCase):
                         UsuarioLogin(
                             identificador=identificador,
                             password=self.password
-                    ),
-                    self.db
-                )
+                        ),
+                        respuesta_http,
+                        self.db
+                    )
 
-                self.assertIsInstance(resultado, TokenRespuesta)
+                # Verificar que el login fue correcto
                 self.assertEqual(
-                    resultado.access_token,
-                    "token-prueba"
+                    resultado.mensaje,
+                    "Sesion iniciada correctamente"
                 )
-                self.assertEqual(resultado.token_type, "bearer")
 
+                # Verificar que se creó la cookie HttpOnly
+                cookie = respuesta_http.headers["set-cookie"]
+
+                self.assertIn(
+                    "access_token=token-prueba",
+                    cookie
+                )
+
+                self.assertIn(
+                    "httponly",
+                    cookie.lower()
+                )
+
+                # Verificar la búsqueda del usuario
                 consulta = self.db.scalar.call_args.args[0]
-                self.assertIn(campo, str(consulta.whereclause))
+
+                self.assertIn(
+                    campo,
+                    str(consulta.whereclause)
+                )
+
                 self.assertIn(
                     normalizado,
                     consulta.compile().params.values()
                 )
+
                 self.db.commit.assert_not_called()
+
 
     def test_credenciales_incorrectas_responden_el_mismo_error(self):
         for identificador in ("persona@example.com", "persona"):
@@ -90,6 +115,7 @@ class InicioSesionTests(unittest.TestCase):
                                 identificador=identificador,
                                 password=password
                             ),
+                            Response(),
                             self.db
                         )
 
@@ -102,7 +128,8 @@ class InicioSesionTests(unittest.TestCase):
 
     def test_respuesta_publica_no_expone_password(self):
         self.db.scalar.return_value = self.usuario
-
+        respuesta_http = Response()
+        
         with patch(
             "app.routers.auth.generar_token_acceso",
             return_value="token-prueba"
@@ -112,21 +139,30 @@ class InicioSesionTests(unittest.TestCase):
                     identificador="persona", 
                     password=self.password
                 ),
-            self.db
-        )
+                respuesta_http,
+                self.db
+            )       
+        
         respuesta = resultado.model_dump()
 
-        self.assertEqual(respuesta["access_token"], "token-prueba")
-        self.assertEqual(respuesta["token_type"], "bearer")
         self.assertNotIn("password", respuesta)
         self.assertNotIn("password_hash", respuesta)
+        self.assertNotIn("access_token", respuesta)
 
+        self.assertIn(
+            "access_token=token-prueba",
+            respuesta_http.headers["set-cookie"]
+        )
+
+    
     def test_endpoint_declara_respuesta_publica(self):
         esquema = app.openapi()
+
         respuesta = esquema["paths"]["/auth/login"]["post"]["responses"]["200"]
+
         self.assertEqual(
             respuesta["content"]["application/json"]["schema"]["$ref"],
-            "#/components/schemas/TokenRespuesta"
+            "#/components/schemas/SesionRespuesta"
         )
 
 

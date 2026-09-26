@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
-
+from app.core.csrf import generar_token_csrf, verificar_csrf
+from app.schemas.usuario import CsrfRespuesta
+from app.core.config import settings
 from app.database import get_db
 from app.schemas.usuario import (
     TokenRespuesta,
@@ -27,7 +29,7 @@ from app.models.usuario import Usuario
 
 
 import os
-from fastapi import Response
+
 
 from app.core.security import (
     generar_token_acceso,
@@ -60,16 +62,15 @@ def login(
             key="access_token",
             value=token,
             httponly=True,
-            secure=os.getenv(
-                "COOKIE_SECURE", "true"
-            ).lower() == "true",
-            samesite="lax",
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
             max_age=JWT_EXPIRE_MINUTES * 60,
             path="/"
         )
 
         return SesionRespuesta(
-            mensaje="Sesión iniciada correctamente"
+            mensaje="Sesion iniciada correctamente",
+            csrf_token=generar_token_csrf(token)
         )
 
     except CredencialesInvalidasError as error:
@@ -120,7 +121,8 @@ def obtener_perfil(
 @router.post(
     "/logout",
     response_model=SesionRespuesta,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verificar_csrf)]
 )
 def cerrar_sesion(
     response: Response
@@ -133,4 +135,32 @@ def cerrar_sesion(
 
     return SesionRespuesta(
         mensaje="Sesión cerrada correctamente"
+    )
+
+
+
+@router.get(
+    "/csrf",
+    response_model=CsrfRespuesta
+)
+def obtener_csrf(
+    request: Request,
+    response: Response,
+    usuario_actual: Annotated[
+        Usuario,
+        Depends(obtener_usuario_actual)
+    ]
+) -> CsrfRespuesta:
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No hay una sesión activa"
+        )
+
+    response.headers["Cache-Control"] = "no-store"
+
+    return CsrfRespuesta(
+        csrf_token=generar_token_csrf(token)
     )

@@ -158,5 +158,11 @@ class UsuarioActualizacion(BaseModel):
 
     
 
+
 class SesionRespuesta(BaseModel):
     mensaje: str
+    csrf_token: str | None = None
+
+
+class CsrfRespuesta(BaseModel):
+    csrf_token: str

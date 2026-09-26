@@ -73,12 +73,24 @@ class PerfilAutenticadoTests(unittest.TestCase):
         app.dependency_overrides.update(anteriores)
 
     def iniciar_sesion(self):
-        respuesta = self.client.post("/auth/login", json={
-            "identificador": "persona", "password": self.password
-        })
+        respuesta = self.client.post(
+            "/auth/login", 
+            json={
+                "identificador": "persona", 
+                "password": self.password
+        }
+        )
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(respuesta.json()["token_type"], "bearer")
-        return {"Authorization": f"Bearer {respuesta.json()['access_token']}"}
+        
+
+
+        self.assertIn(
+            "access_token", 
+            self.client.cookies
+        )
+        return {
+            "X-CSRF-Token": respuesta.json()["csrf_token"]
+        }
 
     def test_login_actualizacion_y_persistencia_de_datos_y_foto(self):
         headers = self.iniciar_sesion()
@@ -166,3 +178,102 @@ class PerfilAutenticadoTests(unittest.TestCase):
     def test_openapi_declara_bearer_para_actualizar(self):
         operacion = app.openapi()["paths"]["/usuarios/{usuario_id}/perfil"]["patch"]
         self.assertEqual(operacion["security"], [{"HTTPBearer": []}])
+
+
+    
+    
+    def test_logout_elimina_sesion(self):
+        # Iniciar sesión y obtener el token CSRF
+        headers = self.iniciar_sesion()
+
+        # Comprobar que existe la cookie
+        self.assertIn(
+            "access_token",
+            self.client.cookies
+        )
+
+        # Cerrar sesión enviando el token CSRF
+        respuesta = self.client.post(
+            "/auth/logout",
+            headers=headers
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+
+        # Comprobar que desapareció la cookie
+        self.assertNotIn(
+            "access_token",
+            self.client.cookies
+        )
+
+        # Comprobar que ya no podemos acceder al perfil
+        respuesta = self.client.get("/auth/me")
+
+        self.assertEqual(respuesta.status_code, 401)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            "No hay una sesión activa"
+        )
+
+    
+    def test_perfil_rechaza_csrf_invalido_o_ausente(self):
+        # Iniciar sesión correctamente
+        self.iniciar_sesion()
+
+        # Obtener el ID del usuario autenticado
+        respuesta = self.client.get("/auth/me")
+        self.assertEqual(respuesta.status_code, 200)
+
+        usuario_id = respuesta.json()["id"]
+
+        # Intentar modificar el perfil sin CSRF
+        respuesta = self.client.patch(
+            f"/usuarios/{usuario_id}/perfil",
+            json={"nombre": "Intruso"}
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertIn("CSRF", respuesta.json()["detail"])
+
+        # Intentar modificarlo con un CSRF incorrecto
+        respuesta = self.client.patch(
+            f"/usuarios/{usuario_id}/perfil",
+            json={"nombre": "Intruso"},
+            headers={"X-CSRF-Token": "token-falso"}
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertIn("CSRF", respuesta.json()["detail"])
+
+
+    
+    def test_consulta_perfil_privado(self):
+        # Sin sesión: acceso denegado
+        self.client.cookies.clear()
+
+        respuesta = self.client.get(
+            f"/usuarios/{self.otro_id}/perfil"
+        )
+        self.assertEqual(respuesta.status_code, 401)
+
+        # Iniciar sesión
+        self.iniciar_sesion()
+
+        respuesta = self.client.get("/auth/me")
+        self.assertEqual(respuesta.status_code, 200)
+        mi_id = respuesta.json()["id"]
+
+        # Consultar el perfil propio
+        respuesta = self.client.get(
+            f"/usuarios/{mi_id}/perfil"
+        )
+        self.assertEqual(respuesta.status_code, 200)
+
+        # Intentar consultar el perfil privado de otro usuario
+        respuesta = self.client.get(
+            f"/usuarios/{self.otro_id}/perfil"
+        )
+        self.assertEqual(respuesta.status_code, 403)
+
+
+        
