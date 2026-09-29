@@ -103,7 +103,34 @@ La app queda disponible en http://localhost:3000, con recarga automática al gua
 pnpm build   # compila la app para producción
 pnpm start   # levanta el build de producción (requiere haber corrido pnpm build antes)
 pnpm lint    # corre el linter (ESLint)
+pnpm test    # corre los tests y los repite cada vez que guardás un archivo
+pnpm test:run  # corre los tests una sola vez
 ```
+
+## Tests
+
+Los tests usan [Vitest](https://vitest.dev) y
+[Testing Library](https://testing-library.com/docs/react-testing-library/intro).
+Viven al lado del archivo que prueban, con el mismo nombre terminado en
+`.test.ts` o `.test.tsx` (`password.ts` → `password.test.ts`); Vitest los
+encuentra solo.
+
+No necesitan el backend levantado: cuando el código llama a la API, el test
+reemplaza `fetch` por una función falsa (`vi.stubGlobal("fetch", ...)`) que
+devuelve la respuesta que el caso necesita, por ejemplo un `409` con
+"El email ya está registrado". Ver `lib/api.test.ts`.
+
+Hay dos tipos:
+
+- **Lógica pura** (`password.test.ts`, `fechas.test.ts`, `api.test.ts`): se
+  llama a la función y se compara el resultado con `expect(...).toBe(...)`.
+- **Componentes** (`register-form.test.tsx`): se dibuja el componente con
+  `render`, se lo usa como una persona (`userEvent.type`, `userEvent.click`,
+  buscando los campos por su etiqueta visible) y se comprueba qué se mandó al
+  backend y qué se muestra en pantalla.
+
+`vi.mock("next/navigation", ...)` reemplaza el router de Next, que no existe
+fuera de la app, por uno falso para poder verificar a dónde quiso navegar.
 
 ## Estructura del proyecto
 

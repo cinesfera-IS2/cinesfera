@@ -3,44 +3,23 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
-from sqlalchemy import MetaData, create_engine
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
-
-from app.database import get_db
-from app.main import app
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
-from app.core.enums import EstadoUsuario, RolUsuario
+from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 
 class PerfilPublicoTests(unittest.TestCase):
     def setUp(self):
-        self.engine = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-            execution_options={"schema_translate_map": {"public": None}}
-        )
-        self.addCleanup(self.engine.dispose)
-        metadata = MetaData()
-        for modelo in (Usuario, Resena, ValoracionResena):
-            tabla = modelo.__table__.to_metadata(metadata, schema=None)
-            for columna in tabla.columns:
-                columna.server_default = None
-        metadata.create_all(self.engine)
-        self.db = Session(self.engine)
-        self.addCleanup(self.db.close)
-        self.usuario_id, otro_id = uuid4(), uuid4()
+        self.db = crear_base_en_memoria(self, Usuario, Resena, ValoracionResena)
         ahora = datetime.now(timezone.utc)
-        for id_, nombre in ((self.usuario_id, "ana"), (otro_id, "bea")):
-            self.db.add(Usuario(
-                id=id_, nombre=nombre.title(), apellido="Prueba",
-                nombre_usuario=nombre, email=f"{nombre}@example.com",
-                password_hash="secreto", foto_url="https://example.com/foto.jpg",
-                rol=RolUsuario.USUARIO, estado=EstadoUsuario.ACTIVO,
-                fecha_registro=ahora
-            ))
+        self.usuario_id = crear_usuario(
+            self.db, "ana", nombre="Ana", password_hash="secreto",
+            foto_url="https://example.com/foto.jpg"
+        ).id
+        otro_id = crear_usuario(
+            self.db, "bea", nombre="Bea", password_hash="secreto",
+            foto_url="https://example.com/foto.jpg"
+        ).id
         antigua_id, reciente_id, ajena_id = uuid4(), uuid4(), uuid4()
         for id_, autor, fecha in (
             (antigua_id, self.usuario_id, ahora - timedelta(days=2)),
@@ -59,17 +38,8 @@ class PerfilPublicoTests(unittest.TestCase):
             ValoracionResena(usuario_id=self.usuario_id, resena_id=ajena_id, valor=1)
         ])
         self.db.commit()
-        anteriores = app.dependency_overrides.copy()
-        app.dependency_overrides[get_db] = lambda: self.db
-        self.addCleanup(self.restaurar_dependencias, anteriores)
-        self.client = TestClient(app)
-        self.addCleanup(self.client.close)
+        self.client = conectar_api(self, self.db)
         self.antigua_id, self.reciente_id = antigua_id, reciente_id
-
-    @staticmethod
-    def restaurar_dependencias(anteriores):
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(anteriores)
 
     def test_datos_publicos_resenas_ordenadas_y_reputacion(self):
         respuesta = self.client.get(f"/usuarios/{self.usuario_id}/perfil-publico")
