@@ -92,7 +92,7 @@ export function ProfileEditDialog({ perfil }: ProfileEditDialogProps) {
             label="Correo electrónico"
             name="email"
             type="email"
-            defaultValue={perfil.email}
+            defaultValue={perfil.email ?? ""}
             autoComplete="email"
           />
 

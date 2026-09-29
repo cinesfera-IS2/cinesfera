@@ -9,6 +9,8 @@ type AuthLayoutProps = {
   description: string;
   children: ReactNode;
   footer: ReactNode;
+  /** "lg" para formularios que se reparten en dos columnas, como el registro. */
+  ancho?: "md" | "lg";
 };
 
 /** Envoltorio de las páginas de acceso: tarjeta centrada, sin cabecera ni pie del sitio. */
@@ -17,6 +19,7 @@ export function AuthLayout({
   description,
   children,
   footer,
+  ancho = "md",
 }: AuthLayoutProps) {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
@@ -33,7 +36,11 @@ export function AuthLayout({
         className="pointer-events-none absolute left-1/2 -top-[27rem] size-[34rem] -translate-x-1/2 rounded-full bg-glow-400/20 blur-3xl"
       />
 
-      <div className="relative flex w-full max-w-md flex-col gap-4">
+      <div
+        className={`relative flex w-full flex-col gap-4 ${
+          ancho === "lg" ? "max-w-2xl" : "max-w-md"
+        }`}
+      >
         <Link
           href="/"
           className="inline-flex w-fit items-center gap-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100"

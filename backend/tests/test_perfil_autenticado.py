@@ -1,76 +1,38 @@
 import unittest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 from uuid import uuid4
 
 import jwt
-from fastapi.testclient import TestClient
-from sqlalchemy import MetaData, create_engine
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
 
 from app.core import security
-from app.core.enums import EstadoUsuario, RolUsuario
-from app.database import get_db
 from app.main import app
 from app.models.usuario import Usuario
+from tests.utilidades import (
+    PASSWORD_DE_PRUEBA,
+    conectar_api,
+    configurar_jwt,
+    crear_base_en_memoria,
+    crear_usuario
+)
 
 
 class PerfilAutenticadoTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.password = "ClaveSegura123"
+        cls.password = PASSWORD_DE_PRUEBA
         cls.password_hash = security.generar_hash_password(cls.password)
 
     def setUp(self):
-        self.secret = "clave-de-pruebas-aisladas-de-al-menos-32-caracteres"
-        self.jwt_config = patch.multiple(
-            security, JWT_SECRET_KEY=self.secret, JWT_ALGORITHM="HS256",
-            JWT_EXPIRE_MINUTES=30
-        )
-        self.jwt_config.start()
-        self.addCleanup(self.jwt_config.stop)
-        self.engine = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-            execution_options={"schema_translate_map": {"public": None}}
-        )
-        self.addCleanup(self.engine.dispose)
-        # Adaptar solo el DDL de PostgreSQL; conservar el modelo y servicios reales.
-        metadata = MetaData()
-        tabla = Usuario.__table__.to_metadata(metadata, schema=None)
-        for columna in tabla.columns:
-            columna.server_default = None
-        metadata.create_all(self.engine)
-        self.db = Session(self.engine)
-        self.addCleanup(self.db.close)
-        self.usuario_id, self.otro_id = uuid4(), uuid4()
-        for usuario_id, identificador in (
-            (self.usuario_id, "persona"), (self.otro_id, "otra.persona")
-        ):
-            self.db.add(Usuario(
-                id=usuario_id, nombre="Persona", apellido="Prueba",
-                nombre_usuario=identificador, email=f"{identificador}@example.com",
-                password_hash=self.password_hash, foto_url=None,
-                rol=RolUsuario.USUARIO, estado=EstadoUsuario.ACTIVO,
-                fecha_registro=datetime.now(timezone.utc)
-            ))
-        self.db.commit()
-
-        def db_pruebas():
-            yield self.db
-
-        anteriores = app.dependency_overrides.copy()
-        app.dependency_overrides[get_db] = db_pruebas
-        self.addCleanup(self.restaurar_dependencias, anteriores)
-        self.client = TestClient(app)
-        self.addCleanup(self.client.close)
+        self.secret = configurar_jwt(self)
+        self.db = crear_base_en_memoria(self, Usuario)
+        self.usuario_id = crear_usuario(
+            self.db, "persona", password_hash=self.password_hash
+        ).id
+        self.otro_id = crear_usuario(
+            self.db, "otra.persona", password_hash=self.password_hash
+        ).id
+        self.client = conectar_api(self, self.db)
         self.url = f"/usuarios/{self.usuario_id}/perfil"
-
-    @staticmethod
-    def restaurar_dependencias(anteriores):
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(anteriores)
 
     def iniciar_sesion(self):
         respuesta = self.client.post(

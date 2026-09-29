@@ -1,138 +1,127 @@
+import { cache } from "react";
+
+import { ApiError, apiFetch } from "@/lib/api";
 import type { PerfilPublico, ResenaPerfil } from "@/features/profile/types";
 
 /**
- * Datos de ejemplo para maquetar la pantalla.
- *
- * Para enchufar el backend falta un endpoint que resuelva por nombre de
- * usuario: `GET /usuarios/{id}/perfil` solo acepta el UUID.
+ * Respuesta de `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico`.
+ * Es el espejo de `PerfilPublicoRespuesta` en el backend: si cambia allá, esto
+ * tiene que cambiar acá.
  */
-
-const PERFILES: PerfilPublico[] = [
-  {
-    id: "0f7a1f5e-6f4a-4f3f-9b1c-8a2d5e7c0a11",
-    nombreUsuario: "juanmorena",
-    nombre: "Juan",
-    apellido: "Morena",
-    email: "juan.morena@correo.com",
-    rol: "usuario",
-    fechaRegistro: "2026-02-14",
-    bio: "Cazador de thrillers lentos y bandas sonoras que no puedo sacarme de la cabeza. Si la película dura más de tres horas, mejor.",
-    ubicacion: "Montevideo, Uruguay",
-    generosFavoritos: ["Thriller", "Sci-Fi", "Drama"],
-    estadisticas: {
-      resenas: 3,
-      vistas: 184,
-      seguidores: 212,
-      siguiendo: 97,
-    },
-  },
-  {
-    id: "3c2b9d84-1f77-4a1e-9d0c-5b6e4f2a8c33",
-    nombreUsuario: "sofiarey",
-    nombre: "Sofía",
-    apellido: "Rey",
-    email: "sofia.rey@correo.com",
-    rol: "admin",
-    fechaRegistro: "2025-11-03",
-    bio: "Programo un ciclo de cine independiente los jueves. Acá dejo lo que voy viendo entre función y función.",
-    ubicacion: "Buenos Aires, Argentina",
-    generosFavoritos: ["Documental", "Animación"],
-    estadisticas: {
-      resenas: 2,
-      vistas: 421,
-      seguidores: 1340,
-      siguiendo: 188,
-    },
-  },
-  {
-    id: "7d5e1c02-8b3a-42c6-8f19-0ac7e9d14b55",
-    nombreUsuario: "lucasbergara",
-    nombre: "Lucas",
-    apellido: "Bergara",
-    email: "lucas.bergara@correo.com",
-    rol: "usuario",
-    fechaRegistro: "2026-09-02",
-    ubicacion: "Salto, Uruguay",
-    generosFavoritos: ["Acción"],
-    estadisticas: {
-      resenas: 0,
-      vistas: 6,
-      seguidores: 4,
-      siguiendo: 31,
-    },
-  },
-];
-
-const RESENAS: Record<string, ResenaPerfil[]> = {
-  juanmorena: [
-    {
-      id: "r-ecos-del-silencio",
-      titulo: "Ecos del Silencio",
-      anio: 2025,
-      puntaje: 4.5,
-      fecha: "2026-09-04",
-      comentario:
-        "Se toma su tiempo para llegar a donde quiere, y cuando llega te das cuenta de que el silencio venía avisando desde la primera escena. El trabajo de sonido es la verdadera protagonista.",
-      posterGradient: "from-sky-500/30 via-night-850 to-night-950",
-      meGusta: 38,
-    },
-    {
-      id: "r-odisea-estelar",
-      titulo: "Odisea Estelar",
-      anio: 2024,
-      puntaje: 5,
-      fecha: "2026-08-21",
-      comentario:
-        "La vi tres veces y todavía encuentro detalles nuevos en el tercer acto. Ciencia ficción de la que se preocupa por las personas antes que por las naves.",
-      posterGradient: "from-violet-600/35 via-night-850 to-night-950",
-      meGusta: 126,
-    },
-    {
-      id: "r-codigo-nocturno",
-      titulo: "Código Nocturno",
-      anio: 2023,
-      puntaje: 3,
-      fecha: "2026-07-30",
-      comentario:
-        "Arranca impecable y se desinfla en el último tramo. Igual, la fotografía de las escenas en la ciudad vacía justifica la entrada.",
-      posterGradient: "from-cyan-500/25 via-night-850 to-night-950",
-      meGusta: 12,
-    },
-  ],
-  sofiarey: [
-    {
-      id: "r-el-reino-de-los-susurros",
-      titulo: "El Reino de los Susurros",
-      anio: 2026,
-      puntaje: 4,
-      fecha: "2026-09-11",
-      comentario:
-        "Fantasía hecha a mano, con maquetas y muñecos que se notan y eso la hace mejor. La proyectamos en el ciclo y la sala aplaudió.",
-      posterGradient: "from-teal-500/30 via-night-850 to-night-950",
-      meGusta: 204,
-    },
-    {
-      id: "r-ultimo-vagon",
-      titulo: "Último Vagón",
-      anio: 2025,
-      puntaje: 4.5,
-      fecha: "2026-08-02",
-      comentario:
-        "Un drama de cámara dentro de un tren que nunca se siente encerrado. El guion confía en el espectador y se agradece.",
-      posterGradient: "from-rose-500/30 via-night-850 to-night-950",
-      meGusta: 91,
-    },
-  ],
+type PerfilPublicoApi = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nombre_usuario: string;
+  foto_url: string | null;
+  /** Suma de los votos recibidos por todas sus reseñas. */
+  reputacion: number;
+  resenas: ResenaApi[];
 };
 
-export async function obtenerPerfil(
-  nombreUsuario: string
-): Promise<PerfilPublico | null> {
-  return PERFILES.find((perfil) => perfil.nombreUsuario === nombreUsuario) ?? null;
+type ResenaApi = {
+  id: string;
+  contenido_tmdb_id: number;
+  plataforma_id: number | null;
+  /** De 0.5 a 5, en pasos de media estrella. */
+  calificacion: number;
+  texto: string;
+  /** ISO con hora y zona. */
+  fecha: string;
+};
+
+/**
+ * Lo que el perfil muestra y la base todavía no guarda. Son los mismos valores
+ * para todas las personas a propósito: sirven para ver la pantalla completa
+ * mientras los campos no existen, y se van a ir cayendo de a uno.
+ *
+ * `rol` y `fechaRegistro` sí están en la tabla `usuarios`, pero el endpoint
+ * público no los devuelve; alcanzaría con sumarlos a `PerfilPublicoRespuesta`
+ * para que dejen de ser de ejemplo.
+ */
+const EJEMPLO = {
+  bio: "Cazador de thrillers lentos y bandas sonoras que no puedo sacarme de la cabeza. Si la película dura más de tres horas, mejor.",
+  ubicacion: "Montevideo, Uruguay",
+  generosFavoritos: ["Thriller", "Sci-Fi", "Drama"],
+  rol: "usuario",
+  fechaRegistro: "2026-02-14",
+  vistas: 184,
+  seguidores: 212,
+  siguiendo: 97,
+} as const;
+
+/** Degradados de respaldo del póster, repartidos entre las reseñas por orden. */
+const DEGRADADOS = [
+  "from-sky-500/30 via-night-850 to-night-950",
+  "from-violet-600/35 via-night-850 to-night-950",
+  "from-cyan-500/25 via-night-850 to-night-950",
+  "from-teal-500/30 via-night-850 to-night-950",
+  "from-rose-500/30 via-night-850 to-night-950",
+];
+
+/**
+ * Trae el perfil y sus reseñas en una sola llamada, que es como las entrega el
+ * backend. Va envuelto en `cache` porque la página y `generateMetadata` lo
+ * piden por separado y así se resuelve con un solo pedido por request.
+ *
+ * Devuelve `null` cuando el nombre de usuario no existe, para que la ruta
+ * pueda responder con su propio `not-found`.
+ */
+export const obtenerPerfilPublico = cache(
+  async (
+    nombreUsuario: string
+  ): Promise<{ perfil: PerfilPublico; resenas: ResenaPerfil[] } | null> => {
+    let respuesta: PerfilPublicoApi;
+
+    try {
+      respuesta = await apiFetch<PerfilPublicoApi>(
+        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+
+    return {
+      perfil: aPerfil(respuesta),
+      resenas: respuesta.resenas.map(aResena),
+    };
+  }
+);
+
+function aPerfil(api: PerfilPublicoApi): PerfilPublico {
+  return {
+    id: api.id,
+    nombreUsuario: api.nombre_usuario,
+    nombre: api.nombre,
+    apellido: api.apellido,
+    fotoUrl: api.foto_url ?? undefined,
+    rol: EJEMPLO.rol,
+    fechaRegistro: EJEMPLO.fechaRegistro,
+    bio: EJEMPLO.bio,
+    ubicacion: EJEMPLO.ubicacion,
+    generosFavoritos: [...EJEMPLO.generosFavoritos],
+    estadisticas: {
+      resenas: api.resenas.length,
+      vistas: EJEMPLO.vistas,
+      seguidores: EJEMPLO.seguidores,
+      siguiendo: EJEMPLO.siguiendo,
+    },
+  };
 }
 
-export async function obtenerResenas(
-  nombreUsuario: string
-): Promise<ResenaPerfil[]> {
-  return RESENAS[nombreUsuario] ?? [];
+function aResena(api: ResenaApi, indice: number): ResenaPerfil {
+  return {
+    id: api.id,
+    // La tabla `resenas` guarda solo el id de TMDB del contenido: el título, el
+    // año y el póster llegan cuando esté enchufado el servicio de catálogo.
+    titulo: `Película #${api.contenido_tmdb_id}`,
+    puntaje: api.calificacion,
+    fecha: api.fecha.slice(0, 10),
+    comentario: api.texto,
+    posterGradient: DEGRADADOS[indice % DEGRADADOS.length],
+  };
 }

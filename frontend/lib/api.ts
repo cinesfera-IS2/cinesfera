@@ -64,12 +64,40 @@ export async function apiFetch<T>(
   const cuerpo = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const detalle =
-      (cuerpo && typeof cuerpo.detail === "string" && cuerpo.detail) ||
-      `Error ${response.status}`;
-
-    throw new ApiError(response.status, detalle);
+    throw new ApiError(response.status, mensajeDeError(cuerpo, response.status));
   }
 
   return cuerpo as T;
+}
+
+/**
+ * FastAPI manda `detail` como texto en los errores propios (401, 404, 409...) y
+ * como lista de fallos de validación en los 422 de Pydantic. Sin este segundo
+ * caso, un 422 llegaría a la pantalla como un "Error 422" sin explicación.
+ */
+function mensajeDeError(cuerpo: unknown, status: number): string {
+  const detalle =
+    cuerpo && typeof cuerpo === "object" && "detail" in cuerpo
+      ? (cuerpo as { detail: unknown }).detail
+      : undefined;
+
+  if (typeof detalle === "string") {
+    return detalle;
+  }
+
+  if (Array.isArray(detalle)) {
+    const mensajes = detalle
+      .map((fallo) =>
+        fallo && typeof fallo === "object" && typeof fallo.msg === "string"
+          ? fallo.msg
+          : null
+      )
+      .filter((mensaje): mensaje is string => mensaje !== null);
+
+    if (mensajes.length > 0) {
+      return mensajes.join(". ");
+    }
+  }
+
+  return `Error ${status}`;
 }

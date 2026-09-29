@@ -39,6 +39,21 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tailwind 4 ya no le pone `cursor: pointer` a los botones, así que quedan con
+   la flecha normal y no se sienten clickeables. Los enlaces ya traen la manito
+   del navegador; esto cubre botones y cualquier cosa con rol de botón. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 /* Oculta la barra de scroll del carrusel "Joyas de la cartelera" sin quitar el scroll. */
 @utility scrollbar-hide {
   scrollbar-width: none;

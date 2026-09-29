@@ -45,7 +45,7 @@ export function ProfileDetails({ perfil, esPropio }: ProfileDetailsProps) {
     });
   }
 
-  if (esPropio) {
+  if (esPropio && perfil.email) {
     datos.push({
       etiqueta: "Correo electrónico",
       valor: perfil.email,

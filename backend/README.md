@@ -229,12 +229,10 @@ Desde `backend`, con el entorno virtual activado:
 python -m unittest discover -s tests -v
 ```
 
-Las pruebas usan `unittest`, hashes reales y pruebas unitarias con consultas
-simuladas. Las pruebas HTTP de perfil usan `TestClient` y SQLite en memoria,
-con el login, emisión y validación de JWT y servicios reales. Verifican
-persistencia de datos y foto, eliminación de foto, duplicados, validación y
-rechazo de tokens inválidos, expirados o de usuarios inexistentes, además del
-bloqueo de cambios en perfiles ajenos. No conectan a Supabase ni al despliegue.
+Las pruebas no conectan a Supabase ni al despliegue: cada una arma una base
+SQLite en memoria con usuarios inventados. Cubren registro, inicio de sesión,
+modificación de perfil y perfil público. Para saber cómo funcionan y cómo
+agregar una nueva, leé [`tests/README.md`](tests/README.md).
 
 ## Perfil de usuario
 
