@@ -13,6 +13,9 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET_KEY: test-only-jwt-secret-for-ci
+
     defaults:
       run:
         working-directory: backend
