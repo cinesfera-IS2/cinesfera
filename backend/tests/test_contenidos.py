@@ -4,12 +4,17 @@ from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
 
+import httpx
+
+from app.core.config import settings
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.schemas.contenido import ContenidoDetalleRespuesta, GeneroContenido
 from app.services.contenido_service import (
     CatalogoNoDisponibleError,
     ContenidoNoEncontradoError,
+    _consultar_tmdb,
+    _url_imagen,
     obtener_detalle_contenido,
 )
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
@@ -165,6 +170,75 @@ class ContenidosTests(unittest.TestCase):
             contenido.poster_url,
             "https://image.tmdb.org/t/p/w500/poster.jpg",
         )
+
+    def test_catalogo_sin_token_informa_que_no_esta_configurado(self):
+        with patch.object(settings, "tmdb_access_token", ""):
+            with self.assertRaisesRegex(
+                CatalogoNoDisponibleError, "catálogo no está configurado"
+            ):
+                _consultar_tmdb("movie", 550)
+
+    @patch("app.services.contenido_service.httpx.get")
+    def test_consulta_tmdb_con_token_y_devuelve_json(self, get):
+        respuesta = get.return_value
+        respuesta.status_code = 200
+        respuesta.json.return_value = {"id": 550, "title": "Fight Club"}
+
+        with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
+            datos = _consultar_tmdb("movie", 550)
+
+        self.assertEqual(datos["id"], 550)
+        get.assert_called_once_with(
+            f"{settings.tmdb_api_url}/movie/550",
+            headers={
+                "Accept": "application/json",
+                "Authorization": "Bearer token-de-prueba",
+            },
+            params={"language": "es-UY"},
+            timeout=10,
+        )
+        respuesta.raise_for_status.assert_called_once_with()
+
+    @patch("app.services.contenido_service.httpx.get")
+    def test_consulta_tmdb_traduce_error_de_red(self, get):
+        get.side_effect = httpx.ConnectError("Sin conexión")
+
+        with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
+            with self.assertRaisesRegex(
+                CatalogoNoDisponibleError, "consultar el catálogo"
+            ):
+                _consultar_tmdb("tv", 1399)
+
+    @patch("app.services.contenido_service.httpx.get")
+    def test_consulta_tmdb_traduce_404(self, get):
+        get.return_value.status_code = 404
+
+        with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
+            with self.assertRaisesRegex(
+                ContenidoNoEncontradoError, "Contenido no encontrado"
+            ):
+                _consultar_tmdb("movie", 999999)
+
+        get.return_value.raise_for_status.assert_not_called()
+
+    @patch("app.services.contenido_service.httpx.get")
+    def test_consulta_tmdb_traduce_error_http(self, get):
+        respuesta = get.return_value
+        respuesta.status_code = 503
+        respuesta.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Servicio no disponible",
+            request=httpx.Request("GET", "https://api.themoviedb.org"),
+            response=httpx.Response(503),
+        )
+
+        with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
+            with self.assertRaisesRegex(
+                CatalogoNoDisponibleError, "consultar el catálogo"
+            ):
+                _consultar_tmdb("movie", 550)
+
+    def test_url_de_imagen_ausente_permanece_ausente(self):
+        self.assertIsNone(_url_imagen(None, "w500"))
 
 
 if __name__ == "__main__":
