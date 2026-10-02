@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-
+from types import SimpleNamespace   
 from app.core.enums import EstadoUsuario, RolUsuario
 from app.main import app
 from app.models.usuario import Usuario
@@ -33,7 +33,12 @@ class PerfilTests(unittest.TestCase):
         self.db.get.return_value = self.usuario
 
     def test_obtener_perfil(self):
-        resultado = consultar_perfil(self.usuario_id, self.db)
+        resultado = consultar_perfil(
+            self.usuario_id, 
+            self.db,
+            SimpleNamespace(id=self.usuario_id)
+
+        )
 
         self.assertIs(resultado, self.usuario)
         self.db.get.assert_called_once_with(Usuario, self.usuario_id)
@@ -85,7 +90,11 @@ class PerfilTests(unittest.TestCase):
         self.db.get.return_value = None
 
         with self.assertRaises(HTTPException) as contexto:
-            consultar_perfil(self.usuario_id, self.db)
+            consultar_perfil(
+                self.usuario_id, 
+                self.db, 
+                SimpleNamespace(id=self.usuario_id)
+            )
 
         self.assertEqual(contexto.exception.status_code, 404)
         self.assertEqual(

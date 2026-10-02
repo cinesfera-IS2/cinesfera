@@ -1,6 +1,7 @@
+
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -9,20 +10,33 @@ from app.database import get_db
 from app.models.usuario import Usuario
 
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def obtener_usuario_actual(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
     credenciales: Annotated[
-        HTTPAuthorizationCredentials,
+        HTTPAuthorizationCredentials | None,
         Depends(bearer_scheme)
-    ],
-    db: Annotated[Session, Depends(get_db)]
+    ]
 ) -> Usuario:
-    try:
-        usuario_id = decodificar_token_acceso(
-            credenciales.credentials
+
+    # Primero buscamos el token en la cookie
+    token = request.cookies.get("access_token")
+
+    # Compatibilidad con el sistema anterior
+    if not token and credenciales is not None:
+        token = credenciales.credentials
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No hay una sesión activa"
         )
+
+    try:
+        usuario_id = decodificar_token_acceso(token)
 
     except ValueError as error:
         raise HTTPException(

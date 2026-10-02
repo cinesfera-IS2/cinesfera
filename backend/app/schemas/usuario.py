@@ -14,6 +14,9 @@ from pydantic import (
 from app.core.enums import EstadoUsuario, RolUsuario
 
 
+
+
+
 class UsuarioRegistro(BaseModel):
     nombre: str = Field(
         min_length=2,
@@ -152,3 +155,14 @@ class UsuarioActualizacion(BaseModel):
             raise ValueError("Debe enviar al menos un campo para actualizar")
 
         return self
+
+    
+
+
+class SesionRespuesta(BaseModel):
+    mensaje: str
+    csrf_token: str | None = None
+
+
+class CsrfRespuesta(BaseModel):
+    csrf_token: str
