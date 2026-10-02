@@ -4,10 +4,19 @@ __pycache__
 
 # Entornos virtuales
 .venv/
+venv/
 backend/.venv/
+
+# Dependencias de Node
+node_modules/
 
 # Variables de entorno
 .env
+
+# Reportes de coverage
+.coverage
+coverage.xml
+htmlcov/
 
 # Herramientas y sistema
 .pytest_cache/

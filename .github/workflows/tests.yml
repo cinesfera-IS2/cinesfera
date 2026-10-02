@@ -28,14 +28,24 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
       - name: Instalar dependencias
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       # No necesita .env ni base de datos: los tests usan SQLite en memoria.
-      - name: Correr tests
-        run: python -m unittest discover -s tests -v
+      - name: Correr tests con coverage
+        run: |
+          coverage run --source=app -m unittest discover -s tests -v
+          coverage xml -o coverage.xml
+          coverage report
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: backend/coverage.xml
 
   frontend:
     runs-on: ubuntu-latest
@@ -62,5 +72,44 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Correr tests
-        run: pnpm test:run
+      - name: Correr tests con coverage
+        run: pnpm test:coverage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/lcov.info
+
+  sonarqube:
+    needs: [ backend, frontend ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Sonar necesita el historial completo para el blame y para detectar el código nuevo.
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: backend
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend
+          path: frontend/coverage
+
+      # Vitest escribe las rutas relativas a frontend/ y Sonar las resuelve desde la raíz del repo.
+      - name: Ajustar rutas del reporte del frontend
+        run: sed -i 's|^SF:|SF:frontend/|' frontend/coverage/lcov.info
+
+      - name: Analizar con SonarQube
+        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
