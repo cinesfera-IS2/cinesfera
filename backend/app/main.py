@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers.auth import router as auth_router
 from app.routers.usuarios import router as usuarios_router
+from catalogue_service.controllers.CatalogueController import router
 
 
 app = FastAPI(
@@ -39,3 +40,7 @@ def root():
 def health():
     """Chequeo de salud que usa Render para saber si el servicio vive."""
     return {"status": "ok"}
+
+
+
+app.include_router(router)

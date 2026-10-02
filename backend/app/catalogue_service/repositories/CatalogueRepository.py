@@ -142,93 +142,74 @@ def get_content(self, content_type=None, year=None):
     )
 
 
+
 #para realizar búsquedas 
 
-    def search_movie_by_name(self, name):
+def search_movie_by_name(self, name):
 
-        url = f"{self.base_url}/search/movie"
+    url = f"{self.base_url}/search/movie"
 
-        params = {
+    params = {
             "api_key": self.api_key,
             "query": name,
             "language": "es-ES"
         }
 
-        response = requests.get(url, params=params)
+    response = requests.get(url, params=params)
 
-        response.raise_for_status()
+    response.raise_for_status()
 
-        data = response.json()
+    data = response.json()
 
-        contents = []
+    contents = []
 
-        for movie in data["results"]:
-
-            content = Content(
-                title=movie["title"],
-                content_type="movie",
-                year=movie["release_date"][:4] if movie["release_date"] else None,
-                summary=movie["overview"],
-                poster_url=(
-                    f"https://image.tmdb.org/t/p/w500{movie['poster_path']}"
-                    if movie["poster_path"]
-                    else None
-                ),
-                tmdb_id=movie["id"]
-            )
-
-            contents.append(content)
-
-        return contents
-
-    #def search_by_keyword (tmb podria implementarlo? )
-
-
-    def search_series_by_name(self, name):
+    for movie in data["results"]:
+            contents.append(self._movie_to_content(movie))
     
-            url = f"{self.base_url}/search/tv"
+    return contents
     
-            params = {
+
+def search_series_by_name(self, name):
+    
+        url = f"{self.base_url}/search/tv"
+    
+        params = {
                 "api_key": self.api_key,
                 "query": name,
                 "language": "es-ES"
             }
     
-            response = requests.get(url, params=params)
+        response = requests.get(url, params=params)
     
-            response.raise_for_status()
+        response.raise_for_status()
     
-            data = response.json()
+        data = response.json()
     
-            contents = []
+        contents = []
     
-            for movie in data["results"]:
-    
-                content = Content(
-                    title=movie["title"],
-                    content_type="series",
-                    year=movie["release_date"][:4] if movie["release_date"] else None,
-                    summary=movie["overview"],
-                    poster_url=(
-                        f"https://image.tmdb.org/t/p/w500{movie['poster_path']}"
-                        if movie["poster_path"]
-                        else None
-                    ),
-                    tmdb_id=movie["id"]
-                )
-    
-                contents.append(content)
-    
-            return contents
+        for series in data["results"]:
+                contents.append(self._series_to_content(series))
+           
+        return contents
+
+    #def search_by_keyword (tmb podria implementarlo? )
+
+def search_catalogue(self, query):
+    movies = self.search_movies(query)
+    series = self.search_series(query)
+
+    return movies + series
     
 
+def search_keyword():
+    pass
     
-    def search_by_id(self, id):
-        pass
+def search_seasons():
+    pass
 
-    def filter_content(self, type=None, year=None):
-        pass
+def search_episodes():
+    pass
 
-    def search_by_name(self):
+#puede ser útil más adelante
+def search_by_id(self, id):
         pass
-    
