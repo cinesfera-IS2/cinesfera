@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JWT_SECRET_KEY: test-only-jwt-secret-for-ci
+      COOKIE_SECURE: "false"
 
     defaults:
       run:
