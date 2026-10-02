@@ -44,3 +44,7 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
+
+      # --- Catálogo externo (TMDB) ---
+      - key: TMDB_ACCESS_TOKEN
+        sync: false
