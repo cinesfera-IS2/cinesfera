@@ -60,6 +60,7 @@ plantillas `.env.example` y `.env.production.example`, sin valores reales.
 | `CORS_ORIGINS` | `http://localhost:3000` | URL del frontend publicado |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Supabase | Supabase |
 | `DATABASE_URL` | *(opcional)* | *(opcional)* |
+| `TMDB_ACCESS_TOKEN` | Token de lectura de TMDB | Token de lectura de TMDB |
 
 `CORS_ORIGINS` acepta varios orígenes separados por coma. `DATABASE_URL`, si
 está definida, gana sobre las piezas `DB_*`; sirve para pegar directo la cadena
@@ -266,6 +267,30 @@ Para probarlo vos misma en Postman:
 La respuesta utiliza IDs de TMDB porque el esquema de la base no guarda el
 título ni el póster del contenido en `resenas`.
 
+## Ficha de película o serie
+
+La ficha consume dos endpoints públicos e independientes:
+
+- `GET /contenidos/{tipo}/{tmdb_id}` obtiene el detalle desde TMDB. `tipo`
+  admite `pelicula` o `serie`.
+- `GET /contenidos/{tipo}/{tmdb_id}/resenas` obtiene las reseñas locales,
+  incluyendo su autor y la suma de valoraciones. La lista se ordena por
+  `fecha` descendente y, para fechas iguales, por `id` descendente. Si no hay
+  reseñas devuelve `[]`.
+
+La consulta a TMDB necesita `TMDB_ACCESS_TOKEN`. Un ID inexistente devuelve
+`404`; si TMDB no está configurado o no responde, la ficha devuelve `502`. El
+endpoint de reseñas sigue disponible aunque TMDB tenga una incidencia.
+
+Ejemplos:
+
+```http
+GET http://localhost:8000/contenidos/pelicula/550
+GET http://localhost:8000/contenidos/pelicula/550/resenas
+GET http://localhost:8000/contenidos/serie/1399
+GET http://localhost:8000/contenidos/serie/1399/resenas
+```
+
 Los endpoints de perfil trabajan con el UUID que devuelve el registro o
 `GET /auth/me`:
 
@@ -332,13 +357,14 @@ escrita, para tenerla versionada y poder recrear el servicio si hiciera falta.
 
 ### Variables a cargar en Render
 
-En **Render → cinesfera → Environment**, estas tres hay que agregarlas a mano:
+En **Render → cinesfera → Environment**, estas variables hay que agregarlas a mano:
 
 | Variable | Valor |
 | --- | --- |
 | `ENVIRONMENT` | `production` |
 | `API_URL` | `https://cinesfera.onrender.com` |
 | `CORS_ORIGINS` | `https://cinesfera-three.vercel.app` |
+| `TMDB_ACCESS_TOKEN` | Token de lectura de la cuenta de TMDB |
 
 Las de la base (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) ya
 están cargadas. **Nunca** se escriben en el repo.
