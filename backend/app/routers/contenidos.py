@@ -51,8 +51,6 @@ def consultar_resenas_contenido(
     tmdb_id: Annotated[int, Path(gt=0)],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[ResenaContenidoRespuesta]:
-    # `tipo` forma parte de la identidad pública y evita rutas ambiguas entre
-    # películas y series. El esquema actual de `resenas` solo persiste el ID de
-    # TMDB; cuando incorpore el tipo, este filtro también deberá incluirlo.
-    del tipo
-    return obtener_resenas_contenido(db, tmdb_id)
+    # Una película y una serie pueden compartir el id de TMDB: el tipo es parte
+    # de la identidad del contenido.
+    return obtener_resenas_contenido(db, tipo, tmdb_id)

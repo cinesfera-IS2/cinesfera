@@ -26,6 +26,16 @@ describe("apiUrl", () => {
     expect(apiUrl("auth/login")).toBe(apiUrl("/auth/login"));
     expect(apiUrl("/auth/login")).toMatch(/[^/]\/auth\/login$/);
   });
+
+  it("en el navegador pasa por el proxy /api de Next", () => {
+    expect(apiUrl("/auth/login")).toBe("/api/auth/login");
+  });
+
+  it("en el servidor apunta directo al backend", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(apiUrl("/auth/login")).toMatch(/^https?:\/\/.+\/auth\/login$/);
+  });
 });
 
 describe("apiFetch", () => {

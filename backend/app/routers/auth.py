@@ -128,9 +128,14 @@ def cerrar_sesion(
     response: Response
 ) -> SesionRespuesta:
 
+    # Mismos atributos que en el login: si no coinciden, el navegador
+    # puede no reemplazar la cookie y la sesión sigue viva.
     response.delete_cookie(
         key="access_token",
-        path="/"
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite
     )
 
     return SesionRespuesta(

@@ -1,10 +1,14 @@
-import { CompassIcon } from "@phosphor-icons/react/dist/ssr";
+import { CompassIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
+import { LogoutButton } from "@/features/auth/components/logout-button";
+import { obtenerSesion } from "@/features/auth/session";
 import { BrandLogo } from "@/features/landing/components/brand-logo";
 import { NAV_LINKS } from "@/features/landing/data/landing-content";
 
-export function LandingHeader() {
+export async function LandingHeader() {
+  const sesion = await obtenerSesion();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-night-950/70 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
@@ -34,12 +38,26 @@ export function LandingHeader() {
               Explorar
             </Link>
 
-            <Link
-              href="/login"
-              className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold sm:px-5 text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
-            >
-              Acceder
-            </Link>
+            {sesion ? (
+              <>
+                <Link
+                  href={`/profile/${sesion.nombre_usuario}`}
+                  aria-label="Mi perfil"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
+                >
+                  <UserCircleIcon weight="bold" className="size-4" />
+                  <span className="hidden sm:inline">{sesion.nombre}</span>
+                </Link>
+                <LogoutButton />
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold sm:px-5 text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
+              >
+                Acceder
+              </Link>
+            )}
           </div>
         </div>
       </div>
