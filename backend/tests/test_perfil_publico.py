@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
+from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
@@ -10,8 +11,11 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 class PerfilPublicoTests(unittest.TestCase):
     def setUp(self):
-        self.db = crear_base_en_memoria(self, Usuario, Resena, ValoracionResena)
+        self.db = crear_base_en_memoria(
+            self, Usuario, Contenido, Resena, ValoracionResena
+        )
         ahora = datetime.now(timezone.utc)
+        self.db.add(Contenido(id=1, tmdb_id=42, tipo="pelicula"))
         self.usuario_id = crear_usuario(
             self.db, "ana", nombre="Ana", password_hash="secreto",
             foto_url="https://example.com/foto.jpg"
@@ -27,7 +31,7 @@ class PerfilPublicoTests(unittest.TestCase):
             (ajena_id, otro_id, ahora + timedelta(days=1))
         ):
             self.db.add(Resena(
-                id=id_, usuario_id=autor, contenido_tmdb_id=42,
+                id=id_, usuario_id=autor, contenido_id=1,
                 plataforma_id=None, calificacion=Decimal("4.5"),
                 texto="Una reseña", fecha=fecha
             ))
@@ -53,6 +57,7 @@ class PerfilPublicoTests(unittest.TestCase):
             [str(self.reciente_id), str(self.antigua_id)]
         )
         self.assertEqual(datos["resenas"][0]["calificacion"], 4.5)
+        self.assertEqual(datos["resenas"][0]["contenido_tmdb_id"], 42)
         self.assertNotIn("email", datos)
         self.assertNotIn("password_hash", datos)
 

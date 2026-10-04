@@ -48,3 +48,9 @@ services:
       # --- Catálogo externo (TMDB) ---
       - key: TMDB_ACCESS_TOKEN
         sync: false
+
+      # --- Sesión ---
+      # Render genera un valor aleatorio al crear el servicio. Sin esta
+      # variable el login responde 500.
+      - key: JWT_SECRET_KEY
+        generateValue: true

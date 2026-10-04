@@ -7,6 +7,7 @@ from uuid import uuid4
 import httpx
 
 from app.core.config import settings
+from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.schemas.contenido import ContenidoDetalleRespuesta, GeneroContenido
@@ -22,19 +23,29 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 class ContenidosTests(unittest.TestCase):
     def setUp(self):
-        self.db = crear_base_en_memoria(self, Usuario, Resena, ValoracionResena)
+        self.db = crear_base_en_memoria(
+            self, Usuario, Contenido, Resena, ValoracionResena
+        )
         ahora = datetime.now(timezone.utc)
+        # La serie comparte id de TMDB con la película a propósito: sus
+        # reseñas no deben mezclarse.
+        self.db.add_all([
+            Contenido(id=1, tmdb_id=550, tipo="pelicula"),
+            Contenido(id=2, tmdb_id=999, tipo="pelicula"),
+            Contenido(id=3, tmdb_id=550, tipo="serie"),
+        ])
         ana = crear_usuario(self.db, "ana", nombre="Ana", apellido="Pérez")
         bea = crear_usuario(self.db, "bea", nombre="Bea", apellido="Silva")
         self.reciente_id = uuid4()
         self.antigua_id = uuid4()
         ajena_id = uuid4()
+        self.serie_id = uuid4()
 
         self.db.add_all([
             Resena(
                 id=self.antigua_id,
                 usuario_id=ana.id,
-                contenido_tmdb_id=550,
+                contenido_id=1,
                 plataforma_id=None,
                 calificacion=Decimal("4.0"),
                 texto="La primera reseña",
@@ -43,7 +54,7 @@ class ContenidosTests(unittest.TestCase):
             Resena(
                 id=self.reciente_id,
                 usuario_id=bea.id,
-                contenido_tmdb_id=550,
+                contenido_id=1,
                 plataforma_id=3,
                 calificacion=Decimal("4.5"),
                 texto="La reseña más reciente",
@@ -52,10 +63,19 @@ class ContenidosTests(unittest.TestCase):
             Resena(
                 id=ajena_id,
                 usuario_id=ana.id,
-                contenido_tmdb_id=999,
+                contenido_id=2,
                 plataforma_id=None,
                 calificacion=Decimal("2.0"),
                 texto="Pertenece a otro contenido",
+                fecha=ahora + timedelta(days=1),
+            ),
+            Resena(
+                id=self.serie_id,
+                usuario_id=bea.id,
+                contenido_id=3,
+                plataforma_id=None,
+                calificacion=Decimal("3.0"),
+                texto="Reseña de la serie con el mismo id",
                 fecha=ahora + timedelta(days=1),
             ),
         ])
@@ -81,8 +101,18 @@ class ContenidosTests(unittest.TestCase):
             [str(self.reciente_id), str(self.antigua_id)],
         )
         self.assertEqual(datos[0]["autor"]["nombre_usuario"], "bea")
+        self.assertEqual(datos[0]["contenido_tmdb_id"], 550)
         self.assertEqual(datos[0]["valoracion"], 1)
         self.assertEqual(datos[1]["valoracion"], -1)
+
+    def test_resenas_de_serie_no_se_mezclan_con_pelicula_del_mismo_id(self):
+        respuesta = self.client.get("/contenidos/serie/550/resenas")
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertEqual(
+            [resena["id"] for resena in respuesta.json()],
+            [str(self.serie_id)],
+        )
 
     def test_contenido_sin_resenas_devuelve_lista_vacia(self):
         respuesta = self.client.get("/contenidos/serie/404/resenas")

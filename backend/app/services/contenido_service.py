@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.schemas.contenido import (
@@ -65,6 +66,7 @@ def obtener_detalle_contenido(
 
 def obtener_resenas_contenido(
     db: Session,
+    tipo: TipoContenido,
     tmdb_id: int,
 ) -> list[ResenaContenidoRespuesta]:
     valoraciones = (
@@ -83,8 +85,9 @@ def obtener_resenas_contenido(
             func.coalesce(valoraciones.c.valoracion, 0),
         )
         .join(Usuario, Usuario.id == Resena.usuario_id)
+        .join(Contenido, Contenido.id == Resena.contenido_id)
         .outerjoin(valoraciones, valoraciones.c.resena_id == Resena.id)
-        .where(Resena.contenido_tmdb_id == tmdb_id)
+        .where(Contenido.tmdb_id == tmdb_id, Contenido.tipo == tipo)
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
 
