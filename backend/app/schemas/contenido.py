@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -39,9 +40,30 @@ class AutorResena(BaseModel):
 class ResenaContenidoRespuesta(BaseModel):
     id: UUID
     contenido_tmdb_id: int
+    resena_padre_id: UUID | None
     plataforma_id: int | None
     calificacion: float
     texto: str
     fecha: datetime
     valoracion: int
     autor: AutorResena
+
+
+class ResenaCreacion(BaseModel):
+    usuario_id: UUID
+    texto: str = Field(min_length=1, max_length=5000)
+    calificacion: Decimal = Field(ge=0, le=5)
+    plataforma_id: int | None = Field(default=None, gt=0)
+    resena_padre_id: UUID | None = None
+
+
+class ResenaCreadaRespuesta(BaseModel):
+    mensaje: str
+    id: UUID
+    usuario_id: UUID
+    contenido_tmdb_id: int
+    resena_padre_id: UUID | None
+    plataforma_id: int | None
+    calificacion: float
+    texto: str
+    fecha: datetime

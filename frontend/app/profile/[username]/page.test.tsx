@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 const PERFIL: PerfilPublico = {
