@@ -1,9 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfileSections } from "./profile-sections";
 import type { ResenaPerfil } from "@/features/profile/types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 function resena(datos: Partial<ResenaPerfil> & Pick<ResenaPerfil, "id">): ResenaPerfil {
   return {
@@ -58,7 +62,9 @@ describe("ProfileSections", () => {
   });
 
   it("sin reseñas propias invita a escribir la primera", () => {
-    render(<ProfileSections resenas={[]} nombre="Ana" esPropio />);
+    render(
+      <ProfileSections resenas={[]} nombre="Ana" esPropio usuarioId="u1" />
+    );
 
     expect(
       screen.getByRole("heading", { name: "Todavía no escribiste reseñas" })
