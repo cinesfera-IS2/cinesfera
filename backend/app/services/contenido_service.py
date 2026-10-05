@@ -1,4 +1,6 @@
+from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import func, select
@@ -12,6 +14,8 @@ from app.schemas.contenido import (
     AutorResena,
     ContenidoDetalleRespuesta,
     GeneroContenido,
+    ResenaCreacion,
+    ResenaCreadaRespuesta,
     ResenaContenidoRespuesta,
     TipoContenido,
 )
@@ -22,6 +26,14 @@ class ContenidoNoEncontradoError(Exception):
 
 
 class CatalogoNoDisponibleError(Exception):
+    pass
+
+
+class ResenaPadreNoEncontradaError(Exception):
+    pass
+
+
+class ResenaPadreInvalidaError(Exception):
     pass
 
 
@@ -95,6 +107,7 @@ def obtener_resenas_contenido(
         ResenaContenidoRespuesta(
             id=resena.id,
             contenido_tmdb_id=resena.contenido_tmdb_id,
+            resena_padre_id=resena.resena_padre_id,
             plataforma_id=resena.plataforma_id,
             calificacion=float(resena.calificacion),
             texto=resena.texto,
@@ -104,6 +117,74 @@ def obtener_resenas_contenido(
         )
         for resena, usuario, valoracion in filas
     ]
+
+
+def crear_resena(
+    db: Session,
+    tipo: TipoContenido,
+    tmdb_id: int,
+    usuario_id: UUID,
+    datos: ResenaCreacion,
+) -> ResenaCreadaRespuesta:
+    # Comprobar el catálogo antes de agregar la entidad garantiza que un
+    # contenido inexistente nunca deje una reseña pendiente en la sesión.
+    detalle = obtener_detalle_contenido(tipo, tmdb_id)
+
+    contenido = db.scalar(
+        select(Contenido).where(
+            Contenido.tmdb_id == tmdb_id,
+            Contenido.tipo == tipo,
+        )
+    )
+    if contenido is None:
+        contenido = Contenido(
+            tmdb_id=tmdb_id,
+            tipo=tipo,
+            temporada=None,
+            episodio=None,
+            titulo=detalle.titulo,
+        )
+        db.add(contenido)
+        db.flush()
+
+    if datos.resena_padre_id is not None:
+        padre = db.get(Resena, datos.resena_padre_id)
+        if padre is None:
+            raise ResenaPadreNoEncontradaError("Reseña padre no encontrada")
+        if padre.contenido_id != contenido.id:
+            raise ResenaPadreInvalidaError(
+                "La reseña padre no pertenece al contenido indicado"
+            )
+
+    texto = datos.texto.strip()
+    if not texto:
+        raise ValueError("El texto de la reseña no puede estar vacío")
+
+    resena = Resena(
+        id=uuid4(),
+        usuario_id=usuario_id,
+        contenido_id=contenido.id,
+        resena_padre_id=datos.resena_padre_id,
+        plataforma_id=datos.plataforma_id,
+        calificacion=datos.calificacion,
+        texto=texto,
+        fecha=datetime.now(timezone.utc),
+    )
+    db.add(resena)
+    db.commit()
+    db.refresh(resena)
+
+    return ResenaCreadaRespuesta(
+        mensaje="Reseña publicada correctamente",
+        id=resena.id,
+        usuario_id=resena.usuario_id,
+        contenido_tmdb_id=resena.contenido_tmdb_id,
+        resena_padre_id=resena.resena_padre_id,
+        plataforma_id=resena.plataforma_id,
+        calificacion=float(resena.calificacion),
+        texto=resena.texto,
+        fecha=resena.fecha,
+    )
 
 
 def _consultar_tmdb(ruta: str, tmdb_id: int) -> dict[str, Any]:

@@ -17,6 +17,11 @@ class Resena(Base):
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
     usuario_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     contenido_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    resena_padre_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
     plataforma_id: Mapped[int | None] = mapped_column(Integer)
     calificacion: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     texto: Mapped[str] = mapped_column(Text, nullable=False)
