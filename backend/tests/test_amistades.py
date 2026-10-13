@@ -7,7 +7,7 @@ from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.core.enums import EstadoUsuario, RolUsuario
+from app.core.enums import EstadoAmistad, EstadoUsuario, RolUsuario
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.main import app
@@ -60,6 +60,18 @@ class AmistadesTests(unittest.TestCase):
     def enviar(self, destinatario):
         return self.client.post("/amistades/solicitudes", json={"destinatario_id": str(destinatario)})
 
+    def crear_relacion(self, primero, segundo, estado=EstadoAmistad.ACEPTADA):
+        relacion = Amistad(
+            usuario_id_1=primero.id,
+            usuario_id_2=segundo.id,
+            estado=estado,
+            fecha_solicitud=datetime.now(timezone.utc),
+            fecha_respuesta=datetime.now(timezone.utc)
+        )
+        self.db.add(relacion)
+        self.db.commit()
+        return relacion
+
     def test_enviar_aceptar_y_rechazar_solo_una_vez(self):
         ana, bea, carla = self.usuarios
         respuesta = self.enviar(bea.id)
@@ -96,6 +108,56 @@ class AmistadesTests(unittest.TestCase):
         self.assertEqual(self.client.post(ruta).status_code, 404)
         self.actuar_como(1)
         self.assertEqual(self.client.post(f"/amistades/solicitudes/{uuid4()}/rechazar").status_code, 404)
+
+    def test_cualquiera_de_los_dos_usuarios_puede_eliminar_la_amistad(self):
+        ana, bea, _carla = self.usuarios
+        self.crear_relacion(ana, bea)
+
+        respuesta = self.client.delete(f"/amistades/{bea.id}")
+
+        self.assertEqual(respuesta.status_code, 204, respuesta.text)
+        self.assertEqual(respuesta.content, b"")
+        self.assertIsNone(self.db.get(Amistad, (ana.id, bea.id)))
+
+        self.crear_relacion(ana, bea)
+        self.actuar_como(1)
+        respuesta = self.client.delete(f"/amistades/{ana.id}")
+
+        self.assertEqual(respuesta.status_code, 204, respuesta.text)
+        self.assertIsNone(self.db.get(Amistad, (ana.id, bea.id)))
+
+    def test_no_elimina_solicitudes_ni_relaciones_ajenas(self):
+        ana, bea, carla = self.usuarios
+        for estado in (EstadoAmistad.PENDIENTE, EstadoAmistad.RECHAZADA):
+            with self.subTest(estado=estado):
+                relacion = self.crear_relacion(ana, bea, estado)
+
+                respuesta = self.client.delete(f"/amistades/{bea.id}")
+
+                self.assertEqual(respuesta.status_code, 404, respuesta.text)
+                self.assertEqual(respuesta.json()["detail"], "Amistad no encontrada")
+                self.assertIsNotNone(
+                    self.db.get(
+                        Amistad,
+                        (relacion.usuario_id_1, relacion.usuario_id_2)
+                    )
+                )
+
+                self.db.delete(relacion)
+                self.db.commit()
+
+        amistad = self.crear_relacion(bea, carla)
+
+        respuesta = self.client.delete(f"/amistades/{bea.id}")
+
+        self.assertEqual(respuesta.status_code, 404, respuesta.text)
+        self.assertIsNotNone(self.db.get(Amistad, (amistad.usuario_id_1, amistad.usuario_id_2)))
+
+    def test_eliminar_amistad_inexistente_responde_404(self):
+        respuesta = self.client.delete(f"/amistades/{uuid4()}")
+
+        self.assertEqual(respuesta.status_code, 404, respuesta.text)
+        self.assertEqual(respuesta.json()["detail"], "Amistad no encontrada")
 
 
 if __name__ == "__main__":

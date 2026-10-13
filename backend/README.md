@@ -251,6 +251,9 @@ Los tres endpoints requieren `Authorization: Bearer <access_token>` obtenido en
   pasar una solicitud pendiente a `aceptada`.
 - `POST /amistades/solicitudes/{remitente_id}/rechazar` permite al destinatario
   pasar una solicitud pendiente a `rechazada`.
+- `DELETE /amistades/{usuario_id}` permite a cualquiera de los dos usuarios
+  eliminar una amistad aceptada y responde `204`. Si no existe una amistad
+  aceptada entre ambos, responde `404`.
 
 Las respuestas incluyen ambos UUID, `estado`, `fecha_solicitud` y
 `fecha_respuesta`. Las solicitudes inexistentes o dirigidas a otra cuenta

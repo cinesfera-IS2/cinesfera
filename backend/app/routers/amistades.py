@@ -2,11 +2,12 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.csrf import verificar_csrf
 from app.database import get_db
 from app.core.enums import EstadoAmistad
 from app.dependencies.auth import obtener_usuario_actual
@@ -84,3 +85,25 @@ def rechazar_solicitud(
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> Amistad:
     return responder_solicitud(db, remitente_id, usuario_actual, EstadoAmistad.RECHAZADA)
+
+
+@router.delete(
+    "/{usuario_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verificar_csrf)]
+)
+def eliminar_amistad(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
+) -> Response:
+    relacion = buscar_relacion(db, usuario_actual.id, usuario_id)
+    if relacion is None or relacion.estado != EstadoAmistad.ACEPTADA:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Amistad no encontrada"
+        )
+
+    db.delete(relacion)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
