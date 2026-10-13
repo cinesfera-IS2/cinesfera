@@ -30,9 +30,18 @@ const API_URL = (URL_CONFIGURADA ?? "http://localhost:8000").replace(
 
 export { API_URL };
 
-/** Arma la URL absoluta de un endpoint: apiUrl("/auth/login"). */
+/**
+ * Arma la URL de un endpoint: apiUrl("/auth/login").
+ *
+ * En el navegador devuelve una ruta relativa bajo `/api`, que el rewrite de
+ * `next.config.ts` reenvía al backend. Así la cookie httpOnly de sesión queda
+ * guardada en el dominio del frontend: si el navegador llamara directo a
+ * Render sería una cookie de terceros y la descartaría. En el servidor no hay
+ * origen contra el cual resolver una ruta relativa, así que va la absoluta.
+ */
 export function apiUrl(path: string): string {
-  return `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const ruta = path.startsWith("/") ? path : `/${path}`;
+  return typeof window === "undefined" ? `${API_URL}${ruta}` : `/api${ruta}`;
 }
 
 export class ApiError extends Error {

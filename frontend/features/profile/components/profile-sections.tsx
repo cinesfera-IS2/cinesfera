@@ -1,11 +1,9 @@
 "use client";
 
-import {
-  ChatCircleTextIcon,
-  PencilSimpleIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
 
+import { CreateReviewDialog } from "@/features/profile/components/create-review-dialog";
 import { EmptyState } from "@/features/profile/components/empty-state";
 import { ReviewCard } from "@/features/profile/components/review-card";
 import type { ResenaPerfil, SeccionPerfil } from "@/features/profile/types";
@@ -15,6 +13,7 @@ type ProfileSectionsProps = {
   /** Nombre de pila, para el texto de la sección vacía. */
   nombre: string;
   esPropio: boolean;
+  usuarioId?: string;
 };
 
 const PESTANAS: Array<{
@@ -31,6 +30,7 @@ export function ProfileSections({
   resenas,
   nombre,
   esPropio,
+  usuarioId,
 }: ProfileSectionsProps) {
   const [activa, setActiva] = useState<SeccionPerfil>("resenas");
 
@@ -81,11 +81,18 @@ export function ProfileSections({
         className="pt-6"
       >
         {activa === "resenas" && (
-          <ListaDeResenas
-            resenas={resenas}
-            nombre={nombre}
-            esPropio={esPropio}
-          />
+          <div className="flex flex-col gap-5">
+            {esPropio && usuarioId && (
+              <div className="flex justify-end">
+                <CreateReviewDialog usuarioId={usuarioId} />
+              </div>
+            )}
+            <ListaDeResenas
+              resenas={resenas}
+              nombre={nombre}
+              esPropio={esPropio}
+            />
+          </div>
         )}
       </div>
     </section>
@@ -108,17 +115,6 @@ function ListaDeResenas({
           esPropio
             ? "Puntuá una película y contá qué te pareció: tu reseña va a aparecer acá."
             : "Cuando publique la primera, la vas a ver en esta sección."
-        }
-        accion={
-          esPropio ? (
-            <button
-              type="button"
-              className="mt-1 inline-flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-brand-600"
-            >
-              <PencilSimpleIcon weight="bold" className="size-4" />
-              Escribir una reseña
-            </button>
-          ) : undefined
         }
       />
     );

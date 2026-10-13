@@ -2,17 +2,21 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { recargarEn } from "@/features/auth/lib/navegacion";
+
 import { RegisterForm } from "./register-form";
 
-// El formulario navega con el router de Next, que no existe fuera de la app.
-// Se reemplaza por uno falso para poder comprobar a dónde quiso ir.
-const router = { replace: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+// jsdom no deja reemplazar `window.location`, así que se falsea la recarga.
+vi.mock("@/features/auth/lib/navegacion", () => ({ recargarEn: vi.fn() }));
 
-function simularRespuesta(status: number, cuerpo: unknown) {
-  const fetchFalso = vi
-    .fn()
-    .mockResolvedValue(new Response(JSON.stringify(cuerpo), { status }));
+/** Cada respuesta se devuelve en orden: primero el registro, después el login. */
+function simularRespuestas(...respuestas: [number, unknown][]) {
+  const fetchFalso = vi.fn();
+  for (const [status, cuerpo] of respuestas) {
+    fetchFalso.mockResolvedValueOnce(
+      new Response(JSON.stringify(cuerpo), { status })
+    );
+  }
   vi.stubGlobal("fetch", fetchFalso);
   return fetchFalso;
 }
@@ -38,16 +42,16 @@ describe("RegisterForm", () => {
 
   afterEach(() => {
     cleanup();
-    router.replace.mockClear();
+    vi.mocked(recargarEn).mockClear();
     vi.unstubAllGlobals();
   });
 
-  it("envía los datos a /auth/register y vuelve a la portada", async () => {
-    const fetchFalso = simularRespuesta(201, { id: "1" });
+  it("crea la cuenta, inicia sesión y recarga en la portada", async () => {
+    const fetchFalso = simularRespuestas([201, { id: "1" }], [200, {}]);
 
     await completarFormulario();
 
-    expect(fetchFalso).toHaveBeenCalledOnce();
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
     const [url, opciones] = fetchFalso.mock.calls[0];
     expect(url).toMatch(/\/auth\/register$/);
     expect(opciones.method).toBe("POST");
@@ -58,17 +62,37 @@ describe("RegisterForm", () => {
       email: "ana@example.com",
       password: "ClaveSegura123",
     });
-    expect(router.replace).toHaveBeenCalledWith("/");
+
+    const [urlLogin, opcionesLogin] = fetchFalso.mock.calls[1];
+    expect(urlLogin).toBe("/api/auth/login");
+    expect(JSON.parse(opcionesLogin.body)).toEqual({
+      identificador: "ana@example.com",
+      password: "ClaveSegura123",
+    });
+    expect(recargarEn).toHaveBeenCalledWith("/");
+  });
+
+  it("si la cuenta se creó pero el login falla, manda a iniciar sesión", async () => {
+    simularRespuestas([201, { id: "1" }], [500, {}]);
+
+    await completarFormulario();
+
+    expect(recargarEn).toHaveBeenCalledWith("/login");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("muestra el error del backend y no navega", async () => {
-    simularRespuesta(409, { detail: "El email ya está registrado" });
+    const fetchFalso = simularRespuestas([
+      409,
+      { detail: "El email ya está registrado" },
+    ]);
 
     await completarFormulario();
 
     const alerta = await screen.findByRole("alert");
     expect(alerta.textContent).toContain("El email ya está registrado");
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(recargarEn).not.toHaveBeenCalled();
+    expect(fetchFalso).toHaveBeenCalledOnce();
     const boton = screen.getByRole<HTMLButtonElement>("button", {
       name: "Crear cuenta",
     });

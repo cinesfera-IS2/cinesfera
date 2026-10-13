@@ -77,7 +77,8 @@ class RegistroTests(unittest.TestCase):
                 })
 
                 self.assertEqual(respuesta.status_code, 200, respuesta.text)
-                self.assertTrue(respuesta.json()["access_token"])
+                self.assertIn("access_token", respuesta.cookies)
+                self.assertTrue(respuesta.cookies["access_token"])
 
     def test_email_o_nombre_de_usuario_repetido_responde_409(self):
         for campo, valor, mensaje in (

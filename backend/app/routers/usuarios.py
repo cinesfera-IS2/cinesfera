@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from app.core.csrf import verificar_csrf
 
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
@@ -59,22 +60,40 @@ def consultar_perfil_publico(
 )
 def consultar_perfil(
     usuario_id: UUID,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[
+        Session, 
+        Depends(get_db)],
+
+    usuario_actual: Annotated[
+        Usuario, 
+        Depends(obtener_usuario_actual)
+    ]
 ) -> UsuarioRespuesta:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para consultar este perfil"
+        )
+
     try:
         return obtener_perfil(db, usuario_id)
+
     except UsuarioNoEncontradoError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error)
         ) from error
+      
 
 
 @router.patch(
     "/{usuario_id}/perfil",
     response_model=UsuarioRespuesta,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verificar_csrf)]
 )
+
+
 def modificar_perfil(
     usuario_id: UUID,
     datos: UsuarioActualizacion,

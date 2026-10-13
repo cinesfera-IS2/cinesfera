@@ -87,7 +87,9 @@ export const obtenerPerfilPublico = cache(
 
     return {
       perfil: aPerfil(respuesta),
-      resenas: respuesta.resenas.map(aResena),
+      resenas: respuesta.resenas.map((resena, indice) =>
+        aResena(resena, indice)
+      ),
     };
   }
 );

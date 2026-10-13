@@ -1,3 +1,4 @@
+import { ArrowRightIcon, CompassIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 export function HeroSection() {
@@ -29,12 +30,26 @@ export function HeroSection() {
         </p>
 
         <div className="mt-6 flex flex-col items-center gap-4">
-          <Link
-            href="/register"
-            className="inline-flex items-center rounded-full bg-brand-500 px-8 py-3.5 font-display text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition-colors hover:bg-brand-600"
-          >
-            Crear cuenta gratis
-          </Link>
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            <Link
+              href="/catalogo"
+              className="group inline-flex items-center gap-2.5 rounded-full bg-linear-to-r from-brand-500 to-glow-400 px-9 py-4 font-display text-base font-extrabold text-white shadow-xl shadow-glow-400/30 ring-1 ring-white/20 transition hover:shadow-glow-400/50 hover:brightness-110"
+            >
+              <CompassIcon weight="bold" className="size-5" />
+              Explorar el catálogo
+              <ArrowRightIcon
+                weight="bold"
+                className="size-4 transition-transform group-hover:translate-x-1"
+              />
+            </Link>
+
+            <Link
+              href="/register"
+              className="inline-flex items-center rounded-full border border-white/20 px-8 py-4 font-display text-sm font-bold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
+            >
+              Crear cuenta gratis
+            </Link>
+          </div>
 
           <p className="text-sm text-ink-400">
             ¿Ya tenés cuenta?{" "}

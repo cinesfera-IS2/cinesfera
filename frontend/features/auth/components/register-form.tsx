@@ -7,11 +7,11 @@ import {
   WarningCircleIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { AuthField } from "@/features/auth/components/auth-field";
 import { PasswordStrength } from "@/features/auth/components/password-strength";
+import { recargarEn } from "@/features/auth/lib/navegacion";
 import {
   LARGO_MAXIMO,
   LARGO_MINIMO,
@@ -20,7 +20,6 @@ import {
 import { ApiError, apiFetch } from "@/lib/api";
 
 export function RegisterForm() {
-  const router = useRouter();
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
@@ -35,6 +34,8 @@ export function RegisterForm() {
     setEnviando(true);
 
     const campos = new FormData(evento.currentTarget);
+    const email = campos.get("email");
+    const passwordIngresada = campos.get("password");
 
     try {
       await apiFetch("/auth/register", {
@@ -43,18 +44,10 @@ export function RegisterForm() {
           nombre: campos.get("nombre"),
           apellido: campos.get("apellido"),
           nombre_usuario: campos.get("nombre_usuario"),
-          email: campos.get("email"),
-          password: campos.get("password"),
+          email,
+          password: passwordIngresada,
         }),
       });
-
-      // La idea es que acá se inicie sesión sola con las mismas credenciales y
-      // recién después se navegue. Mientras eso no exista, la cuenta queda
-      // creada pero la persona llega a la portada sin sesión.
-      //
-      // `replace` y no `push`: volver atrás no debe traer de nuevo un
-      // formulario que ya se envió.
-      router.replace("/");
     } catch (problema) {
       setError(
         problema instanceof ApiError
@@ -63,8 +56,22 @@ export function RegisterForm() {
       );
 
       // Solo se rehabilita al fallar: si salió bien, el botón queda quieto
-      // mientras se navega, en lugar de volver a decir "Crear cuenta".
+      // mientras la página se recarga, en lugar de volver a decir "Crear cuenta".
       setEnviando(false);
+      return;
+    }
+
+    try {
+      await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ identificador: email, password: passwordIngresada }),
+      });
+
+      recargarEn("/");
+    } catch {
+      // La cuenta ya existe: mostrar el error acá invitaría a registrarse de
+      // nuevo y chocar con "el email ya está registrado". Mejor que ingrese a mano.
+      recargarEn("/login");
     }
   }
 
