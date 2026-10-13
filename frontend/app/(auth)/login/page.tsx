@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AuthField, AuthLayout } from "@/features/auth";
+import { AuthLayout, LoginForm } from "@/features/auth";
 
 export default function LoginPage() {
   return (
@@ -19,38 +19,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <form className="flex flex-col gap-4">
-        <AuthField
-          label="Correo electrónico"
-          name="email"
-          type="email"
-          placeholder="tú@correo.com"
-          autoComplete="email"
-        />
-
-        <AuthField
-          label="Contraseña"
-          name="password"
-          type="password"
-          placeholder="••••••••"
-          autoComplete="current-password"
-          action={
-            <Link
-              href="#recuperar-contrasena"
-              className="text-xs font-semibold text-glow-400 transition-colors hover:text-glow-300"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          }
-        />
-
-        <button
-          type="submit"
-          className="mt-1 rounded-lg bg-brand-500 py-3 font-display text-sm font-bold text-white transition-colors hover:bg-brand-600"
-        >
-          Iniciar sesión
-        </button>
-      </form>
+      <LoginForm />
     </AuthLayout>
   );
 }

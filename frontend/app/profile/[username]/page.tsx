@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { esMiPerfil } from "@/features/auth";
+import { obtenerSesion } from "@/features/auth/session";
 import { LandingFooter, LandingHeader } from "@/features/landing";
 import {
   ProfileDetails,
@@ -40,8 +40,14 @@ export default async function ProfilePage({
     notFound();
   }
 
-  const { perfil, resenas } = datos;
-  const esPropio = await esMiPerfil(perfil.nombreUsuario);
+  const sesion = await obtenerSesion();
+  // Por id y no por nombre de usuario: el nombre se puede cambiar.
+  const esPropio = sesion?.id === datos.perfil.id;
+  // El email no es público: solo se conoce cuando el perfil es el de la sesión.
+  const perfil = esPropio
+    ? { ...datos.perfil, email: sesion?.email }
+    : datos.perfil;
+  const { resenas } = datos;
 
   return (
     <>
@@ -56,6 +62,7 @@ export default async function ProfilePage({
             resenas={resenas}
             nombre={perfil.nombre}
             esPropio={esPropio}
+            usuarioId={esPropio ? perfil.id : undefined}
           />
         </div>
       </main>

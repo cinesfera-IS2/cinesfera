@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
-
+from typing import Literal
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +42,32 @@ class Settings(BaseSettings):
     db_user: str = ""
     db_password: str = ""
     db_sslmode: str = "require"
+
+    # Token de lectura de la API de TMDB. Se obtiene desde la sección
+    # "API Read Access Token" de la cuenta de TMDB.
+    tmdb_access_token: str = ""
+    tmdb_api_url: str = "https://api.themoviedb.org/3"
+    tmdb_image_url: str = "https://image.tmdb.org/t/p"
+
+    
+    # Configuración de las cookies de autenticación
+    cookie_secure: bool = True
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    @model_validator(mode="after")
+    def validar_configuracion_cookies(self):
+        if self.es_produccion and not self.cookie_secure:
+            raise ValueError(
+                "Las cookies deben utilizar Secure en producción"
+            )
+
+        if self.cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError(
+                "SameSite=None requiere Secure=True"
+            )
+
+        return self
+
 
     @property
     def es_produccion(self) -> bool:

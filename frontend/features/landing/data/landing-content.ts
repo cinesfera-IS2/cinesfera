@@ -6,7 +6,6 @@ import type {
 } from "@/features/landing/types";
 
 export const NAV_LINKS: NavLink[] = [
-  { label: "Explorar", href: "#explorar" },
   { label: "Tendencias", href: "#tendencias" },
   { label: "Comunidad", href: "#comunidad" },
   { label: "Soporte", href: "#soporte" },

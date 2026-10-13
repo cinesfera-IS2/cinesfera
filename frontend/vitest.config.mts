@@ -8,5 +8,10 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["{app,features,lib}/**/*.{ts,tsx}"],
+    },
   },
 });
