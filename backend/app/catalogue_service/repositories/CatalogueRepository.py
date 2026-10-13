@@ -23,7 +23,7 @@ class CatalogueRepository:
         if year is not None:
             contents = [
                 content for content in contents
-                if content.release_date and content.release_date[:4] == str(year)
+                if content.release_date and content.release_date.startswith(str(year))
             ]
 
         return sorted(

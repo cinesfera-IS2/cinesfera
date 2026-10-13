@@ -12,7 +12,7 @@ router = APIRouter(prefix="/catalogue", tags=["Catálogo"])
 service = CatalogueService()
 
 
-@router.get("/", response_model=list[Content])
+@router.get("/")
 def get_catalogue(
     search: str | None = None,
     content_type: Literal["movie", "series"] | None = None,
