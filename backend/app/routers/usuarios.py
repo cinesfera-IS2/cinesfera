@@ -7,18 +7,24 @@ from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
 
 from app.database import get_db
-from app.dependencies.auth import obtener_usuario_actual
+from app.dependencies.auth import (
+    obtener_administrador_actual,
+    obtener_usuario_actual
+)
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioActualizacion, UsuarioRespuesta
 from app.schemas.perfil_publico import PerfilPublicoRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
+    TransicionEstadoInvalidaError,
     UsuarioNoEncontradoError,
     actualizar_perfil,
+    eliminar_usuario,
     obtener_perfil,
     obtener_perfil_publico,
-    obtener_perfil_publico_por_nombre
+    obtener_perfil_publico_por_nombre,
+    suspender_usuario
 )
 
 
@@ -26,6 +32,57 @@ router = APIRouter(
     prefix="/usuarios",
     tags=["Usuarios"]
 )
+
+
+@router.patch(
+    "/{usuario_id}/suspender",
+    response_model=UsuarioRespuesta,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verificar_csrf)]
+)
+def suspender_cuenta(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    _administrador: Annotated[
+        Usuario,
+        Depends(obtener_administrador_actual)
+    ]
+) -> UsuarioRespuesta:
+    try:
+        return suspender_usuario(db, usuario_id)
+    except UsuarioNoEncontradoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error)
+        ) from error
+    except TransicionEstadoInvalidaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error)
+        ) from error
+
+
+@router.delete(
+    "/{usuario_id}",
+    response_model=UsuarioRespuesta,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verificar_csrf)]
+)
+def eliminar_cuenta(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    _administrador: Annotated[
+        Usuario,
+        Depends(obtener_administrador_actual)
+    ]
+) -> UsuarioRespuesta:
+    try:
+        return eliminar_usuario(db, usuario_id)
+    except UsuarioNoEncontradoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error)
+        ) from error
 
 
 @router.get(
