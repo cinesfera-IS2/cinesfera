@@ -31,6 +31,33 @@ class UsuarioNoEncontradoError(Exception):
     pass
 
 
+class TransicionEstadoInvalidaError(Exception):
+    pass
+
+
+def suspender_usuario(db: Session, usuario_id: UUID) -> Usuario:
+    usuario = obtener_perfil(db, usuario_id)
+
+    if usuario.estado == EstadoUsuario.ELIMINADO:
+        raise TransicionEstadoInvalidaError(
+            "No se puede suspender una cuenta eliminada"
+        )
+
+    usuario.estado = EstadoUsuario.SUSPENDIDO
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+def eliminar_usuario(db: Session, usuario_id: UUID) -> Usuario:
+    """Realiza una eliminación lógica para conservar datos relacionados."""
+    usuario = obtener_perfil(db, usuario_id)
+    usuario.estado = EstadoUsuario.ELIMINADO
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
 def obtener_perfil_publico(db: Session, usuario_id: UUID) -> PerfilPublicoRespuesta:
     usuario = obtener_perfil(db, usuario_id)
     return _construir_perfil_publico(db, usuario)
@@ -186,9 +213,10 @@ def iniciar_sesion(
         )
     )
 
-    if usuario is None or not verificar_password(
-        datos.password,
-        usuario.password_hash
+    if (
+        usuario is None
+        or usuario.estado != EstadoUsuario.ACTIVO
+        or not verificar_password(datos.password, usuario.password_hash)
     ):
         raise CredencialesInvalidasError(
             "Credenciales inválidas"

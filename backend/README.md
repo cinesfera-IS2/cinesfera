@@ -362,6 +362,22 @@ Respuestas relevantes:
 El cambio de foto guarda la URL de una imagen ya subida. Este endpoint no
 recibe archivos ni realiza la subida a Storage.
 
+## Administración de cuentas
+
+Las acciones de moderación requieren una sesión con rol `admin`. Si la sesión
+usa una cookie, también requieren el encabezado `X-CSRF-Token`; con Bearer no
+es necesario el token CSRF.
+
+- `PATCH /usuarios/{usuario_id}/suspender` cambia la cuenta a `suspendido`.
+- `DELETE /usuarios/{usuario_id}` realiza una eliminación lógica y cambia la
+  cuenta a `eliminado`, conservando sus datos relacionados.
+
+Ambos endpoints devuelven el usuario actualizado con estado `200`. Una cuenta
+suspendida o eliminada no puede iniciar sesión ni seguir usando un token ya
+emitido. Suspender una cuenta eliminada devuelve `409 Conflict`; un UUID que no
+existe devuelve `404 Not Found`. Una cuenta autenticada sin rol de
+administrador recibe `403 Forbidden`.
+
 ## Deploy en Render
 
 El backend está publicado en **https://cinesfera.onrender.com**.

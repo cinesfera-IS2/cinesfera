@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.enums import EstadoUsuario, RolUsuario
 from app.core.security import decodificar_token_acceso
 from app.database import get_db
 from app.models.usuario import Usuario
@@ -52,4 +53,22 @@ def obtener_usuario_actual(
             detail="Usuario no encontrado"
         )
 
+    if usuario.estado != EstadoUsuario.ACTIVO:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta no está activa"
+        )
+
     return usuario
+
+
+def obtener_administrador_actual(
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
+) -> Usuario:
+    if usuario_actual.rol != RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+
+    return usuario_actual

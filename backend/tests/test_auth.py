@@ -126,6 +126,28 @@ class InicioSesionTests(unittest.TestCase):
                     )
                     self.db.commit.assert_not_called()
 
+    def test_cuentas_no_activas_no_pueden_iniciar_sesion(self):
+        for estado in (EstadoUsuario.SUSPENDIDO, EstadoUsuario.ELIMINADO):
+            with self.subTest(estado=estado):
+                self.usuario.estado = estado
+                self.db.scalar.return_value = self.usuario
+
+                with self.assertRaises(HTTPException) as contexto:
+                    login(
+                        UsuarioLogin(
+                            identificador="persona",
+                            password=self.password
+                        ),
+                        Response(),
+                        self.db
+                    )
+
+                self.assertEqual(contexto.exception.status_code, 401)
+                self.assertEqual(
+                    contexto.exception.detail,
+                    "Credenciales inválidas"
+                )
+
     def test_respuesta_publica_no_expone_password(self):
         self.db.scalar.return_value = self.usuario
         respuesta_http = Response()
