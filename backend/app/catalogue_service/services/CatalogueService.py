@@ -1,5 +1,4 @@
-
-from repositories.CatalogueRepository import CatalogueRepository
+from app.catalogue_service.repositories.CatalogueRepository import CatalogueRepository
 
 
 class CatalogueService:
