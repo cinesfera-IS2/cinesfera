@@ -55,41 +55,43 @@ class CatalogueRepository:
             )
 
     #función que devuelva las películas y las transforme a clase content usando la funcion movie_to_content
-    def _get_movies(self):
-        url = f"{self.base_url}/discover/movie"
+        def _get_movies(self, pagina):
+            url = f"{self.base_url}/discover/movie"
 
-        params = {
-            "language": "es-ES",
-            "sort_by": "primary_release_date.desc",
-            "page": 1
-        }
+            params = {
+                "language": "es-ES",
+                "sort_by": "primary_release_date.desc",
+                "page": pagina
+            }
 
-        response = httpx.get(
-            url,
-            headers=self.headers,
-            params=params
-        )
+            response = httpx.get(
+                url,
+                headers=self.headers,
+                params=params
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        data = response.json()
+            data = response.json()
 
-        contents = []
+            contents = []
 
-        for movie in data["results"]:
-            contents.append(self._movie_to_content(movie))
+            for movie in data["results"]:
+                contents.append(self._movie_to_content(movie))
 
-        return contents
+            total_pages = data["total_pages"]
+
+            return contents, total_pages
 
     #misma función pero para series
 
-    def _get_series(self):
+    def _get_series(self, pagina):
         url = f"{self.base_url}/discover/tv"
 
         params = {
             "language": "es-ES",
             "sort_by": "first_air_date.desc",
-            "page": 1
+            "page": pagina
         }
 
         response = httpx.get(
@@ -107,7 +109,10 @@ class CatalogueRepository:
         for series in data["results"]:
             contents.append(self._series_to_content(series))
 
-        return contents
+
+        total_pages = data["total_pages"]
+
+        return contents, total_pages
 
     #funcion para devolver todas las películas y series que se devuelven en un solo catalogo
     #tmb permite filtrar por película/serie y/o año 
@@ -116,16 +121,18 @@ class CatalogueRepository:
 
     #si se filtra para que catálogo solo devuelva películas
         if content_type == "movie":
-            contents = self._get_movies()
+            contents, total_pages = self._get_movies()
+
     #si se filtra para solo devolver series
         elif content_type == "series":
-            contents = self._get_series()
+            contents, total_pages = self._get_series()
 
     #si no hay filtro por tipo devuelve ambas listas juntas 
         else:
-            movies = self._get_movies()
-            series = self._get_series()
+            movies, total_pages_movies = self._get_movies()
+            series, total_pages_series = self._get_series()
             contents = movies + series
+            total_pages = total_pages_movies + total_pages_series
 
     #si se filtra por año 
         if year is not None:
@@ -141,7 +148,7 @@ class CatalogueRepository:
             reverse=True
         )
 
-        return contents
+        return contents, total_pages
 
 
 
