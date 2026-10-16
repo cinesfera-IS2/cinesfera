@@ -18,7 +18,7 @@ class CatalogueRepository:
 
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     
-    def _movie_to_content(self, movie):
+    def movie_to_content(self, movie):
 
             release_date = movie.get("release_date")
 
@@ -36,7 +36,7 @@ class CatalogueRepository:
                 tmdb_id=movie.get("id")
             )
 
-    def _series_to_content(self, series):
+    def series_to_content(self, series):
 
             first_air_date = series.get("first_air_date")
 
@@ -55,20 +55,20 @@ class CatalogueRepository:
             )
 
     #función que devuelva las películas y las transforme a clase content usando la funcion movie_to_content
-    def _get_movies(self):
+    def get_movies(self, page):
         url = f"{self.base_url}/discover/movie"
 
         params = {
-            "language": "es-ES",
-            "sort_by": "primary_release_date.desc",
-            "page": 1
-        }
+                "language": "es-ES",
+                "sort_by": "primary_release_date.desc",
+                "page": page
+            }
 
         response = httpx.get(
-            url,
-            headers=self.headers,
-            params=params
-        )
+                url,
+                headers=self.headers,
+                params=params
+            )
 
         response.raise_for_status()
 
@@ -77,19 +77,21 @@ class CatalogueRepository:
         contents = []
 
         for movie in data["results"]:
-            contents.append(self._movie_to_content(movie))
+            contents.append(self.movie_to_content(movie))
 
-        return contents
+        total_pages = data["total_pages"]
+
+        return contents, total_pages
 
     #misma función pero para series
 
-    def _get_series(self):
+    def get_series(self, page):
         url = f"{self.base_url}/discover/tv"
 
         params = {
             "language": "es-ES",
             "sort_by": "first_air_date.desc",
-            "page": 1
+            "page": page
         }
 
         response = httpx.get(
@@ -105,27 +107,32 @@ class CatalogueRepository:
         contents = []
 
         for series in data["results"]:
-            contents.append(self._series_to_content(series))
+            contents.append(self.series_to_content(series))
 
-        return contents
+
+        total_pages = data["total_pages"]
+
+        return contents, total_pages
 
     #funcion para devolver todas las películas y series que se devuelven en un solo catalogo
     #tmb permite filtrar por película/serie y/o año 
-    def get_content(self, content_type=None, year=None):
+    def get_content(self, content_type=None, year=None, page = None):
 
 
     #si se filtra para que catálogo solo devuelva películas
         if content_type == "movie":
-            contents = self._get_movies()
+            contents, total_pages = self.get_movies(page)
+
     #si se filtra para solo devolver series
         elif content_type == "series":
-            contents = self._get_series()
+            contents, total_pages = self.get_series(page)
 
     #si no hay filtro por tipo devuelve ambas listas juntas 
         else:
-            movies = self._get_movies()
-            series = self._get_series()
+            movies, total_pages_movies = self.get_movies(page)
+            series, total_pages_series = self.get_series(page)
             contents = movies + series
+            total_pages = total_pages_movies + total_pages_series
 
     #si se filtra por año 
         if year is not None:
@@ -141,7 +148,7 @@ class CatalogueRepository:
             reverse=True
         )
 
-        return contents
+        return contents, total_pages
 
 
 
@@ -165,7 +172,7 @@ class CatalogueRepository:
         contents = []
 
         for movie in data["results"]:
-                contents.append(self._movie_to_content(movie))
+                contents.append(self.movie_to_content(movie))
     
         return contents
     
@@ -188,7 +195,7 @@ class CatalogueRepository:
             contents = []
     
             for series in data["results"]:
-                    contents.append(self._series_to_content(series))
+                    contents.append(self.series_to_content(series))
            
             return contents
 
