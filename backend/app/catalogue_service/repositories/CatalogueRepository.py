@@ -55,13 +55,13 @@ class CatalogueRepository:
             )
 
     #función que devuelva las películas y las transforme a clase content usando la funcion movie_to_content
-    def get_movies(self, pagina):
+    def get_movies(self, page):
         url = f"{self.base_url}/discover/movie"
 
         params = {
                 "language": "es-ES",
                 "sort_by": "primary_release_date.desc",
-                "page": pagina
+                "page": page
             }
 
         response = httpx.get(
@@ -77,7 +77,7 @@ class CatalogueRepository:
         contents = []
 
         for movie in data["results"]:
-            contents.append(self._movie_to_content(movie))
+            contents.append(self.movie_to_content(movie))
 
         total_pages = data["total_pages"]
 
@@ -85,13 +85,13 @@ class CatalogueRepository:
 
     #misma función pero para series
 
-    def get_series(self, pagina):
+    def get_series(self, page):
         url = f"{self.base_url}/discover/tv"
 
         params = {
             "language": "es-ES",
             "sort_by": "first_air_date.desc",
-            "page": pagina
+            "page": page
         }
 
         response = httpx.get(
@@ -107,7 +107,7 @@ class CatalogueRepository:
         contents = []
 
         for series in data["results"]:
-            contents.append(self._series_to_content(series))
+            contents.append(self.series_to_content(series))
 
 
         total_pages = data["total_pages"]
@@ -116,21 +116,21 @@ class CatalogueRepository:
 
     #funcion para devolver todas las películas y series que se devuelven en un solo catalogo
     #tmb permite filtrar por película/serie y/o año 
-    def get_content(self, content_type=None, year=None):
+    def get_content(self, content_type=None, year=None, page = None):
 
 
     #si se filtra para que catálogo solo devuelva películas
         if content_type == "movie":
-            contents, total_pages = self.get_movies()
+            contents, total_pages = self.get_movies(page)
 
     #si se filtra para solo devolver series
         elif content_type == "series":
-            contents, total_pages = self.get_series()
+            contents, total_pages = self.get_series(page)
 
     #si no hay filtro por tipo devuelve ambas listas juntas 
         else:
-            movies, total_pages_movies = self.get_movies()
-            series, total_pages_series = self.get_series()
+            movies, total_pages_movies = self.get_movies(page)
+            series, total_pages_series = self.get_series(page)
             contents = movies + series
             total_pages = total_pages_movies + total_pages_series
 
@@ -172,7 +172,7 @@ class CatalogueRepository:
         contents = []
 
         for movie in data["results"]:
-                contents.append(self._movie_to_content(movie))
+                contents.append(self.movie_to_content(movie))
     
         return contents
     
@@ -195,7 +195,7 @@ class CatalogueRepository:
             contents = []
     
             for series in data["results"]:
-                    contents.append(self._series_to_content(series))
+                    contents.append(self.series_to_content(series))
            
             return contents
 
