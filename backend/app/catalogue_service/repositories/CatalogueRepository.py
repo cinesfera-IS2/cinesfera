@@ -18,7 +18,7 @@ class CatalogueRepository:
 
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     
-    def _movie_to_content(self, movie):
+    def movie_to_content(self, movie):
 
             release_date = movie.get("release_date")
 
@@ -36,7 +36,7 @@ class CatalogueRepository:
                 tmdb_id=movie.get("id")
             )
 
-    def _series_to_content(self, series):
+    def series_to_content(self, series):
 
             first_air_date = series.get("first_air_date")
 
@@ -55,37 +55,37 @@ class CatalogueRepository:
             )
 
     #función que devuelva las películas y las transforme a clase content usando la funcion movie_to_content
-        def _get_movies(self, pagina):
-            url = f"{self.base_url}/discover/movie"
+    def get_movies(self, pagina):
+        url = f"{self.base_url}/discover/movie"
 
-            params = {
+        params = {
                 "language": "es-ES",
                 "sort_by": "primary_release_date.desc",
                 "page": pagina
             }
 
-            response = httpx.get(
+        response = httpx.get(
                 url,
                 headers=self.headers,
                 params=params
             )
 
-            response.raise_for_status()
+        response.raise_for_status()
 
-            data = response.json()
+        data = response.json()
 
-            contents = []
+        contents = []
 
-            for movie in data["results"]:
-                contents.append(self._movie_to_content(movie))
+        for movie in data["results"]:
+            contents.append(self._movie_to_content(movie))
 
-            total_pages = data["total_pages"]
+        total_pages = data["total_pages"]
 
-            return contents, total_pages
+        return contents, total_pages
 
     #misma función pero para series
 
-    def _get_series(self, pagina):
+    def get_series(self, pagina):
         url = f"{self.base_url}/discover/tv"
 
         params = {
@@ -121,16 +121,16 @@ class CatalogueRepository:
 
     #si se filtra para que catálogo solo devuelva películas
         if content_type == "movie":
-            contents, total_pages = self._get_movies()
+            contents, total_pages = self.get_movies()
 
     #si se filtra para solo devolver series
         elif content_type == "series":
-            contents, total_pages = self._get_series()
+            contents, total_pages = self.get_series()
 
     #si no hay filtro por tipo devuelve ambas listas juntas 
         else:
-            movies, total_pages_movies = self._get_movies()
-            series, total_pages_series = self._get_series()
+            movies, total_pages_movies = self.get_movies()
+            series, total_pages_series = self.get_series()
             contents = movies + series
             total_pages = total_pages_movies + total_pages_series
 
