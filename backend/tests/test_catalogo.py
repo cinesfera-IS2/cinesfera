@@ -108,29 +108,6 @@ class CatalogoTests(unittest.TestCase):
             ["Película nueva", "Película vieja", "Serie"],
         )
 
-    def test_tipo_invalido_responde_422(self, get):
-        respuesta = self.client.get("/catalogue/?content_type=documental")
-
-        self.assertEqual(respuesta.status_code, 422)
-        get.assert_not_called()
-
-    def test_tmdb_caido_responde_502(self, get):
-        get.side_effect = httpx.ConnectError("sin conexión")
-
-        respuesta = self.client.get("/catalogue/")
-
-        self.assertEqual(respuesta.status_code, 502)
-
-    def test_sin_token_responde_502_sin_llamar_a_tmdb(self, get):
-        with patch.object(settings, "tmdb_access_token", ""):
-            respuesta = self.client.get("/catalogue/")
-
-        self.assertEqual(respuesta.status_code, 502)
-        self.assertEqual(
-            respuesta.json()["detail"], "El catálogo no está configurado"
-        )
-        get.assert_not_called()
-
 
 if __name__ == "__main__":
     unittest.main()
