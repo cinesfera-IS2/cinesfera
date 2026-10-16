@@ -5,20 +5,36 @@ import type { ContenidoDetalle } from "@/features/content";
 import ContentPage, { generateMetadata } from "./page";
 
 
-const { obtenerContenidoMock, notFoundMock } = vi.hoisted(() => ({
-  obtenerContenidoMock: vi.fn(),
-  notFoundMock: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
+const { obtenerContenidoMock, obtenerSesionMock, notFoundMock } = vi.hoisted(
+  () => ({
+    obtenerContenidoMock: vi.fn(),
+    obtenerSesionMock: vi.fn(),
+    notFoundMock: vi.fn(() => {
+      throw new Error("NEXT_NOT_FOUND");
+    }),
+  })
+);
+
+vi.mock("@/features/auth/session", () => ({
+  obtenerSesion: obtenerSesionMock,
 }));
+
 
 vi.mock("@/features/content", () => ({
   obtenerContenido: obtenerContenidoMock,
   ContentHero: ({ contenido }: { contenido: ContenidoDetalle }) => (
     <div>Hero: {contenido.titulo}</div>
   ),
-  ContentReviews: ({ tmdbId }: { tmdbId: number }) => (
-    <div>Reseñas: {tmdbId}</div>
+  ContentReviews: ({
+  tmdbId,
+  usuario,
+  }: {
+    tmdbId: number;
+    usuario: { id: string } | null;
+  }) => (
+    <div>
+      Reseñas: {tmdbId} — Usuario: {usuario?.id ?? "visitante"}
+    </div>
   ),
 }));
 
@@ -99,16 +115,20 @@ describe("página de contenido", () => {
   });
 
   it("renderiza la ficha y sus reseñas", async () => {
-    obtenerContenidoMock.mockResolvedValue(CONTENIDO);
+  obtenerContenidoMock.mockResolvedValue(CONTENIDO);
+  obtenerSesionMock.mockResolvedValue(null);
 
-    render(
-      await ContentPage({
-        params: Promise.resolve({ type: "pelicula", id: "550" }),
-      } as PageProps<"/content/[type]/[id]">)
-    );
+  render(
+    await ContentPage({
+      params: Promise.resolve({ type: "pelicula", id: "550" }),
+    } as PageProps<"/content/[type]/[id]">)
+  );
 
-    expect(screen.getByText("Hero: El club de la pelea")).toBeTruthy();
-    expect(screen.getByText("Reseñas: 550")).toBeTruthy();
+  expect(screen.getByText("Hero: El club de la pelea")).toBeTruthy();
+  expect(
+    screen.getByText(/Reseñas: 550 — Usuario: visitante/)
+  ).toBeTruthy();
+  expect(obtenerSesionMock).toHaveBeenCalledOnce();
   });
 
   it("activa notFound para una ficha inexistente", async () => {
@@ -121,4 +141,27 @@ describe("página de contenido", () => {
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFoundMock).toHaveBeenCalledOnce();
   });
+
+  it("pasa el usuario autenticado al apartado de reseñas", async () => {
+  obtenerContenidoMock.mockResolvedValue(CONTENIDO);
+
+  obtenerSesionMock.mockResolvedValue({
+    id: "usuario-1",
+    nombre: "Ana",
+    apellido: "Pérez",
+    nombre_usuario: "ana",
+    email: "ana@example.com",
+    foto_url: null,
+  });
+
+  render(
+    await ContentPage({
+      params: Promise.resolve({ type: "pelicula", id: "550" }),
+    } as PageProps<"/content/[type]/[id]">)
+  );
+
+  expect(
+    screen.getByText(/Reseñas: 550 — Usuario: usuario-1/)
+  ).toBeTruthy();
+});
 });

@@ -16,6 +16,7 @@ const apiFetchMock = vi.mocked(apiFetch);
 
 const BASE: Omit<ResenaContenido, "id" | "fecha" | "texto"> = {
   contenido_tmdb_id: 550,
+  resena_padre_id: null,
   plataforma_id: null,
   calificacion: 4.5,
   valoracion: 2,
@@ -26,6 +27,15 @@ const BASE: Omit<ResenaContenido, "id" | "fecha" | "texto"> = {
     nombre_usuario: "ana",
     foto_url: null,
   },
+};
+
+const USUARIO = {
+  id: "usuario-1",
+  nombre: "Ana",
+  apellido: "Pérez",
+  nombre_usuario: "ana",
+  email: "ana@example.com",
+  foto_url: null,
 };
 
 
@@ -52,7 +62,7 @@ describe("ContentReviews", () => {
       },
     ]);
 
-    render(<ContentReviews tipo="pelicula" tmdbId={550} />);
+    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
 
     const articulos = await screen.findAllByRole("article");
     expect(articulos).toHaveLength(2);
@@ -67,7 +77,7 @@ describe("ContentReviews", () => {
   it("informa cuando todavía no existen reseñas", async () => {
     apiFetchMock.mockResolvedValue([]);
 
-    render(<ContentReviews tipo="serie" tmdbId={1399} />);
+    render(<ContentReviews tipo="serie" tmdbId={1399} usuario={null} />);
 
     expect(
       await screen.findByText("Todavía no existen reseñas")
@@ -80,7 +90,7 @@ describe("ContentReviews", () => {
       .mockResolvedValueOnce([]);
     const user = userEvent.setup();
 
-    render(<ContentReviews tipo="pelicula" tmdbId={550} />);
+    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
 
     expect(
       await screen.findByText("No pudimos cargar las reseñas")
@@ -93,5 +103,96 @@ describe("ContentReviews", () => {
     expect(
       await screen.findByText("Todavía no existen reseñas")
     ).toBeTruthy();
+  });
+
+
+  it("permite leer reseñas sin iniciar sesión, pero no publicar ni responder", async () => {
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "resena-1",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Una película excelente",
+      },
+    ]);
+
+    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
+
+    expect(await screen.findByText("Una película excelente")).toBeTruthy();
+
+    expect(
+      screen.queryByRole("button", { name: "Escribir una reseña" })
+    ).toBeNull();
+
+    expect(
+      screen.queryByRole("button", { name: "Responder" })
+    ).toBeNull();
+  });
+
+  it("muestra las opciones de publicación y respuesta al usuario autenticado", async () => {
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "resena-1",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Una película excelente",
+      },
+    ]);
+
+    render(
+      <ContentReviews
+        tipo="pelicula"
+        tmdbId={550}
+        usuario={USUARIO}
+      />
+    );
+
+    expect(await screen.findByText("Una película excelente")).toBeTruthy();
+
+    expect(
+      screen.getByRole("button", { name: "Escribir una reseña" })
+    ).toBeTruthy();
+
+    expect(
+      screen.getByRole("button", { name: "Responder" })
+    ).toBeTruthy();
+  });
+
+  it("muestra las respuestas anidadas dentro del hilo correspondiente", async () => {
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "respuesta-1",
+        resena_padre_id: "resena-1",
+        fecha: "2026-10-16T13:00:00Z",
+        texto: "Estoy de acuerdo",
+      },
+      {
+        ...BASE,
+        id: "resena-1",
+        resena_padre_id: null,
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Una película excelente",
+      },
+    ]);
+
+    const { container } = render(
+      <ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />
+    );
+
+    expect(await screen.findByText("Estoy de acuerdo")).toBeTruthy();
+
+    const articulos = screen.getAllByRole("article");
+    expect(articulos).toHaveLength(2);
+
+    expect(articulos[0].textContent).toContain("Una película excelente");
+    expect(articulos[1].textContent).toContain("Estoy de acuerdo");
+
+    const hilo = articulos[1].parentElement;
+
+    expect(hilo).not.toBeNull();
+    expect(hilo?.parentElement?.className).toContain("border-l-2");
+
+    expect(container.querySelectorAll("article")).toHaveLength(2);
   });
 });
