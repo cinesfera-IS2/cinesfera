@@ -132,7 +132,7 @@ class CatalogueRepository:
             movies, total_pages_movies = self.get_movies(page)
             series, total_pages_series = self.get_series(page)
             contents = movies + series
-            total_pages = total_pages_movies + total_pages_series
+            total_pages = max(total_pages_movies, total_pages_series)
 
     #si se filtra por año 
         if year is not None:
@@ -147,6 +147,9 @@ class CatalogueRepository:
             key=lambda content: content.release_date or "",
             reverse=True
         )
+
+        #tmdb no deja pedir páginas mayores a 500
+        total_pages = min(total_pages, 500)
 
         return contents, total_pages
 

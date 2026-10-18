@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from app.catalogue_service.services.CatalogueService import CatalogueService
@@ -32,6 +32,9 @@ def get_catalogue(
     year: int = None,
     page: int = 1
 ):
+    if page < 1 or page > 500:
+        raise HTTPException(status_code=400, detail="La página debe estar entre 1 y 500")
+
     if search:
         if content_type == "movie":
             contents = service.search_movie_by_name(search)
