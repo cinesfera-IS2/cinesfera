@@ -17,15 +17,12 @@ vi.mock("@/features/catalog/data/catalogo", async (importOriginal) => ({
 
 const FILTROS: FiltrosCatalogo = { orden: "populares", pagina: 1 };
 
-function obra(id: string): Obra {
+function obra(tmdbId: number): Obra {
   return {
-    id,
+    tmdbId,
     tipo: "pelicula",
-    titulo: id,
+    titulo: `Obra ${tmdbId}`,
     fechaEstreno: "2000-01-01",
-    generos: ["drama"],
-    calificacion: 4,
-    popularidad: 50,
     posterGradient: "",
   };
 }
@@ -36,17 +33,15 @@ async function renderizar(
 ) {
   vi.mocked(buscarObras).mockResolvedValue({
     obras: [],
-    total: 0,
     pagina: 1,
     totalPaginas: 1,
-    porPagina: 20,
     ...resultado,
   });
   render(await ResultadosCatalogo({ filtros }));
 }
 
 function textoDelResumen() {
-  return screen.getByText(/^Mostrando/).textContent?.replace(/\s+/g, " ");
+  return screen.getByText(/^Página/).textContent?.replace(/\s+/g, " ");
 }
 
 describe("ResultadosCatalogo", () => {
@@ -64,7 +59,7 @@ describe("ResultadosCatalogo", () => {
   });
 
   it("sin resultados avisa y ofrece limpiar los filtros", async () => {
-    await renderizar({ total: 0 }, { ...FILTROS, texto: "zzz" });
+    await renderizar({ obras: [] }, { ...FILTROS, texto: "zzz" });
 
     expect(screen.getByRole("heading", { name: "No encontramos resultados" }))
       .toBeTruthy();
@@ -73,40 +68,26 @@ describe("ResultadosCatalogo", () => {
     ).toBe("/catalogo");
   });
 
-  it("lista las obras y resume cuántas se muestran", async () => {
-    await renderizar({ obras: [obra("a"), obra("b")], total: 2 });
+  it("lista las obras e indica la página actual", async () => {
+    await renderizar({ obras: [obra(1), obra(2)], pagina: 3, totalPaginas: 500 });
 
     expect(screen.getAllByRole("article")).toHaveLength(2);
-    expect(textoDelResumen()).toBe("Mostrando 1–2 de 2 títulos");
-  });
-
-  it("usa el singular cuando hay un solo título", async () => {
-    await renderizar({ obras: [obra("a")], total: 1 });
-
-    expect(textoDelResumen()).toBe("Mostrando 1–1 de 1 título");
-  });
-
-  it("calcula el rango a partir de la página actual", async () => {
-    await renderizar({
-      obras: [obra("u")],
-      total: 41,
-      pagina: 3,
-      totalPaginas: 3,
-    });
-
-    expect(textoDelResumen()).toBe("Mostrando 41–41 de 41 títulos");
+    expect(textoDelResumen()).toBe("Página 3 de 500");
     expect(screen.getByRole("navigation", { name: "Paginación" })).toBeTruthy();
   });
 
+  it("no confunde una película y una serie con el mismo id de TMDB", async () => {
+    await renderizar({ obras: [obra(1), { ...obra(1), tipo: "serie" }] });
+
+    expect(screen.getAllByRole("article")).toHaveLength(2);
+  });
+
   it("solo ofrece limpiar filtros si hay alguno activo", async () => {
-    await renderizar({ obras: [obra("a")], total: 1 });
+    await renderizar({ obras: [obra(1)] });
     expect(screen.queryByRole("link", { name: "Limpiar filtros" })).toBeNull();
 
     cleanup();
-    await renderizar(
-      { obras: [obra("a")], total: 1 },
-      { ...FILTROS, genero: "drama" }
-    );
+    await renderizar({ obras: [obra(1)] }, { ...FILTROS, tipo: "serie" });
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toBeTruthy();
   });
 });

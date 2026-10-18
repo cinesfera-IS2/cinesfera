@@ -25,6 +25,9 @@ export type TipoObra = (typeof TIPOS)[number]["valor"];
 /** Límite inferior del filtro por año de estreno. */
 export const ANIO_MINIMO = 1900;
 
+/** TMDB no deja pedir páginas más allá de esta. */
+export const PAGINA_MAXIMA = 500;
+
 export const ORDENES = [
   { valor: "populares", etiqueta: "Más populares" },
   { valor: "calificacion", etiqueta: "Mejor calificadas" },
@@ -36,18 +39,13 @@ export type Orden = (typeof ORDENES)[number]["valor"];
 
 /** Una película o una serie del catálogo. */
 export type Obra = {
-  id: string;
+  tmdbId: number;
   tipo: TipoObra;
   titulo: string;
   /** `AAAA-MM-DD`. En las series es la fecha del primer episodio. */
-  fechaEstreno: string;
-  /** El primero es el que se muestra en la ficha. */
-  generos: GeneroSlug[];
-  /** Promedio de la comunidad, de 0 a 5. */
-  calificacion: number;
-  popularidad: number;
+  fechaEstreno: string | null;
   poster?: string;
-  /** Degradado de respaldo mientras no haya póster real. */
+  /** Degradado de respaldo para las obras que TMDB no tiene con póster. */
   posterGradient: string;
 };
 
@@ -62,9 +60,6 @@ export type FiltrosCatalogo = {
 
 export type PaginaCatalogo = {
   obras: Obra[];
-  total: number;
-  /** Puede diferir de la pedida si esa se pasaba de la última. */
   pagina: number;
   totalPaginas: number;
-  porPagina: number;
 };

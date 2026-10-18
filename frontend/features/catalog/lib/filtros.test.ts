@@ -54,6 +54,10 @@ describe("leerFiltros", () => {
     });
   });
 
+  it("no deja pasar de la última página que permite TMDB", () => {
+    expect(leerFiltros({ pagina: "900" }).pagina).toBe(500);
+  });
+
   it("si un parámetro viene repetido se queda con el primero", () => {
     expect(leerFiltros({ genero: ["drama", "terror"] }).genero).toBe("drama");
   });
