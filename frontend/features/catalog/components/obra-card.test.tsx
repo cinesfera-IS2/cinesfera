@@ -5,27 +5,40 @@ import { ObraCard } from "./obra-card";
 import type { Obra } from "@/features/catalog/types";
 
 const OBRA: Obra = {
-  id: "matrix",
+  tmdbId: 603,
   tipo: "pelicula",
   titulo: "Matrix",
   fechaEstreno: "1999-03-31",
-  generos: ["ciencia-ficcion", "accion"],
-  calificacion: 4.4,
-  popularidad: 87,
   posterGradient: "from-sky-500/35",
 };
 
 describe("ObraCard", () => {
   afterEach(cleanup);
 
-  it("muestra el título, el género principal, el año y la calificación", () => {
-    render(<ObraCard obra={{ ...OBRA, calificacion: 4 }} />);
+  it("muestra el título y el año de estreno", () => {
+    render(<ObraCard obra={OBRA} />);
 
     expect(screen.getByRole("heading", { name: "Matrix" })).toBeTruthy();
-    expect(screen.getByText("Ciencia ficción")).toBeTruthy();
-    expect(screen.queryByText("Acción")).toBeNull();
     expect(screen.getByText("1999")).toBeTruthy();
-    expect(screen.getByText("4.0")).toBeTruthy();
+  });
+
+  it("sin fecha de estreno no muestra el año", () => {
+    render(<ObraCard obra={{ ...OBRA, fechaEstreno: null }} />);
+
+    expect(screen.queryByText("1999")).toBeNull();
+  });
+
+  it("lleva a la ficha de la obra", () => {
+    render(<ObraCard obra={OBRA} />);
+    expect(screen.getByRole("link").getAttribute("href")).toBe(
+      "/content/pelicula/603"
+    );
+
+    cleanup();
+    render(<ObraCard obra={{ ...OBRA, tipo: "serie", tmdbId: 1396 }} />);
+    expect(screen.getByRole("link").getAttribute("href")).toBe(
+      "/content/serie/1396"
+    );
   });
 
   it("sin póster usa el degradado de respaldo", () => {

@@ -1,4 +1,5 @@
 import httpx
+from datetime import date
 
 from app.catalogue_service.entities.content import Content
 from app.core.config import settings
@@ -61,6 +62,7 @@ class CatalogueRepository:
         params = {
                 "language": "es-ES",
                 "sort_by": "primary_release_date.desc",
+                "primary_release_date.lte": date.today().isoformat(),
                 "page": page
             }
 
@@ -91,6 +93,7 @@ class CatalogueRepository:
         params = {
             "language": "es-ES",
             "sort_by": "first_air_date.desc",
+            "first_air_date.lte": date.today().isoformat(),
             "page": page
         }
 

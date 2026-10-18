@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 import httpx
@@ -103,6 +104,16 @@ class CatalogoTests(unittest.TestCase):
         self.assertEqual(get.call_args.kwargs["params"]["page"], 3)
         self.assertEqual(self.client.get("/catalogue/?page=0").status_code, 400)
         self.assertEqual(self.client.get("/catalogue/?page=501").status_code, 400)
+
+    def test_catalogo_solo_trae_lo_estrenado_hasta_hoy(self, get):
+        get.side_effect = respuesta_tmdb
+        hoy = date.today().isoformat()
+
+        self.client.get("/catalogue/")
+
+        peliculas, series = get.call_args_list
+        self.assertEqual(peliculas.kwargs["params"]["primary_release_date.lte"], hoy)
+        self.assertEqual(series.kwargs["params"]["first_air_date.lte"], hoy)
 
     def test_catalogo_filtra_por_tipo_y_anio(self, get):
         get.side_effect = respuesta_tmdb

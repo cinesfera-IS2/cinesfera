@@ -15,11 +15,10 @@ export const GRILLA_OBRAS =
   "grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-4 lg:grid-cols-5";
 
 export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
-  const { obras, total, pagina, totalPaginas, porPagina } =
-    await buscarObras(filtros);
+  const { obras, pagina, totalPaginas } = await buscarObras(filtros);
   const filtrado = hayFiltrosActivos(filtros);
 
-  if (total === 0) {
+  if (obras.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-night-600 bg-night-900/40 px-6 py-16 text-center">
         <span className="grid size-12 place-items-center rounded-full bg-night-800 text-ink-500">
@@ -36,26 +35,19 @@ export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
     );
   }
 
-  const desde = (pagina - 1) * porPagina + 1;
-  const hasta = desde + obras.length - 1;
-
   return (
     <section aria-label="Resultados">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-400">
-          Mostrando{" "}
-          <span className="font-semibold text-ink-100">
-            {desde}–{hasta}
-          </span>{" "}
-          de <span className="font-semibold text-ink-100">{total}</span>{" "}
-          {total === 1 ? "título" : "títulos"}
+          Página <span className="font-semibold text-ink-100">{pagina}</span>{" "}
+          de <span className="font-semibold text-ink-100">{totalPaginas}</span>
         </p>
         {filtrado && <LimpiarFiltros />}
       </div>
 
       <ul className={GRILLA_OBRAS}>
         {obras.map((obra, indice) => (
-          <li key={obra.id}>
+          <li key={`${obra.tipo}-${obra.tmdbId}`}>
             <ObraCard obra={obra} prioridad={indice < 5} />
           </li>
         ))}

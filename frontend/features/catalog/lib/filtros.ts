@@ -2,6 +2,7 @@ import {
   ANIO_MINIMO,
   GENEROS,
   ORDENES,
+  PAGINA_MAXIMA,
   TIPOS,
   type FiltrosCatalogo,
   type GeneroSlug,
@@ -52,7 +53,10 @@ export function leerFiltros(searchParams: SearchParams): FiltrosCatalogo {
     tipo: esTipo(tipo) ? tipo : undefined,
     anioEstreno: leerAnio(primero(searchParams.anio)),
     orden: esOrden(orden) ? orden : ORDEN_POR_DEFECTO,
-    pagina: Number.isInteger(pagina) && pagina > 1 ? pagina : 1,
+    pagina:
+      Number.isInteger(pagina) && pagina > 1
+        ? Math.min(pagina, PAGINA_MAXIMA)
+        : 1,
   };
 }
 
