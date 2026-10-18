@@ -6,17 +6,21 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 
-import { ContentReviewCard } from "@/features/content/components/content-review-card";
 import type {
   ResenaContenido,
   TipoContenido,
 } from "@/features/content/types";
 import { apiFetch } from "@/lib/api";
+import type { UsuarioSesion } from "@/features/auth/session";
+import { CreateContentReview } from "@/features/content/components/create-content-review";
+import { ContentReviewThread } from "@/features/content/components/content-review-thread";
+import { agruparResenas } from "@/features/content/lib/agrupar-resenas";
 
 
 type ContentReviewsProps = {
   tipo: TipoContenido;
   tmdbId: number;
+  usuario: UsuarioSesion | null;
 };
 
 
@@ -26,13 +30,17 @@ type EstadoResenas =
   | { estado: "listo"; resenas: ResenaContenido[] };
 
 
-export function ContentReviews({ tipo, tmdbId }: ContentReviewsProps) {
+export function ContentReviews({ tipo, tmdbId, usuario}: ContentReviewsProps) {
   const [estado, setEstado] = useState<EstadoResenas>({ estado: "cargando" });
   const [intento, setIntento] = useState(0);
 
   const reintentar = useCallback(() => {
     setEstado({ estado: "cargando" });
     setIntento((actual) => actual + 1);
+  }, []);
+
+  const actualizarResenas = useCallback(() => {
+  setIntento((actual) => actual + 1);
   }, []);
 
   useEffect(() => {
@@ -73,11 +81,22 @@ export function ContentReviews({ tipo, tmdbId }: ContentReviewsProps) {
             Reseñas
           </h2>
         </div>
-        {estado.estado === "listo" && estado.resenas.length > 0 && (
-          <span className="rounded-full bg-night-800 px-3 py-1 text-xs text-ink-400">
-            {estado.resenas.length}
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {estado.estado === "listo" && estado.resenas.length > 0 && (
+            <span className="rounded-full bg-night-800 px-3 py-1 text-xs text-ink-400">
+              {estado.resenas.length}
+            </span>
+          )}
+
+          {usuario && (
+            <CreateContentReview
+              tipo={tipo}
+              tmdbId={tmdbId}
+              usuarioId={usuario.id}
+              onPublicada={actualizarResenas}
+            />
+          )}
+        </div>
       </div>
 
       {estado.estado === "cargando" && <ReviewsSkeleton />}
@@ -117,9 +136,16 @@ export function ContentReviews({ tipo, tmdbId }: ContentReviewsProps) {
       )}
 
       {estado.estado === "listo" && estado.resenas.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {estado.resenas.map((resena) => (
-            <ContentReviewCard key={resena.id} resena={resena} />
+        <div className="flex flex-col gap-6">
+          {agruparResenas(estado.resenas).map((hilo) => (
+            <ContentReviewThread
+              key={hilo.resena.id}
+              hilo={hilo}
+              tipo={tipo}
+              tmdbId={tmdbId}
+              usuarioId={usuario?.id}
+              onPublicada={actualizarResenas}
+            />
           ))}
         </div>
       )}

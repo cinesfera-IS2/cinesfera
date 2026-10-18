@@ -31,6 +31,7 @@ export type AutorResena = {
 export type ResenaContenido = {
   id: string;
   contenido_tmdb_id: number;
+  resena_padre_id: string | null;
   plataforma_id: number | null;
   calificacion: number;
   texto: string;

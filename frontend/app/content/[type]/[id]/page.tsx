@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { obtenerSesion } from "@/features/auth/session";
+
 
 import {
   ContentHero,
@@ -51,13 +53,19 @@ export default async function ContentPage({
 
   if (!datos) notFound();
 
+  const usuario = await obtenerSesion();
+
   return (
-    <>
+  <>
       <LandingHeader />
       <main className="flex-1">
         <ContentHero contenido={datos.contenido} />
         <div className="mx-auto max-w-4xl px-6 py-10">
-          <ContentReviews tipo={datos.tipo} tmdbId={datos.tmdbId} />
+          <ContentReviews
+            tipo={datos.tipo}
+            tmdbId={datos.tmdbId}
+            usuario={usuario}
+            />
         </div>
       </main>
       <LandingFooter />
