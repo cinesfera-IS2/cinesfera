@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from app.catalogue_service.services.CatalogueService import CatalogueService
@@ -21,21 +21,37 @@ class ContentResponse(BaseModel):
     poster_url: str | None
     tmdb_id: int
 
+class CatalogueResponse(BaseModel):
+    contents: list[ContentResponse]
+    total_pages: int            
 
-@router.get("/", response_model=list[ContentResponse])
+@router.get("/", response_model=CatalogueResponse)
 def get_catalogue(
     search: str = None,
     content_type: str = None,
-    year: int = None
+    year: int = None,
+    page: int = 1
 ):
+    if page < 1 or page > 500:
+        raise HTTPException(status_code=400, detail="La página debe estar entre 1 y 500")
 
     if search:
         if content_type == "movie":
-            return service.search_movie_by_name(search)
+            contents = service.search_movie_by_name(search)
+            return CatalogueResponse(contents=contents, total_pages=1)
 
         if content_type == "series":
-            return service.search_series_by_name(search)
+            contents = service.search_series_by_name(search)
+            return CatalogueResponse(contents=contents, total_pages=1)
 
-        return service.search_catalogue(search)
+        contents = service.search_catalogue(search)
+        return CatalogueResponse(contents=contents, total_pages=1)
 
-    return service.get_content(content_type, year)
+    contents, total_pages = service.get_content(
+        content_type, year, page
+    )
+
+    return CatalogueResponse(
+        contents=contents,
+        total_pages=total_pages
+    )

@@ -36,11 +36,14 @@ SERIES = [
 ]
 
 
-def respuesta_tmdb(url, **_kwargs):
-    resultados = PELICULAS if url.endswith("/movie") else SERIES
+def respuesta_tmdb(url, paginas_peliculas=300, paginas_series=120, **_kwargs):
+    if url.endswith("/movie"):
+        resultados, total_paginas = PELICULAS, paginas_peliculas
+    else:
+        resultados, total_paginas = SERIES, paginas_series
     return httpx.Response(
         200,
-        json={"results": resultados},
+        json={"results": resultados, "total_pages": total_paginas},
         request=httpx.Request("GET", url),
     )
 
@@ -54,7 +57,7 @@ class CatalogoTests(unittest.TestCase):
         self.addCleanup(token.stop)
 
     def titulos(self, respuesta):
-        return [contenido["title"] for contenido in respuesta.json()]
+        return [contenido["title"] for contenido in respuesta.json()["contents"]]
 
     def test_catalogo_mezcla_peliculas_y_series_ordenadas_por_fecha(self, get):
         get.side_effect = respuesta_tmdb
@@ -66,14 +69,40 @@ class CatalogoTests(unittest.TestCase):
             self.titulos(respuesta),
             ["Serie", "Película nueva", "Película vieja"],
         )
-        serie = respuesta.json()[0]
+        serie = respuesta.json()["contents"][0]
         self.assertEqual(serie["content_type"], "series")
         self.assertEqual(serie["release_date"], "2024-09-01")
         self.assertEqual(
             serie["poster_url"],
             f"{settings.tmdb_image_url}/w500/serie.jpg",
         )
-        self.assertIsNone(respuesta.json()[2]["poster_url"])
+        self.assertIsNone(respuesta.json()["contents"][2]["poster_url"])
+
+    def test_catalogo_sin_tipo_devuelve_el_maximo_de_paginas(self, get):
+        get.side_effect = respuesta_tmdb
+
+        respuesta = self.client.get("/catalogue/")
+
+        self.assertEqual(respuesta.json()["total_pages"], 300)
+
+    def test_catalogo_limita_el_total_de_paginas_a_500(self, get):
+        get.side_effect = lambda url, **kwargs: respuesta_tmdb(
+            url, paginas_peliculas=38000, paginas_series=7000
+        )
+
+        respuesta = self.client.get("/catalogue/")
+
+        self.assertEqual(respuesta.json()["total_pages"], 500)
+
+    def test_catalogo_envia_la_pagina_pedida_y_valida_el_rango(self, get):
+        get.side_effect = respuesta_tmdb
+
+        respuesta = self.client.get("/catalogue/?content_type=movie&page=3")
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(get.call_args.kwargs["params"]["page"], 3)
+        self.assertEqual(self.client.get("/catalogue/?page=0").status_code, 400)
+        self.assertEqual(self.client.get("/catalogue/?page=501").status_code, 400)
 
     def test_catalogo_filtra_por_tipo_y_anio(self, get):
         get.side_effect = respuesta_tmdb
