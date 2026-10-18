@@ -63,7 +63,7 @@ export async function buscarObras(
   });
 
   return {
-    obras: respuesta.contents.map(aObra),
+    obras: respuesta.contents.map((contenido, indice) => aObra(contenido, indice)),
     pagina: filtros.pagina,
     totalPaginas: respuesta.total_pages,
   };
