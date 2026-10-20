@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
+from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
@@ -12,7 +13,7 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 class PerfilPublicoTests(unittest.TestCase):
     def setUp(self):
         self.db = crear_base_en_memoria(
-            self, Usuario, Contenido, Resena, ValoracionResena
+            self, Usuario, Contenido, Resena, ValoracionResena, Seguimiento
         )
         ahora = datetime.now(timezone.utc)
         self.db.add(Contenido(id=1, tmdb_id=42, tipo="pelicula"))
@@ -39,7 +40,17 @@ class PerfilPublicoTests(unittest.TestCase):
         self.db.add_all([
             ValoracionResena(usuario_id=otro_id, resena_id=antigua_id, valor=1),
             ValoracionResena(usuario_id=self.usuario_id, resena_id=reciente_id, valor=-1),
-            ValoracionResena(usuario_id=self.usuario_id, resena_id=ajena_id, valor=1)
+            ValoracionResena(usuario_id=self.usuario_id, resena_id=ajena_id, valor=1),
+            Seguimiento(
+                seguidor_id=otro_id,
+                seguido_id=self.usuario_id,
+                fecha_seguimiento=ahora
+            ),
+            Seguimiento(
+                seguidor_id=self.usuario_id,
+                seguido_id=otro_id,
+                fecha_seguimiento=ahora
+            )
         ])
         self.db.commit()
         self.client = conectar_api(self, self.db)
@@ -52,6 +63,8 @@ class PerfilPublicoTests(unittest.TestCase):
         self.assertEqual(datos["nombre"], "Ana")
         self.assertEqual(datos["foto_url"], "https://example.com/foto.jpg")
         self.assertEqual(datos["reputacion"], 0)
+        self.assertEqual(datos["seguidores"], 1)
+        self.assertEqual(datos["siguiendo"], 1)
         self.assertEqual(
             [resena["id"] for resena in datos["resenas"]],
             [str(self.reciente_id), str(self.antigua_id)]

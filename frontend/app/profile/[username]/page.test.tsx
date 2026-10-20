@@ -9,6 +9,10 @@ import type { PerfilPublico } from "@/features/profile/types";
 
 vi.mock("@/features/auth/session", () => ({ obtenerSesion: vi.fn() }));
 
+vi.mock("@/features/profile/components/follow-button", () => ({
+  FollowButton: () => <button type="button">Seguir</button>,
+}));
+
 // La cabecera resuelve la sesión con cookies() de Next, que fuera de un
 // request no existe; la de verdad se prueba aparte.
 vi.mock("@/features/landing", () => ({
