@@ -37,14 +37,15 @@ def get_catalogue(
 
     if search:
         if content_type == "movie":
-            contents = service.search_movie_by_name(search)
+            contents = service.search_movie_by_name(search, year)
             return CatalogueResponse(contents=contents, total_pages=1)
 
         if content_type == "series":
-            contents = service.search_series_by_name(search)
+            contents = service.search_series_by_name(search, year)
             return CatalogueResponse(contents=contents, total_pages=1)
 
-        contents = service.search_catalogue(search)
+        contents = service.search_catalogue(search, year)
+        
         return CatalogueResponse(contents=contents, total_pages=1)
 
     contents, total_pages = service.get_content(
