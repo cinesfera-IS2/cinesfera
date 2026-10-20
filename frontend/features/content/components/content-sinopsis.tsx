@@ -2,7 +2,7 @@ type ContentSinopsisProps = {
   sinopsis: string;
 };
 
-export function ContentSinopsis({ sinopsis }: ContentSinopsisProps) {
+export function ContentSinopsis({ sinopsis }: Readonly<ContentSinopsisProps>) {
   return (
     <section aria-labelledby="titulo-sinopsis">
       <h2 id="titulo-sinopsis" className="font-display text-xl font-bold">

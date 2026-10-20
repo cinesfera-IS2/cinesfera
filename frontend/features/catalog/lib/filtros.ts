@@ -14,6 +14,11 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 const ORDEN_POR_DEFECTO: Orden = "populares";
 
+const NOMBRE_TIPO: Record<TipoObra, string> = {
+  pelicula: "Películas",
+  serie: "Series",
+};
+
 function primero(valor: string | string[] | undefined): string | undefined {
   return Array.isArray(valor) ? valor[0] : valor;
 }
@@ -92,12 +97,7 @@ export function hrefCatalogo(
 export function tituloResultados(filtros: FiltrosCatalogo): string {
   if (filtros.texto) return `Resultados para «${filtros.texto}»`;
 
-  const tipo =
-    filtros.tipo === "pelicula"
-      ? "Películas"
-      : filtros.tipo === "serie"
-        ? "Series"
-        : null;
+  const tipo = filtros.tipo ? NOMBRE_TIPO[filtros.tipo] : null;
 
   if (filtros.anioEstreno) {
     return `${tipo ?? "Películas y series"} de ${filtros.anioEstreno}`;
@@ -129,7 +129,7 @@ export function filtrosActivos(filtros: FiltrosCatalogo): FiltroActivo[] {
   if (filtros.tipo) {
     activos.push({
       clave: "tipo",
-      etiqueta: filtros.tipo === "pelicula" ? "Películas" : "Series",
+      etiqueta: NOMBRE_TIPO[filtros.tipo],
       hrefSinFiltro: sin({ tipo: undefined }),
     });
   }

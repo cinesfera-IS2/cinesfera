@@ -39,13 +39,13 @@ export function PaginacionCatalogo({
           {pagina} / {totalPaginas}
         </li>
 
-        {paginasVisibles(pagina, totalPaginas).map((numero, indice) =>
+        {conClaves(paginasVisibles(pagina, totalPaginas)).map(({ numero, clave }) =>
           numero === "…" ? (
-            <li key={`salto-${indice}`} aria-hidden className="hidden px-1 text-ink-400 sm:block">
+            <li key={clave} aria-hidden className="hidden px-1 text-ink-400 sm:block">
               …
             </li>
           ) : (
-            <li key={numero} className="hidden sm:block">
+            <li key={clave} className="hidden sm:block">
               <Link
                 href={hrefCatalogo(filtros, { pagina: numero })}
                 aria-label={`Página ${numero}`}
@@ -77,6 +77,17 @@ export function PaginacionCatalogo({
       </ul>
     </nav>
   );
+}
+
+/**
+ * Puede haber dos "…" en la lista; cada uno se identifica por la página que lo
+ * precede, que siempre es un número (la primera nunca se saltea).
+ */
+function conClaves(paginas: (number | "…")[]) {
+  return paginas.map((numero, posicion) => ({
+    numero,
+    clave: numero === "…" ? `salto-despues-de-${paginas[posicion - 1]}` : `pagina-${numero}`,
+  }));
 }
 
 type FlechaPaginaProps = {

@@ -16,7 +16,7 @@ export function Puntaje({
   escala,
   detalle,
   destacado = false,
-}: PuntajeProps) {
+}: Readonly<PuntajeProps>) {
   return (
     <div className="flex min-w-24 flex-col gap-1">
       <dt className="text-xs font-semibold text-ink-400">{fuente}</dt>

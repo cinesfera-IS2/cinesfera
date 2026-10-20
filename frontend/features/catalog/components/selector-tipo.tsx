@@ -15,7 +15,7 @@ type SelectorTipoProps = {
  * Las tres opciones a la vista en lugar de un select: se ve qué está elegido
  * y se cambia con un clic. Aplica el filtro apenas cambia, como antes el select.
  */
-export function SelectorTipo({ valor }: SelectorTipoProps) {
+export function SelectorTipo({ valor }: Readonly<SelectorTipoProps>) {
   return (
     <fieldset className="flex h-11 min-w-0 flex-1 rounded-lg border border-night-600 bg-night-900 p-1 has-[:focus-visible]:border-glow-400 md:flex-none">
       <legend className="sr-only">Tipo</legend>

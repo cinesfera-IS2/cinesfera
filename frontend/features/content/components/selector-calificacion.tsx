@@ -35,7 +35,7 @@ export function SelectorCalificacion({
   name,
   etiqueta = "Calificación",
   valorInicial = null,
-}: SelectorCalificacionProps) {
+}: Readonly<SelectorCalificacionProps>) {
   const grupo = useRef<HTMLFieldSetElement>(null);
   const [valor, setValor] = useState<number | null>(valorInicial);
   const [previa, setPrevia] = useState<number | null>(null);
@@ -54,6 +54,10 @@ export function SelectorCalificacion({
 
   const mostrado = previa ?? valor;
   const enVistaPrevia = previa !== null && previa !== valor;
+
+  let colorNumero = "text-ink-100";
+  if (mostrado === null) colorNumero = "text-night-600";
+  else if (enVistaPrevia) colorNumero = "text-ink-400";
 
   return (
     <fieldset ref={grupo}>
@@ -112,13 +116,7 @@ export function SelectorCalificacion({
 
         <div aria-hidden className="flex h-9 items-baseline gap-2 px-2 sm:h-16 sm:w-36 sm:flex-col sm:items-end sm:justify-center sm:gap-1.5 sm:px-0">
           <p
-            className={`font-display text-3xl leading-none font-extrabold tabular-nums transition-colors duration-150 ${
-              mostrado === null
-                ? "text-night-600"
-                : enVistaPrevia
-                  ? "text-ink-400"
-                  : "text-ink-100"
-            }`}
+            className={`font-display text-3xl leading-none font-extrabold tabular-nums transition-colors duration-150 ${colorNumero}`}
           >
             {(mostrado ?? 0).toFixed(1)}
           </p>

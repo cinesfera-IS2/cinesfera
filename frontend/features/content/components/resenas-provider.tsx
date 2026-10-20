@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -40,7 +41,7 @@ type ResenasProviderProps = {
  * Pide las reseñas una sola vez para toda la ficha: el puntaje de la cabecera
  * y el listado leen el mismo estado, así que publicar una reseña actualiza los dos.
  */
-export function ResenasProvider({ tipo, tmdbId, children }: ResenasProviderProps) {
+export function ResenasProvider({ tipo, tmdbId, children }: Readonly<ResenasProviderProps>) {
   const [estado, setEstado] = useState<EstadoResenas>({ estado: "cargando" });
   const [intento, setIntento] = useState(0);
 
@@ -80,8 +81,13 @@ export function ResenasProvider({ tipo, tmdbId, children }: ResenasProviderProps
     return () => controlador.abort();
   }, [intento, tipo, tmdbId]);
 
+  const valor = useMemo(
+    () => ({ tipo, tmdbId, estado, reintentar, actualizar }),
+    [tipo, tmdbId, estado, reintentar, actualizar]
+  );
+
   return (
-    <Contexto value={{ tipo, tmdbId, estado, reintentar, actualizar }}>
+    <Contexto value={valor}>
       {children}
     </Contexto>
   );

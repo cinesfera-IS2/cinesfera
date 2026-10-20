@@ -61,7 +61,7 @@ export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
   );
 }
 
-function EncabezadoResultados({ filtros }: { filtros: FiltrosCatalogo }) {
+function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
   const activos = filtrosActivos(filtros);
 
   return (

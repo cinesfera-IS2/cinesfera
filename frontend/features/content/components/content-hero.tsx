@@ -38,26 +38,7 @@ export function ContentHero({ contenido }: ContentHeroProps) {
         aria-hidden
         className="absolute inset-0 -z-10 overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent_88%)]"
       >
-        {contenido.portada_url ? (
-          <Image
-            src={contenido.portada_url}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="proyeccion object-cover object-[50%_25%] opacity-60"
-          />
-        ) : contenido.poster_url ? (
-          <Image
-            src={contenido.poster_url}
-            alt=""
-            fill
-            sizes="100vw"
-            className="proyeccion scale-125 object-cover opacity-40 blur-2xl"
-          />
-        ) : (
-          <div className="hero-halo absolute inset-0" />
-        )}
+        <FondoProyectado contenido={contenido} />
         <div className="absolute inset-0 bg-linear-to-r from-night-950/95 via-night-950/60 to-night-950/5" />
         <div className="absolute inset-0 bg-linear-to-t from-night-950/80 via-transparent to-night-950/40" />
       </div>
@@ -133,4 +114,35 @@ export function ContentHero({ contenido }: ContentHeroProps) {
       </div>
     </section>
   );
+}
+
+
+/** La portada; si falta, el póster agrandado y borroso; si no hay ninguno, el halo de marca. */
+function FondoProyectado({ contenido }: Readonly<ContentHeroProps>) {
+  if (contenido.portada_url) {
+    return (
+      <Image
+        src={contenido.portada_url}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="proyeccion object-cover object-[50%_25%] opacity-60"
+      />
+    );
+  }
+
+  if (contenido.poster_url) {
+    return (
+      <Image
+        src={contenido.poster_url}
+        alt=""
+        fill
+        sizes="100vw"
+        className="proyeccion scale-125 object-cover opacity-40 blur-2xl"
+      />
+    );
+  }
+
+  return <div className="hero-halo absolute inset-0" />;
 }

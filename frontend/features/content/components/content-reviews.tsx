@@ -16,7 +16,7 @@ type ContentReviewsProps = {
 };
 
 
-export function ContentReviews({ usuario }: ContentReviewsProps) {
+export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
   const resenas = useResenas();
 
   if (!resenas) {

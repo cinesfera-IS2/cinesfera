@@ -9,7 +9,7 @@ type EscribirResenaProps = {
 };
 
 /** Conecta el botón de nueva reseña con el listado que tiene que refrescar. */
-export function EscribirResena({ usuarioId, tituloContenido }: EscribirResenaProps) {
+export function EscribirResena({ usuarioId, tituloContenido }: Readonly<EscribirResenaProps>) {
   const resenas = useResenas();
 
   if (!resenas) return null;

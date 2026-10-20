@@ -19,7 +19,7 @@ export function ContentReviewCard({
   resena,
   esRespuesta = false,
   acciones,
-}: ContentReviewCardProps) {
+}: Readonly<ContentReviewCardProps>) {
   const nombreCompleto = `${resena.autor.nombre} ${resena.autor.apellido}`;
 
   return (

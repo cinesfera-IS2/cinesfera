@@ -8,7 +8,7 @@ type FiltroAnioProps = {
  * A diferencia del tipo, no aplica el filtro al cambiar: buscaría con cada
  * dígito que se tipea ("1", "19", "199"…), así que se espera a Enter o a la lupa.
  */
-export function FiltroAnio({ valor }: FiltroAnioProps) {
+export function FiltroAnio({ valor }: Readonly<FiltroAnioProps>) {
   return (
     <label className="flex h-11 w-28 shrink-0 items-center gap-2 rounded-lg border border-night-600 bg-night-900 px-3.5 transition-colors focus-within:border-brand-400 hover:border-ink-500">
       <span aria-hidden className="text-sm font-semibold text-ink-400">

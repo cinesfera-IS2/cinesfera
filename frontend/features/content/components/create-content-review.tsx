@@ -133,10 +133,6 @@ export function CreateContentReview({
         onCancel={(evento) => {
           if (enviando) evento.preventDefault();
         }}
-        // Un clic en el fondo oscuro llega al propio <dialog>, no al formulario.
-        onClick={(evento) => {
-          if (evento.target === evento.currentTarget) cerrar();
-        }}
         className="dialogo-animado m-auto w-[min(42rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-night-850 p-0 text-ink-100 shadow-[0_32px_80px_-20px_rgb(0_0_0/0.8)] backdrop:bg-night-950/80 backdrop:backdrop-blur-sm"
       >
         <form onSubmit={publicar} noValidate className="flex flex-col">

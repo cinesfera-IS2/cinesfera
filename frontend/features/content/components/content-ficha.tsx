@@ -15,7 +15,7 @@ type ContentFichaProps = {
   usuario: UsuarioSesion | null;
 };
 
-export function ContentFicha({ contenido, usuario }: ContentFichaProps) {
+export function ContentFicha({ contenido, usuario }: Readonly<ContentFichaProps>) {
   const tituloOriginal = tituloOriginalDistinto(contenido);
   const datos = [
     contenido.fecha_estreno && {
