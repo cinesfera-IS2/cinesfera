@@ -249,7 +249,8 @@ esos dos seguimientos y no se guarda por separado.
   `son_amigos` respecto de la sesión actual.
 - `GET /usuarios/{usuario_id}/seguidores` lista quiénes siguen al usuario.
 - `GET /usuarios/{usuario_id}/seguidos` lista a quiénes sigue.
-- `GET /usuarios/{usuario_id}/amigos` lista únicamente los seguimientos mutuos.
+- `GET /usuarios/{usuario_id}/amigos` lista únicamente los seguimientos mutuos;
+  requiere sesión y solo permite consultar los amigos de la propia cuenta.
 
 Seguirse a uno mismo responde `400`, repetir un seguimiento responde `409` y
 dejar de seguir una relación inexistente responde `404`. Los cambios requieren

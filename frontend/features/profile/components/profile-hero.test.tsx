@@ -17,7 +17,7 @@ const PERFIL: PerfilPublico = {
   fechaRegistro: "2026-02-14",
   bio: "Fan de los thrillers.",
   generosFavoritos: [],
-  estadisticas: { resenas: 12, vistas: 1340, seguidores: 5, siguiendo: 3 },
+  estadisticas: { resenas: 12, seguidores: 5, siguiendo: 3 },
 };
 
 describe("ProfileHero", () => {
@@ -32,11 +32,13 @@ describe("ProfileHero", () => {
     expect(screen.getByText("Fan de los thrillers.")).toBeTruthy();
   });
 
-  it("muestra las estadísticas con separador de miles", () => {
+  it("muestra las estadísticas públicas y oculta amigos en perfiles ajenos", () => {
     render(<ProfileHero perfil={PERFIL} esPropio={false} haySesion={false} />);
 
     expect(screen.getByText("12")).toBeTruthy();
-    expect(screen.getByText("1.340")).toBeTruthy();
+    expect(screen.getAllByText("5").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Vistas")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ver amigos" })).toBeNull();
   });
 
   it("sin foto usa las iniciales en mayúscula", () => {

@@ -11,7 +11,6 @@ vi.mock("@/features/profile/data/perfiles", () => ({
 
 const ESTADISTICAS = {
   resenas: 12,
-  vistas: 1340,
   seguidores: 5,
   siguiendo: 3,
 };
@@ -40,7 +39,13 @@ describe("ProfileStats", () => {
         nombreUsuario: "brunod",
       },
     ]);
-    render(<ProfileStats usuarioId="u1" estadisticas={ESTADISTICAS} />);
+    render(
+      <ProfileStats
+        usuarioId="u1"
+        estadisticas={ESTADISTICAS}
+        esPropio={false}
+      />
+    );
 
     await userEvent.click(
       screen.getByRole("button", { name: "Ver seguidores" })
@@ -57,7 +62,13 @@ describe("ProfileStats", () => {
 
   it("permite cambiar a seguidos sin salir del diálogo", async () => {
     vi.mocked(obtenerListaSeguimientos).mockResolvedValue([]);
-    render(<ProfileStats usuarioId="u1" estadisticas={ESTADISTICAS} />);
+    render(
+      <ProfileStats
+        usuarioId="u1"
+        estadisticas={ESTADISTICAS}
+        esPropio={false}
+      />
+    );
 
     await userEvent.click(
       screen.getByRole("button", { name: "Ver seguidores" })
@@ -76,7 +87,13 @@ describe("ProfileStats", () => {
     vi.mocked(obtenerListaSeguimientos)
       .mockRejectedValueOnce(new Error("red caída"))
       .mockResolvedValueOnce([]);
-    render(<ProfileStats usuarioId="u1" estadisticas={ESTADISTICAS} />);
+    render(
+      <ProfileStats
+        usuarioId="u1"
+        estadisticas={ESTADISTICAS}
+        esPropio={false}
+      />
+    );
 
     await userEvent.click(
       screen.getByRole("button", { name: "Ver siguiendo" })
@@ -91,5 +108,39 @@ describe("ProfileStats", () => {
       await screen.findByText("Este perfil todavía no sigue a nadie.")
     ).toBeTruthy();
     expect(obtenerListaSeguimientos).toHaveBeenCalledTimes(2);
+  });
+
+  it("muestra los amigos solo en el perfil propio", async () => {
+    const amigos = [
+      {
+        id: "u2",
+        nombre: "Bruno",
+        apellido: "Díaz",
+        nombreUsuario: "brunod",
+      },
+    ];
+    const { rerender } = render(
+      <ProfileStats
+        usuarioId="u1"
+        estadisticas={ESTADISTICAS}
+        esPropio={false}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "Ver amigos" })).toBeNull();
+
+    rerender(
+      <ProfileStats
+        usuarioId="u1"
+        estadisticas={ESTADISTICAS}
+        esPropio
+        amigosIniciales={amigos}
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Ver amigos" }));
+
+    expect(screen.getByText("Amigos")).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Bruno Díaz/ })).toBeTruthy();
+    expect(obtenerListaSeguimientos).not.toHaveBeenCalledWith("u1", "amigos");
   });
 });

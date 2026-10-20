@@ -5,9 +5,13 @@ import PerfilNoEncontrado from "./not-found";
 import ProfilePage, { generateMetadata } from "./page";
 import { obtenerSesion, type UsuarioSesion } from "@/features/auth/session";
 import { obtenerPerfilPublico } from "@/features/profile";
+import { obtenerAmigosPropios } from "@/features/profile/data/amigos-servidor";
 import type { PerfilPublico } from "@/features/profile/types";
 
 vi.mock("@/features/auth/session", () => ({ obtenerSesion: vi.fn() }));
+vi.mock("@/features/profile/data/amigos-servidor", () => ({
+  obtenerAmigosPropios: vi.fn(),
+}));
 
 vi.mock("@/features/profile/components/follow-button", () => ({
   FollowButton: () => <button type="button">Seguir</button>,
@@ -42,7 +46,7 @@ const PERFIL: PerfilPublico = {
   fechaRegistro: "2026-02-14",
   bio: "Fan de los thrillers.",
   generosFavoritos: [],
-  estadisticas: { resenas: 0, vistas: 0, seguidores: 0, siguiendo: 0 },
+  estadisticas: { resenas: 0, seguidores: 0, siguiendo: 0 },
 };
 
 const SESION_PROPIA: UsuarioSesion = {
@@ -69,6 +73,7 @@ describe("página de perfil", () => {
     cleanup();
     vi.mocked(obtenerPerfilPublico).mockReset();
     vi.mocked(obtenerSesion).mockReset();
+    vi.mocked(obtenerAmigosPropios).mockReset();
   });
 
   it("titula la pestaña con el nombre y usa la bio como descripción", async () => {
@@ -107,6 +112,8 @@ describe("página de perfil", () => {
     expect(screen.getByRole("button", { name: "Seguir" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Ana no publicó reseñas" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ver amigos" })).toBeNull();
+    expect(obtenerAmigosPropios).not.toHaveBeenCalled();
   });
 
   it("con la sesión de otra persona sigue viéndose como visitante", async () => {
@@ -128,12 +135,22 @@ describe("página de perfil", () => {
   it("en el perfil propio ofrece editarlo y muestra el email", async () => {
     simularPerfil(PERFIL);
     vi.mocked(obtenerSesion).mockResolvedValue(SESION_PROPIA);
+    vi.mocked(obtenerAmigosPropios).mockResolvedValue([
+      {
+        id: "u2",
+        nombre: "Bruno",
+        apellido: "Díaz",
+        nombreUsuario: "brunod",
+      },
+    ]);
 
     render(await ProfilePage(props("anatorres")));
 
     expect(screen.getByRole("button", { name: "Editar perfil" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Seguir" })).toBeNull();
     expect(screen.getByText("ana@example.com")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver amigos" })).toBeTruthy();
+    expect(obtenerAmigosPropios).toHaveBeenCalledWith("u1");
   });
 
   it("responde con not-found cuando el perfil no existe", async () => {

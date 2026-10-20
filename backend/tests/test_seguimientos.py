@@ -93,6 +93,29 @@ class SeguimientosTests(unittest.TestCase):
             ["bea"]
         )
 
+    def test_cada_usuario_solo_puede_listar_sus_propios_amigos(self):
+        self.crear_seguimiento(self.ana, self.bea)
+        self.crear_seguimiento(self.bea, self.ana)
+
+        respuesta = self.client.get(
+            f"/usuarios/{self.bea.id}/amigos"
+        )
+
+        self.assertEqual(respuesta.status_code, 403, respuesta.text)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            "No tiene permiso para consultar estos amigos"
+        )
+
+    def test_listar_amigos_requiere_una_sesion(self):
+        app.dependency_overrides.pop(obtener_usuario_actual)
+
+        respuesta = self.client.get(
+            f"/usuarios/{self.ana.id}/amigos"
+        )
+
+        self.assertEqual(respuesta.status_code, 401, respuesta.text)
+
     def test_dejar_de_seguir_rompe_la_amistad_pero_conserva_el_inverso(self):
         self.crear_seguimiento(self.ana, self.bea)
         self.crear_seguimiento(self.bea, self.ana)
