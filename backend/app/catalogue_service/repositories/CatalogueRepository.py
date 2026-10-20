@@ -17,6 +17,15 @@ class CatalogueRepository:
         }
 
 
+    def _get(self, url, **kwargs):
+        # Solo GET: reintentar cortes de red no duplica escrituras.
+        for intento in range(3):
+            try:
+                return httpx.get(url, timeout=10, **kwargs)
+            except (httpx.ConnectError, httpx.TimeoutException):
+                if intento == 2:
+                    raise
+
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     
     def movie_to_content(self, movie):
@@ -66,7 +75,7 @@ class CatalogueRepository:
                 "page": page
             }
 
-        response = httpx.get(
+        response = self._get(
                 url,
                 headers=self.headers,
                 params=params
@@ -97,7 +106,7 @@ class CatalogueRepository:
             "page": page
         }
 
-        response = httpx.get(
+        response = self._get(
             url,
             headers=self.headers,
             params=params
@@ -169,7 +178,7 @@ class CatalogueRepository:
                 "language": "es-ES"
             }
 
-        response = httpx.get(url, headers=self.headers, params=params)
+        response = self._get(url, headers=self.headers, params=params)
 
         response.raise_for_status()
 
@@ -192,7 +201,7 @@ class CatalogueRepository:
                     "language": "es-ES"
                 }
     
-            response = httpx.get(url, headers=self.headers, params=params)
+            response = self._get(url, headers=self.headers, params=params)
     
             response.raise_for_status()
     

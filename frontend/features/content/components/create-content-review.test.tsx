@@ -141,7 +141,7 @@ describe("CreateContentReview", () => {
         body: JSON.stringify({
           usuario_id: "usuario-1",
           texto: "Estoy de acuerdo con vos",
-          calificacion: 4,
+          calificacion: null,
           plataforma_id: null,
           resena_padre_id: "resena-original",
         }),

@@ -34,6 +34,7 @@ export function ContentReviewThread({
             tmdbId={tmdbId}
             usuarioId={usuarioId}
             resenaPadreId={hilo.resena.id}
+            permiteCalificacion={hilo.resena.resena_padre_id === null && hilo.resena.autor.id !== usuarioId}
             onPublicada={onPublicada}
           />
         </div>

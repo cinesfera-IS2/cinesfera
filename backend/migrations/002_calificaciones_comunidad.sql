@@ -35,3 +35,8 @@ CREATE TABLE IF NOT EXISTS public.calificaciones_resenas (
 
 CREATE INDEX IF NOT EXISTS ix_calificaciones_resenas_resena_id
 ON public.calificaciones_resenas (resena_id);
+
+-- El acceso se realiza desde FastAPI mediante su conexion PostgreSQL.
+-- Sin politicas, RLS bloquea el acceso por la Data API para clientes.
+ALTER TABLE public.calificaciones_resenas ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.calificaciones_resenas FROM anon, authenticated;

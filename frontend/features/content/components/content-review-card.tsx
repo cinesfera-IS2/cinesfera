@@ -44,7 +44,7 @@ export function ContentReviewCard({ resena }: ContentReviewCardProps) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <StarRating puntaje={resena.calificacion} />
+          {resena.calificacion !== null && <StarRating puntaje={resena.calificacion} />}
           <time dateTime={resena.fecha} className="text-xs text-ink-500">
             {fechaLarga(resena.fecha)}
           </time>

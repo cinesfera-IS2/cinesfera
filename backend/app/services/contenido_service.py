@@ -4,11 +4,12 @@ from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.contenido import Contenido
-from app.models.resena import Resena, ValoracionResena
+from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.schemas.contenido import (
     AutorResena,
@@ -30,6 +31,10 @@ class CatalogoNoDisponibleError(Exception):
 
 
 class ResenaPadreNoEncontradaError(Exception):
+    pass
+
+
+class CalificacionDuplicadaError(Exception):
     pass
 
 
@@ -109,7 +114,7 @@ def obtener_resenas_contenido(
             contenido_tmdb_id=resena.contenido_tmdb_id,
             resena_padre_id=resena.resena_padre_id,
             plataforma_id=resena.plataforma_id,
-            calificacion=float(resena.calificacion),
+            calificacion=float(resena.calificacion) if resena.calificacion is not None else None,
             texto=resena.texto,
             fecha=resena.fecha,
             valoracion=int(valoracion),
@@ -156,6 +161,19 @@ def crear_resena(
                 "La reseña padre no pertenece al contenido indicado"
             )
 
+    if datos.resena_padre_id is None:
+        if datos.calificacion is None:
+            raise ValueError("La reseña original requiere una calificación")
+    elif datos.calificacion is not None:
+        if padre.resena_padre_id is not None:
+            raise ValueError("Las respuestas a comentarios no admiten estrellas")
+        if padre.usuario_id == usuario_id:
+            raise ValueError("No se puede valorar una reseña propia")
+        if datos.calificacion < 0.5 or datos.calificacion * 2 % 1 != 0:
+            raise ValueError("La calificación debe ser de 0.5 a 5 en pasos de 0.5")
+        if db.get(CalificacionResena, (usuario_id, padre.id)) is not None:
+            raise CalificacionDuplicadaError("Ya valoraste esta reseña")
+
     texto = datos.texto.strip()
     if not texto:
         raise ValueError("El texto de la reseña no puede estar vacío")
@@ -171,7 +189,28 @@ def crear_resena(
         fecha=datetime.now(timezone.utc),
     )
     db.add(resena)
-    db.commit()
+    if datos.resena_padre_id is not None and datos.calificacion is not None:
+        calificacion = CalificacionResena(
+            usuario_id=usuario_id,
+            resena_id=padre.id,
+            calificacion=datos.calificacion,
+            fecha_actualizacion=resena.fecha,
+        )
+        # Insertar primero la valoración: la PK resuelve también la carrera
+        # entre solicitudes que superaron simultáneamente la consulta previa.
+        db.add(calificacion)
+        try:
+            db.flush([calificacion])
+        except IntegrityError as error:
+            db.rollback()
+            if db.get(CalificacionResena, (usuario_id, padre.id)) is not None:
+                raise CalificacionDuplicadaError("Ya valoraste esta reseña") from error
+            raise
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
     db.refresh(resena)
 
     return ResenaCreadaRespuesta(
@@ -181,7 +220,7 @@ def crear_resena(
         contenido_tmdb_id=resena.contenido_tmdb_id,
         resena_padre_id=resena.resena_padre_id,
         plataforma_id=resena.plataforma_id,
-        calificacion=float(resena.calificacion),
+        calificacion=float(resena.calificacion) if resena.calificacion is not None else None,
         texto=resena.texto,
         fecha=resena.fecha,
     )

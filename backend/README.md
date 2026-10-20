@@ -503,3 +503,26 @@ cinesfera/
    ```
 
 2. Agregalo a `requirements.txt` (a mano, o regenerando el archivo con `pip freeze > requirements.txt`) y avisá al equipo para que actualicen su entorno con `pip install -r requirements.txt`.
+
+
+## SCRUM-123: valoraciones por usuario y reseña
+
+Aplicar en orden las migraciones `001_agregar_resena_padre.sql` y
+`002_calificaciones_comunidad.sql` antes de usar este backend. La segunda
+permite `calificacion = null` y crea `calificaciones_resenas` con una clave
+primaria `(usuario_id, resena_id)` que impide duplicados incluso concurrentes.
+No se requieren migraciones adicionales para SCRUM-123.
+
+En `POST /contenidos/{tipo}/{tmdb_id}/resenas`:
+
+- Sin `resena_padre_id`: la reseña original requiere calificación.
+- Con el ID de una reseña original: admite comentario y una valoración
+  de 0.5 a 5 en pasos de 0.5. La valoración y el comentario se guardan
+  en una sola transacción. Un duplicado devuelve `409` sin guardar el comentario.
+- Para comentar sin valorar, omitir `calificacion` o enviar `null`.
+- Las respuestas a comentarios y las autovaloraciones con estrellas
+  se rechazan con `422`. Se pueden responder comentarios sin estrellas.
+
+Las respuestas de creación, listado y perfil admiten `calificacion: null`.
+La tabla `valoraciones_resena` conserva su función previa y es independiente
+de las calificaciones con estrellas de `calificaciones_resenas`.

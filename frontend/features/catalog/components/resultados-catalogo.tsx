@@ -1,5 +1,6 @@
 import { FilmSlateIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { ApiError } from "@/lib/api";
 
 import { PaginacionCatalogo } from "@/features/catalog/components/paginacion-catalogo";
 import { ObraCard } from "@/features/catalog/components/obra-card";
@@ -15,7 +16,20 @@ export const GRILLA_OBRAS =
   "grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-4 lg:grid-cols-5";
 
 export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
-  const { obras, pagina, totalPaginas } = await buscarObras(filtros);
+  let resultado;
+  try {
+    resultado = await buscarObras(filtros);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status < 500) throw error;
+    return (
+      <section role="alert" className="rounded-2xl border border-night-600 p-8 text-center">
+        <h2 className="font-display text-lg font-bold">No pudimos cargar el catálogo</h2>
+        <p className="mt-3 text-ink-400">El servicio no responde en este momento. Probá nuevamente.</p>
+        <a href="/catalogo" className="mt-4 inline-block text-glow-400">Reintentar</a>
+      </section>
+    );
+  }
+  const { obras, pagina, totalPaginas } = resultado;
   const filtrado = hayFiltrosActivos(filtros);
 
   if (obras.length === 0) {

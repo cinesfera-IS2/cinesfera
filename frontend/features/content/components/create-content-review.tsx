@@ -12,6 +12,7 @@ type CreateContentReviewProps = {
   tmdbId: number;
   usuarioId: string;
   resenaPadreId?: string;
+  permiteCalificacion?: boolean;
   onPublicada: () => void;
 };
 
@@ -20,6 +21,7 @@ export function CreateContentReview({
   tmdbId,
   usuarioId,
   resenaPadreId,
+  permiteCalificacion = true,
   onPublicada,
 }: CreateContentReviewProps) {
   const dialogo = useRef<HTMLDialogElement>(null);
@@ -44,7 +46,10 @@ export function CreateContentReview({
     const campos = new FormData(formulario);
 
     const texto = String(campos.get("texto") ?? "").trim();
-    const calificacion = Number(campos.get("calificacion"));
+    const valor = campos.get("calificacion");
+    const calificacion = permiteCalificacion && valor !== null && valor !== ""
+      ? Number(valor)
+      : null;
 
     if (!texto) {
       setError("Escribí una reseña antes de publicarla.");
@@ -118,14 +123,16 @@ export function CreateContentReview({
             </button>
           </div>
 
+          {permiteCalificacion && (
           <label className="flex flex-col gap-2 text-sm">
             Calificación
             <select
               name="calificacion"
-              defaultValue="4"
+              defaultValue={esRespuesta ? "" : "4"}
               className="rounded-lg border border-night-600 bg-night-900 p-3"
             >
-              {Array.from({ length: 11 }, (_, i) => i * 0.5).map(
+              {esRespuesta && <option value="">Sin valoración (solo comentario)</option>}
+              {Array.from({ length: esRespuesta ? 10 : 11 }, (_, i) => (i + (esRespuesta ? 1 : 0)) * 0.5).map(
                 (valor) => (
                   <option key={valor} value={valor}>
                     {valor.toFixed(1)} de 5
@@ -134,6 +141,7 @@ export function CreateContentReview({
               )}
             </select>
           </label>
+          )}
 
           <label className="flex flex-col gap-2 text-sm">
             {esRespuesta ? "Tu respuesta" : "Tu reseña"}

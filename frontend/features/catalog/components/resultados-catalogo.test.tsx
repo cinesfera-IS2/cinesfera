@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ResultadosCatalogo } from "./resultados-catalogo";
+import { ApiError } from "@/lib/api";
 import { buscarObras } from "@/features/catalog/data/catalogo";
 import type {
   FiltrosCatalogo,
@@ -48,6 +49,13 @@ describe("ResultadosCatalogo", () => {
   afterEach(() => {
     cleanup();
     vi.mocked(buscarObras).mockReset();
+  });
+
+  it("permite reintentar cuando el servicio falla", async () => {
+    vi.mocked(buscarObras).mockRejectedValueOnce(new ApiError(502, "Sin conexion"));
+    render(await ResultadosCatalogo({ filtros: FILTROS }));
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Reintentar" })).toBeTruthy();
   });
 
   it("busca con los filtros recibidos", async () => {

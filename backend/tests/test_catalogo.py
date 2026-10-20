@@ -57,6 +57,25 @@ class CatalogoTests(unittest.TestCase):
         token.start()
         self.addCleanup(token.stop)
 
+    def test_reintenta_corte_transitorio(self, get):
+        llamadas = 0
+        def consultar(url, **kwargs):
+            nonlocal llamadas
+            llamadas += 1
+            if llamadas == 1:
+                raise httpx.ConnectError("Conexion interrumpida")
+            return respuesta_tmdb(url, **kwargs)
+        get.side_effect = consultar
+        respuesta = self.client.get("/catalogue/")
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(llamadas, 3)
+
+    def test_corte_persistente_devuelve_502(self, get):
+        get.side_effect = httpx.ConnectError("Conexion interrumpida")
+        respuesta = self.client.get("/catalogue/")
+        self.assertEqual(respuesta.status_code, 502)
+        self.assertEqual(get.call_count, 3)
+
     def titulos(self, respuesta):
         return [contenido["title"] for contenido in respuesta.json()["contents"]]
 

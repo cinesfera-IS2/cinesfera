@@ -16,6 +16,7 @@ from app.schemas.contenido import (
 )
 from app.services.contenido_service import (
     CatalogoNoDisponibleError,
+    CalificacionDuplicadaError,
     ContenidoNoEncontradoError,
     ResenaPadreInvalidaError,
     ResenaPadreNoEncontradaError,
@@ -64,7 +65,7 @@ def publicar_resena(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
-    except ResenaPadreInvalidaError as error:
+    except (ResenaPadreInvalidaError, CalificacionDuplicadaError) as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
