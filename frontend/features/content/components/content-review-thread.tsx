@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ContentReviewCard } from "@/features/content/components/content-review-card";
@@ -25,24 +24,27 @@ export function ContentReviewThread({
 }: ContentReviewThreadProps) {
   return (
     <div>
-      <ContentReviewCard resena={hilo.resena} />
-
-      {usuarioId && (
-        <div className="mt-2">
-          <CreateContentReview
-            tipo={tipo}
-            tmdbId={tmdbId}
-            usuarioId={usuarioId}
-            resenaPadreId={hilo.resena.id}
-            onPublicada={onPublicada}
-          />
-        </div>
-      )}
+      <ContentReviewCard
+        resena={hilo.resena}
+        esRespuesta={profundidad > 0}
+        acciones={
+          usuarioId && (
+            <CreateContentReview
+              tipo={tipo}
+              tmdbId={tmdbId}
+              usuarioId={usuarioId}
+              resenaPadreId={hilo.resena.id}
+              subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
+              onPublicada={onPublicada}
+            />
+          )
+        }
+      />
 
       {hilo.respuestas.length > 0 && (
         <div
-          className={`mt-4 flex flex-col gap-4 border-l-2 border-night-600 pl-4 ${
-            profundidad < 2 ? "sm:ml-6" : ""
+          className={`mt-3 flex flex-col gap-3 border-l border-night-600 pl-4 sm:pl-5 ${
+            profundidad < 2 ? "ml-5 sm:ml-7" : ""
           }`}
         >
           {hilo.respuestas.map((respuesta) => (

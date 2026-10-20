@@ -14,6 +14,11 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 const ORDEN_POR_DEFECTO: Orden = "populares";
 
+const NOMBRE_TIPO: Record<TipoObra, string> = {
+  pelicula: "Películas",
+  serie: "Series",
+};
+
 function primero(valor: string | string[] | undefined): string | undefined {
   return Array.isArray(valor) ? valor[0] : valor;
 }
@@ -83,6 +88,61 @@ export function hrefCatalogo(
 
   const query = params.toString();
   return query ? `/catalogo?${query}` : "/catalogo";
+}
+
+/**
+ * Lo que se está mirando, dicho en palabras. Sin filtros el backend devuelve
+ * lo más nuevo primero, por eso el título por defecto es "Últimos estrenos".
+ */
+export function tituloResultados(filtros: FiltrosCatalogo): string {
+  if (filtros.texto) return `Resultados para «${filtros.texto}»`;
+
+  const tipo = filtros.tipo ? NOMBRE_TIPO[filtros.tipo] : null;
+
+  if (filtros.anioEstreno) {
+    return `${tipo ?? "Películas y series"} de ${filtros.anioEstreno}`;
+  }
+
+  return tipo ?? "Últimos estrenos";
+}
+
+export type FiltroActivo = {
+  clave: "texto" | "tipo" | "anioEstreno";
+  etiqueta: string;
+  /** El catálogo con este filtro quitado y vuelta a la primera página. */
+  hrefSinFiltro: string;
+};
+
+export function filtrosActivos(filtros: FiltrosCatalogo): FiltroActivo[] {
+  const activos: FiltroActivo[] = [];
+  const sin = (cambios: Partial<FiltrosCatalogo>) =>
+    hrefCatalogo(filtros, { ...cambios, pagina: 1 });
+
+  if (filtros.texto) {
+    activos.push({
+      clave: "texto",
+      etiqueta: `«${filtros.texto}»`,
+      hrefSinFiltro: sin({ texto: undefined }),
+    });
+  }
+
+  if (filtros.tipo) {
+    activos.push({
+      clave: "tipo",
+      etiqueta: NOMBRE_TIPO[filtros.tipo],
+      hrefSinFiltro: sin({ tipo: undefined }),
+    });
+  }
+
+  if (filtros.anioEstreno) {
+    activos.push({
+      clave: "anioEstreno",
+      etiqueta: String(filtros.anioEstreno),
+      hrefSinFiltro: sin({ anioEstreno: undefined }),
+    });
+  }
+
+  return activos;
 }
 
 export function hayFiltrosActivos(filtros: FiltrosCatalogo): boolean {

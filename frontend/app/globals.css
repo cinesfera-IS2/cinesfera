@@ -31,6 +31,9 @@
 
 :root {
   color-scheme: dark;
+  /* Alto de LandingHeader (py-4 más su fila de botones, en todos los anchos).
+     Lo usan las barras que se pegan debajo de ella. */
+  --alto-cabecera: 71px;
 }
 
 body {
@@ -52,15 +55,100 @@ body {
   [aria-disabled="true"] {
     cursor: not-allowed;
   }
+
+  :focus-visible {
+    outline: 2px solid var(--color-glow-400);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-brand-500) 55%, transparent);
+    color: var(--color-ink-100);
+  }
 }
 
-/* Oculta la barra de scroll del carrusel "Joyas de la cartelera" sin quitar el scroll. */
-@utility scrollbar-hide {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+/* La portada de la ficha se enciende como una proyección: aparece y se asienta
+   una sola vez, al entrar a la página. */
+@keyframes proyeccion {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
 
-  &::-webkit-scrollbar {
+/* Estas clases van sin anidar (ni `&` ni declaraciones sueltas dentro de
+   @media): el analizador de CSS de SonarQube no entiende el anidado de
+   @utility y lo marca como error. Ninguna se usa con variantes de Tailwind. */
+@layer components {
+  /* Los diálogos aparecen desde un poco más chicos y se van más rápido de lo
+     que entran. `allow-discrete` deja animar también el cierre del <dialog>. */
+  .dialogo-animado {
+    opacity: 0;
+    transform: scale(0.96);
+    transition:
+      opacity 150ms ease-out,
+      transform 150ms ease-out,
+      overlay 150ms ease-out allow-discrete,
+      display 150ms ease-out allow-discrete;
+  }
+
+  .dialogo-animado[open] {
+    opacity: 1;
+    transform: scale(1);
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .dialogo-animado::backdrop {
+    opacity: 0;
+    transition:
+      opacity 200ms ease-out,
+      overlay 200ms ease-out allow-discrete,
+      display 200ms ease-out allow-discrete;
+  }
+
+  .dialogo-animado[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .dialogo-animado[open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    .dialogo-animado[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Oculta la barra de scroll del carrusel "Joyas de la cartelera" sin quitar el scroll. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .proyeccion {
+    animation: proyeccion 1100ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialogo-animado,
+  .dialogo-animado[open] {
+    transform: none;
+  }
+
+  @starting-style {
+    .dialogo-animado[open] {
+      transform: none;
+    }
   }
 }
 

@@ -23,7 +23,8 @@ class Resena(Base):
         index=True,
     )
     plataforma_id: Mapped[int | None] = mapped_column(Integer)
-    calificacion: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    # En la base la columna admite NULL; queda pendiente decidir si se restringe.
+    calificacion: Mapped[Decimal | None] = mapped_column(Numeric)
     texto: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

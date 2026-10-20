@@ -8,7 +8,7 @@ class ResenaPublica(BaseModel):
     id: UUID
     contenido_tmdb_id: int
     plataforma_id: int | None
-    calificacion: float
+    calificacion: float | None
     texto: str
     fecha: datetime
 

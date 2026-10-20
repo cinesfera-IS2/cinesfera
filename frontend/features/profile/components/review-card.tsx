@@ -29,7 +29,7 @@ export function ReviewCard({ resena }: ReviewCardProps) {
             )}
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <StarRating puntaje={resena.puntaje} />
+            {resena.puntaje !== null && <StarRating puntaje={resena.puntaje} />}
             <time
               dateTime={resena.fecha}
               className="text-xs text-ink-500"

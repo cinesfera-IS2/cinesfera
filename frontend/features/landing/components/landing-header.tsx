@@ -32,10 +32,11 @@ export async function LandingHeader() {
                 y no escondida entre los links del menú. */}
             <Link
               href="/catalogo"
-              className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-brand-500 to-glow-400 px-4 py-2 text-sm font-bold sm:px-5 text-white shadow-lg shadow-glow-400/25 transition hover:shadow-glow-400/50 hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-brand-500 to-glow-400 px-3 py-2 text-sm font-bold sm:px-5 text-white shadow-lg shadow-glow-400/25 transition hover:shadow-glow-400/50 hover:brightness-110"
             >
               <CompassIcon weight="bold" className="size-4" />
-              Explorar
+              {/* En móvil queda solo el ícono para que entren logo, Explorar y Acceder. */}
+              <span className="sr-only sm:not-sr-only">Explorar</span>
             </Link>
 
             {sesion ? (

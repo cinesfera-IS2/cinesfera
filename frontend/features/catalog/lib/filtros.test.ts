@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hrefCatalogo, leerFiltros, paginasVisibles } from "./filtros";
+import {
+  filtrosActivos,
+  hrefCatalogo,
+  leerFiltros,
+  paginasVisibles,
+  tituloResultados,
+} from "./filtros";
 
 describe("leerFiltros", () => {
   it("sin parámetros usa los valores por defecto", () => {
@@ -89,6 +95,44 @@ describe("hrefCatalogo", () => {
     expect(hrefCatalogo(filtros, { genero: undefined })).toBe(
       "/catalogo?q=el+padrino"
     );
+  });
+});
+
+describe("tituloResultados", () => {
+  const base = leerFiltros({});
+
+  it("sin filtros nombra lo que devuelve el backend: lo más nuevo", () => {
+    expect(tituloResultados(base)).toBe("Últimos estrenos");
+  });
+
+  it("combina tipo y año", () => {
+    expect(tituloResultados({ ...base, tipo: "serie" })).toBe("Series");
+    expect(tituloResultados({ ...base, anioEstreno: 1999 })).toBe("Películas y series de 1999");
+    expect(tituloResultados({ ...base, tipo: "pelicula", anioEstreno: 1999 })).toBe(
+      "Películas de 1999"
+    );
+  });
+
+  it("una búsqueda manda sobre el resto", () => {
+    expect(tituloResultados({ ...base, texto: "dark", tipo: "serie" })).toBe(
+      "Resultados para «dark»"
+    );
+  });
+});
+
+describe("filtrosActivos", () => {
+  it("sin filtros no hay nada que quitar", () => {
+    expect(filtrosActivos(leerFiltros({}))).toEqual([]);
+  });
+
+  it("cada filtro sabe cómo quitarse y vuelve a la primera página", () => {
+    const filtros = leerFiltros({ q: "dark", tipo: "serie", anio: "2017", pagina: "3" });
+
+    expect(filtrosActivos(filtros)).toEqual([
+      { clave: "texto", etiqueta: "«dark»", hrefSinFiltro: "/catalogo?tipo=serie&anio=2017" },
+      { clave: "tipo", etiqueta: "Series", hrefSinFiltro: "/catalogo?q=dark&anio=2017" },
+      { clave: "anioEstreno", etiqueta: "2017", hrefSinFiltro: "/catalogo?q=dark&tipo=serie" },
+    ]);
   });
 });
 
