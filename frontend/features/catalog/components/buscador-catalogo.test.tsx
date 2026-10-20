@@ -19,6 +19,12 @@ function campo<T extends HTMLElement>(etiqueta: string) {
   return screen.getByLabelText(etiqueta) as T;
 }
 
+function tipoElegido() {
+  return (screen.getAllByRole("radio") as HTMLInputElement[]).find(
+    (opcion) => opcion.checked
+  )?.value;
+}
+
 describe("BuscadorCatalogo", () => {
   afterEach(cleanup);
 
@@ -28,7 +34,7 @@ describe("BuscadorCatalogo", () => {
     expect(
       campo<HTMLInputElement>("Buscar películas y series por título").value
     ).toBe("");
-    expect(campo<HTMLSelectElement>("Tipo").value).toBe("");
+    expect(tipoElegido()).toBe("");
     expect(campo<HTMLInputElement>("Año de estreno").value).toBe("");
   });
 
@@ -47,8 +53,16 @@ describe("BuscadorCatalogo", () => {
     expect(
       campo<HTMLInputElement>("Buscar películas y series por título").value
     ).toBe("matrix");
-    expect(campo<HTMLSelectElement>("Tipo").value).toBe("serie");
+    expect(tipoElegido()).toBe("serie");
     expect(campo<HTMLInputElement>("Año de estreno").value).toBe("1999");
+  });
+
+  it("ofrece los tres tipos a la vista", () => {
+    render(<BuscadorCatalogo filtros={FILTROS} />);
+
+    expect(screen.getByRole("group", { name: "Tipo" })).toBeTruthy();
+    expect(screen.getAllByRole("radio").map((opcion) => opcion.closest("label")?.textContent))
+      .toEqual(["Todo", "Películas", "Series"]);
   });
 
   it("no muestra los filtros que el backend todavía no soporta", () => {

@@ -23,8 +23,8 @@ type ResenaApi = {
   id: string;
   contenido_tmdb_id: number;
   plataforma_id: number | null;
-  /** De 0.5 a 5, en pasos de media estrella. */
-  calificacion: number;
+  /** De 0.5 a 5, en pasos de media estrella; `null` si quedó guardada sin nota. */
+  calificacion: number | null;
   texto: string;
   /** ISO con hora y zona. */
   fecha: string;

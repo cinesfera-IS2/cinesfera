@@ -32,8 +32,8 @@ export type ResenaPerfil = {
   titulo: string;
   /** Falta mientras el catálogo no resuelva el id de TMDB. */
   anio?: number;
-  /** De 0 a 5, en pasos de media estrella. */
-  puntaje: number;
+  /** De 0 a 5, en pasos de media estrella; `null` si la reseña quedó sin nota. */
+  puntaje: number | null;
   /** ISO `YYYY-MM-DD`. */
   fecha: string;
   comentario: string;

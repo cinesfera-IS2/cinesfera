@@ -33,7 +33,8 @@ export type ResenaContenido = {
   contenido_tmdb_id: number;
   resena_padre_id: string | null;
   plataforma_id: number | null;
-  calificacion: number;
+  /** `null` si la reseña quedó guardada sin nota: la base todavía lo permite. */
+  calificacion: number | null;
   texto: string;
   fecha: string;
   valoracion: number;

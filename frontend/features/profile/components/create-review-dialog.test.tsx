@@ -59,10 +59,7 @@ describe("CreateReviewDialog", () => {
     );
     await userEvent.selectOptions(screen.getByLabelText("Tipo"), "serie");
     await userEvent.type(screen.getByLabelText("ID de TMDB"), "1399");
-    await userEvent.selectOptions(
-      screen.getByLabelText("Calificación"),
-      "5"
-    );
+    await userEvent.click(screen.getByRole("radio", { name: "5 estrellas" }));
     await userEvent.type(screen.getByLabelText("Reseña"), "Excelente serie");
     await userEvent.click(
       screen.getByRole("button", { name: "Publicar reseña" })

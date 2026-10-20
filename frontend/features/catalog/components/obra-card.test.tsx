@@ -41,11 +41,18 @@ describe("ObraCard", () => {
     );
   });
 
-  it("sin póster usa el degradado de respaldo", () => {
+  it("sin póster avisa sobre el degradado de respaldo", () => {
     const { container } = render(<ObraCard obra={OBRA} />);
 
     expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.getByText("Portada no disponible")).toBeTruthy();
     expect(container.querySelector(".from-sky-500\\/35")).not.toBeNull();
+  });
+
+  it("con póster no muestra el aviso", () => {
+    render(<ObraCard obra={{ ...OBRA, poster: "/posters/matrix.jpg" }} />);
+
+    expect(screen.queryByText("Portada no disponible")).toBeNull();
   });
 
   it("con póster muestra la imagen", () => {

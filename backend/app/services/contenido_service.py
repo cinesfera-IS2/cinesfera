@@ -109,7 +109,9 @@ def obtener_resenas_contenido(
             contenido_tmdb_id=resena.contenido_tmdb_id,
             resena_padre_id=resena.resena_padre_id,
             plataforma_id=resena.plataforma_id,
-            calificacion=float(resena.calificacion),
+            calificacion=(
+                float(resena.calificacion) if resena.calificacion is not None else None
+            ),
             texto=resena.texto,
             fecha=resena.fecha,
             valoracion=int(valoracion),

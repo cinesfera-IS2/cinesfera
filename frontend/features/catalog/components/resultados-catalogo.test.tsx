@@ -82,12 +82,39 @@ describe("ResultadosCatalogo", () => {
     expect(screen.getAllByRole("article")).toHaveLength(2);
   });
 
-  it("solo ofrece limpiar filtros si hay alguno activo", async () => {
+  it("titula los resultados según los filtros", async () => {
     await renderizar({ obras: [obra(1)] });
+    expect(screen.getByRole("heading", { name: "Últimos estrenos" })).toBeTruthy();
+
+    cleanup();
+    await renderizar({ obras: [obra(1)] }, { ...FILTROS, tipo: "pelicula", anioEstreno: 1999 });
+    expect(screen.getByRole("heading", { name: "Películas de 1999" })).toBeTruthy();
+  });
+
+  it("deja quitar cada filtro activo por separado", async () => {
+    await renderizar({ obras: [obra(1)] });
+    expect(screen.queryByRole("list", { name: "Filtros activos" })).toBeNull();
+
+    cleanup();
+    await renderizar(
+      { obras: [obra(1)] },
+      { ...FILTROS, tipo: "serie", anioEstreno: 2015, pagina: 4 }
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Quitar filtro Series" }).getAttribute("href")
+    ).toBe("/catalogo?anio=2015");
+    expect(
+      screen.getByRole("link", { name: "Quitar filtro 2015" }).getAttribute("href")
+    ).toBe("/catalogo?tipo=serie");
+  });
+
+  it("solo ofrece limpiar todo cuando hay más de un filtro", async () => {
+    await renderizar({ obras: [obra(1)] }, { ...FILTROS, tipo: "serie" });
     expect(screen.queryByRole("link", { name: "Limpiar filtros" })).toBeNull();
 
     cleanup();
-    await renderizar({ obras: [obra(1)] }, { ...FILTROS, tipo: "serie" });
+    await renderizar({ obras: [obra(1)] }, { ...FILTROS, tipo: "serie", anioEstreno: 2015 });
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toBeTruthy();
   });
 });

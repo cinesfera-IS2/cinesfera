@@ -8,6 +8,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
+import { SelectorCalificacion } from "@/features/content/components/selector-calificacion";
 import { ApiError, apiFetch } from "@/lib/api";
 
 type CreateReviewDialogProps = {
@@ -137,19 +138,7 @@ export function CreateReviewDialog({ usuarioId }: CreateReviewDialogProps) {
             </label>
           </div>
 
-          <CampoSelect
-            label="Calificación"
-            name="calificacion"
-            defaultValue="4.5"
-          >
-            {Array.from({ length: 11 }, (_, indice) => indice * 0.5).map(
-              (valor) => (
-                <option key={valor} value={valor}>
-                  {valor.toFixed(1)} de 5
-                </option>
-              )
-            )}
-          </CampoSelect>
+          <SelectorCalificacion name="calificacion" valorInicial={4.5} />
 
           <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-400">
             Reseña

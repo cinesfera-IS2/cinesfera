@@ -25,17 +25,20 @@ vi.mock("@/features/content", () => ({
   ContentHero: ({ contenido }: { contenido: ContenidoDetalle }) => (
     <div>Hero: {contenido.titulo}</div>
   ),
-  ContentReviews: ({
-  tmdbId,
-  usuario,
+  ContentReviews: ({ usuario }: { usuario: { id: string } | null }) => (
+    <div>Reseñas — Usuario: {usuario?.id ?? "visitante"}</div>
+  ),
+  ContentSinopsis: ({ sinopsis }: { sinopsis: string }) => (
+    <div>Sinopsis: {sinopsis}</div>
+  ),
+  ContentFicha: () => <div>Ficha</div>,
+  ResenasProvider: ({
+    tmdbId,
+    children,
   }: {
     tmdbId: number;
-    usuario: { id: string } | null;
-  }) => (
-    <div>
-      Reseñas: {tmdbId} — Usuario: {usuario?.id ?? "visitante"}
-    </div>
-  ),
+    children: React.ReactNode;
+  }) => <div data-tmdb-id={tmdbId}>{children}</div>,
 }));
 
 vi.mock("@/features/landing", () => ({
@@ -126,8 +129,13 @@ describe("página de contenido", () => {
 
   expect(screen.getByText("Hero: El club de la pelea")).toBeTruthy();
   expect(
-    screen.getByText(/Reseñas: 550 — Usuario: visitante/)
+    screen.getByText(/Reseñas — Usuario: visitante/)
   ).toBeTruthy();
+  expect(screen.getByText("Sinopsis: Una sinopsis")).toBeTruthy();
+  expect(screen.getByText("Ficha")).toBeTruthy();
+  expect(
+    document.querySelector("[data-tmdb-id='550']")
+  ).not.toBeNull();
   expect(obtenerSesionMock).toHaveBeenCalledOnce();
   });
 
@@ -161,7 +169,7 @@ describe("página de contenido", () => {
   );
 
   expect(
-    screen.getByText(/Reseñas: 550 — Usuario: usuario-1/)
+    screen.getByText(/Reseñas — Usuario: usuario-1/)
   ).toBeTruthy();
 });
 });

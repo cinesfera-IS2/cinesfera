@@ -42,7 +42,9 @@ class ResenaContenidoRespuesta(BaseModel):
     contenido_tmdb_id: int
     resena_padre_id: UUID | None
     plataforma_id: int | None
-    calificacion: float
+    # La columna admite NULL en la base aunque la API nunca lo guarde así;
+    # hasta definir la restricción, una reseña sin nota se devuelve como null.
+    calificacion: float | None
     texto: str
     fecha: datetime
     valoracion: int

@@ -114,6 +114,27 @@ class ContenidosTests(unittest.TestCase):
             [str(self.serie_id)],
         )
 
+    def test_resena_sin_calificacion_se_devuelve_como_null(self):
+        # La columna admite NULL en la base; una fila así no debe romper el listado.
+        self.db.add(
+            Resena(
+                id=uuid4(),
+                usuario_id=self.db.query(Usuario).first().id,
+                contenido_id=1,
+                resena_padre_id=self.reciente_id,
+                plataforma_id=None,
+                calificacion=None,
+                texto="Respuesta sin nota",
+                fecha=datetime.now(timezone.utc) + timedelta(days=3),
+            )
+        )
+        self.db.commit()
+
+        respuesta = self.client.get("/contenidos/pelicula/550/resenas")
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertIsNone(respuesta.json()[0]["calificacion"])
+
     def test_contenido_sin_resenas_devuelve_lista_vacia(self):
         respuesta = self.client.get("/contenidos/serie/404/resenas")
 
