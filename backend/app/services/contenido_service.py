@@ -109,7 +109,9 @@ def obtener_resenas_contenido(
             contenido_tmdb_id=resena.contenido_tmdb_id,
             resena_padre_id=resena.resena_padre_id,
             plataforma_id=resena.plataforma_id,
-            calificacion=float(resena.calificacion),
+            # Algunas reseñas históricas son anteriores a que la calificación
+            # fuera obligatoria. Se conservan y se muestran con cero estrellas.
+            calificacion=float(resena.calificacion or 0),
             texto=resena.texto,
             fecha=resena.fecha,
             valoracion=int(valoracion),

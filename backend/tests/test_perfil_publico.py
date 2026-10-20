@@ -1,12 +1,14 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 from uuid import uuid4
 
 from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
+from app.services.usuario_service import _construir_resena_publica
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 
@@ -91,6 +93,20 @@ class PerfilPublicoTests(unittest.TestCase):
             "/usuarios/por-nombre/desconocida/perfil-publico"
         )
         self.assertEqual(inexistente.status_code, 404)
+
+    def test_resena_historica_sin_calificacion_no_rompe_el_perfil(self):
+        resena = SimpleNamespace(
+            id=uuid4(),
+            contenido_tmdb_id=42,
+            plataforma_id=None,
+            calificacion=None,
+            texto="Reseña anterior al campo de calificación",
+            fecha=datetime.now(timezone.utc)
+        )
+
+        publica = _construir_resena_publica(resena)
+
+        self.assertEqual(publica.calificacion, 0)
 
 
 if __name__ == "__main__":

@@ -109,8 +109,19 @@ def _construir_perfil_publico(
         reputacion=int(reputacion or 0),
         seguidores=int(seguidores or 0),
         siguiendo=int(siguiendo or 0),
-        resenas=[ResenaPublica.model_validate(resena, from_attributes=True)
-                 for resena in resenas]
+        resenas=[_construir_resena_publica(resena) for resena in resenas]
+    )
+
+
+def _construir_resena_publica(resena: Resena) -> ResenaPublica:
+    """Adapta también reseñas históricas creadas sin calificación."""
+    return ResenaPublica(
+        id=resena.id,
+        contenido_tmdb_id=resena.contenido_tmdb_id,
+        plataforma_id=resena.plataforma_id,
+        calificacion=float(resena.calificacion or 0),
+        texto=resena.texto,
+        fecha=resena.fecha
     )
 
 

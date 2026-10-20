@@ -1,7 +1,8 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import httpx
@@ -17,6 +18,7 @@ from app.services.contenido_service import (
     _consultar_tmdb,
     _url_imagen,
     obtener_detalle_contenido,
+    obtener_resenas_contenido,
 )
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
@@ -119,6 +121,34 @@ class ContenidosTests(unittest.TestCase):
 
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
         self.assertEqual(respuesta.json(), [])
+
+    def test_resena_historica_sin_calificacion_se_muestra_con_cero(self):
+        db = Mock()
+        db.execute.return_value.all.return_value = [
+            (
+                SimpleNamespace(
+                    id=uuid4(),
+                    contenido_tmdb_id=550,
+                    resena_padre_id=None,
+                    plataforma_id=None,
+                    calificacion=None,
+                    texto="Reseña histórica",
+                    fecha=datetime.now(timezone.utc),
+                ),
+                SimpleNamespace(
+                    id=uuid4(),
+                    nombre="Ian",
+                    apellido="Castillo",
+                    nombre_usuario="iancastillo",
+                    foto_url=None,
+                ),
+                0,
+            )
+        ]
+
+        resenas = obtener_resenas_contenido(db, "pelicula", 550)
+
+        self.assertEqual(resenas[0].calificacion, 0)
 
     def test_tipo_o_id_invalido_devuelve_error_de_validacion(self):
         self.assertEqual(
