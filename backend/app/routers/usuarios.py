@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
@@ -12,14 +12,20 @@ from app.dependencies.auth import (
     obtener_usuario_actual
 )
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioActualizacion, UsuarioRespuesta
+from app.schemas.usuario import (
+    CambioPassword,
+    UsuarioActualizacion,
+    UsuarioRespuesta
+)
 from app.schemas.perfil_publico import PerfilPublicoRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
+    PasswordActualInvalidaError,
     TransicionEstadoInvalidaError,
     UsuarioNoEncontradoError,
     actualizar_perfil,
+    cambiar_password,
     eliminar_usuario,
     obtener_perfil,
     obtener_perfil_publico,
@@ -183,3 +189,36 @@ def modificar_perfil(
             status_code=status.HTTP_409_CONFLICT,
             detail="No fue posible actualizar el perfil"
         ) from error
+
+
+@router.patch(
+    "/{usuario_id}/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verificar_csrf)]
+)
+def modificar_password(
+    usuario_id: UUID,
+    datos: CambioPassword,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
+) -> Response:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para cambiar esta contraseña"
+        )
+
+    try:
+        cambiar_password(
+            db,
+            usuario_actual,
+            datos.password_actual,
+            datos.password_nueva
+        )
+    except PasswordActualInvalidaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error)
+        ) from error
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

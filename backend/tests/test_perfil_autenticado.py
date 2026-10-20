@@ -60,14 +60,20 @@ class PerfilAutenticadoTests(unittest.TestCase):
             "nombre": "  Nuevo  ", "apellido": "  Apellido  ",
             "nombre_usuario": "  NUEVO.USUARIO  ",
             "email": "  NUEVO@EXAMPLE.COM  ",
-            "foto_url": "https://imagenes.example.com/perfil.jpg"
+            "foto_url": "https://imagenes.example.com/perfil.jpg",
+            "bio": "  Fan del cine independiente  ",
+            "ubicacion": "  Montevideo, Uruguay  ",
+            "generos_favoritos": ["Drama", " drama ", "Ciencia ficción"]
         }
         respuesta = self.client.patch(self.url, headers=headers, json=cambios)
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
         esperado = {
             "nombre": "Nuevo", "apellido": "Apellido",
             "nombre_usuario": "nuevo.usuario", "email": "nuevo@example.com",
-            "foto_url": cambios["foto_url"]
+            "foto_url": cambios["foto_url"],
+            "bio": "Fan del cine independiente",
+            "ubicacion": "Montevideo, Uruguay",
+            "generos_favoritos": ["Drama", "Ciencia ficción"]
         }
         self.db.expire_all()
         perfil = self.client.get("/auth/me", headers=headers)
@@ -136,6 +142,43 @@ class PerfilAutenticadoTests(unittest.TestCase):
                 self.assertEqual(perfil["email"], "persona@example.com")
                 self.assertEqual(perfil["nombre_usuario"], "persona")
                 self.assertIsNone(perfil["foto_url"])
+
+    def test_cambia_password_validando_la_actual(self):
+        headers = self.iniciar_sesion()
+        url = f"/usuarios/{self.usuario_id}/password"
+
+        incorrecta = self.client.patch(url, headers=headers, json={
+            "password_actual": "Incorrecta123",
+            "password_nueva": "NuevaClave456!"
+        })
+        self.assertEqual(incorrecta.status_code, 400, incorrecta.text)
+
+        respuesta = self.client.patch(url, headers=headers, json={
+            "password_actual": self.password,
+            "password_nueva": "NuevaClave456!"
+        })
+        self.assertEqual(respuesta.status_code, 204, respuesta.text)
+
+        login_anterior = self.client.post("/auth/login", json={
+            "identificador": "persona", "password": self.password
+        })
+        self.assertEqual(login_anterior.status_code, 401)
+        login_nuevo = self.client.post("/auth/login", json={
+            "identificador": "persona", "password": "NuevaClave456!"
+        })
+        self.assertEqual(login_nuevo.status_code, 200)
+
+    def test_no_permite_cambiar_password_de_otra_persona(self):
+        respuesta = self.client.patch(
+            f"/usuarios/{self.otro_id}/password",
+            headers=self.iniciar_sesion(),
+            json={
+                "password_actual": self.password,
+                "password_nueva": "NuevaClave456!"
+            }
+        )
+
+        self.assertEqual(respuesta.status_code, 403, respuesta.text)
 
     def test_openapi_declara_bearer_para_actualizar(self):
         operacion = app.openapi()["paths"]["/usuarios/{usuario_id}/perfil"]["patch"]

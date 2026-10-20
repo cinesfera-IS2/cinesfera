@@ -264,8 +264,9 @@ o rechazadas.
 ### Perfil público con reseñas
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
-nombre de usuario, foto, reputación, cantidad de seguidores, cantidad de
-seguidos y reseñas de cualquier usuario existente.
+nombre de usuario, foto, biografía, ubicación, géneros favoritos, rol, fecha
+de registro, reputación, cantidad de seguidores, cantidad de seguidos y
+reseñas de cualquier usuario existente.
 También se puede consultar por nombre de usuario con
 `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (por ejemplo,
 `/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
@@ -348,10 +349,12 @@ Los endpoints de perfil trabajan con el UUID que devuelve el registro o
   modifica solamente los campos enviados del usuario autenticado. El UUID de
   la ruta debe coincidir con el usuario del token.
 
-El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email` y `foto_url`.
+El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `foto_url`,
+`bio`, `ubicacion` y `generos_favoritos` (hasta cinco valores distintos).
 El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
 URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
-Supabase Storage. Para quitar la foto actual se envía `"foto_url": null`.
+Supabase Storage. Para quitar la foto, biografía o ubicación se envía el campo
+correspondiente con `null`.
 
 Para probar el flujo en Postman:
 
@@ -372,7 +375,10 @@ Authorization: Bearer TOKEN-DEL-LOGIN
   "nombre": "Persona",
   "apellido": "Actualizada",
   "nombre_usuario": "persona.actualizada",
-  "foto_url": "https://ejemplo.com/fotos/perfil.jpg"
+  "foto_url": "https://ejemplo.com/fotos/perfil.jpg",
+  "bio": "Fan del cine independiente",
+  "ubicacion": "Montevideo, Uruguay",
+  "generos_favoritos": ["Drama", "Comedia"]
 }
 ```
 
@@ -386,6 +392,15 @@ Respuestas relevantes:
 
 El cambio de foto guarda la URL de una imagen ya subida. Este endpoint no
 recibe archivos ni realiza la subida a Storage.
+
+`PATCH /usuarios/{usuario_id}/password` cambia la contraseña de la propia
+cuenta. Requiere `password_actual`, `password_nueva`, sesión y protección CSRF.
+La contraseña nueva debe tener entre 8 y 128 caracteres y ser distinta de la
+actual. Una contraseña actual incorrecta responde `400`; intentar modificar
+otra cuenta responde `403`.
+
+Las columnas de perfil se agregan a instalaciones existentes mediante
+`migrations/003_agregar_datos_perfil.sql`.
 
 ## Administración de cuentas
 

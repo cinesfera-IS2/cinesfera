@@ -18,6 +18,11 @@ type PerfilPublicoApi = {
   apellido: string;
   nombre_usuario: string;
   foto_url: string | null;
+  bio: string | null;
+  ubicacion: string | null;
+  generos_favoritos: string[];
+  rol: "usuario" | "admin";
+  fecha_registro: string;
   /** Suma de los votos recibidos por todas sus reseñas. */
   reputacion: number;
   seguidores: number;
@@ -68,23 +73,6 @@ export async function obtenerListaSeguimientos(
     fotoUrl: usuario.foto_url ?? undefined,
   }));
 }
-
-/**
- * Lo que el perfil muestra y la base todavía no guarda. Son los mismos valores
- * para todas las personas a propósito: sirven para ver la pantalla completa
- * mientras los campos no existen, y se van a ir cayendo de a uno.
- *
- * `rol` y `fechaRegistro` sí están en la tabla `usuarios`, pero el endpoint
- * público no los devuelve; alcanzaría con sumarlos a `PerfilPublicoRespuesta`
- * para que dejen de ser de ejemplo.
- */
-const EJEMPLO = {
-  bio: "Cazador de thrillers lentos y bandas sonoras que no puedo sacarme de la cabeza. Si la película dura más de tres horas, mejor.",
-  ubicacion: "Montevideo, Uruguay",
-  generosFavoritos: ["Thriller", "Sci-Fi", "Drama"],
-  rol: "usuario",
-  fechaRegistro: "2026-02-14",
-} as const;
 
 /** Degradados de respaldo del póster, repartidos entre las reseñas por orden. */
 const DEGRADADOS = [
@@ -138,11 +126,11 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     nombre: api.nombre,
     apellido: api.apellido,
     fotoUrl: api.foto_url ?? undefined,
-    rol: EJEMPLO.rol,
-    fechaRegistro: EJEMPLO.fechaRegistro,
-    bio: EJEMPLO.bio,
-    ubicacion: EJEMPLO.ubicacion,
-    generosFavoritos: [...EJEMPLO.generosFavoritos],
+    rol: api.rol,
+    fechaRegistro: api.fecha_registro.slice(0, 10),
+    bio: api.bio ?? undefined,
+    ubicacion: api.ubicacion ?? undefined,
+    generosFavoritos: api.generos_favoritos,
     estadisticas: {
       resenas: api.resenas.length,
       seguidores: api.seguidores,

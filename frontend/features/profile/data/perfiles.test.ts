@@ -27,6 +27,11 @@ const PERFIL_API = {
   apellido: "Torres",
   nombre_usuario: "anatorres",
   foto_url: null,
+  bio: "Fan del cine independiente",
+  ubicacion: "Montevideo, Uruguay",
+  generos_favoritos: ["Drama", "Comedia"],
+  rol: "usuario",
+  fecha_registro: "2026-02-14T12:00:00Z",
   reputacion: 12,
   seguidores: 8,
   siguiendo: 3,
@@ -60,6 +65,11 @@ describe("obtenerPerfilPublico", () => {
       nombre: "Ana",
       apellido: "Torres",
       fotoUrl: undefined,
+      bio: "Fan del cine independiente",
+      ubicacion: "Montevideo, Uruguay",
+      generosFavoritos: ["Drama", "Comedia"],
+      rol: "usuario",
+      fechaRegistro: "2026-02-14",
       estadisticas: { resenas: 2, seguidores: 8, siguiendo: 3 },
     });
   });
