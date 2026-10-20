@@ -67,7 +67,7 @@ export function RegisterForm() {
         body: JSON.stringify({ identificador: email, password: passwordIngresada }),
       });
 
-      recargarEn("/");
+      recargarEn("/catalogo");
     } catch {
       // La cuenta ya existe: mostrar el error acá invitaría a registrarse de
       // nuevo y chocar con "el email ya está registrado". Mejor que ingrese a mano.

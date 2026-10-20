@@ -46,7 +46,7 @@ describe("RegisterForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("crea la cuenta, inicia sesión y recarga en la portada", async () => {
+  it("crea la cuenta, inicia sesión y recarga en el catálogo", async () => {
     const fetchFalso = simularRespuestas([201, { id: "1" }], [200, {}]);
 
     await completarFormulario();
@@ -69,7 +69,7 @@ describe("RegisterForm", () => {
       identificador: "ana@example.com",
       password: "ClaveSegura123",
     });
-    expect(recargarEn).toHaveBeenCalledWith("/");
+    expect(recargarEn).toHaveBeenCalledWith("/catalogo");
   });
 
   it("si la cuenta se creó pero el login falla, manda a iniciar sesión", async () => {

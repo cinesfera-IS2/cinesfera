@@ -39,7 +39,7 @@ describe("LoginForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("envía las credenciales a /auth/login y recarga en la portada", async () => {
+  it("envía las credenciales a /auth/login y recarga en el catálogo", async () => {
     const fetchFalso = simularRespuesta(200, {
       mensaje: "Sesion iniciada correctamente",
     });
@@ -54,7 +54,7 @@ describe("LoginForm", () => {
       identificador: "ana@example.com",
       password: "ClaveSegura123",
     });
-    expect(recargarEn).toHaveBeenCalledWith("/");
+    expect(recargarEn).toHaveBeenCalledWith("/catalogo");
   });
 
   it("deja el botón deshabilitado mientras inicia sesión", async () => {
