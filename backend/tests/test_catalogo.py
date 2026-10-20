@@ -145,7 +145,7 @@ class CatalogoTests(unittest.TestCase):
 
         self.assertEqual(
             self.titulos(respuesta),
-            ["Película nueva", "Película vieja", "Serie"],
+            ["Serie", "Película nueva", "Película vieja"],
         )
 
 
