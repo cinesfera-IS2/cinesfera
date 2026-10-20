@@ -1,7 +1,11 @@
 import { cache } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import type { PerfilPublico, ResenaPerfil } from "@/features/profile/types";
+import type {
+  PerfilPublico,
+  ResenaPerfil,
+  UsuarioSeguimiento,
+} from "@/features/profile/types";
 
 /**
  * Respuesta de `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico`.
@@ -31,6 +35,35 @@ type ResenaApi = {
   /** ISO con hora y zona. */
   fecha: string;
 };
+
+type UsuarioSeguimientoApi = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nombre_usuario: string;
+  foto_url: string | null;
+};
+
+export type ListaSeguimientos = "seguidores" | "seguidos";
+
+/** Trae una de las dos listas sociales públicas de un perfil. */
+export async function obtenerListaSeguimientos(
+  usuarioId: string,
+  lista: ListaSeguimientos
+): Promise<UsuarioSeguimiento[]> {
+  const usuarios = await apiFetch<UsuarioSeguimientoApi[]>(
+    `/usuarios/${usuarioId}/${lista}`,
+    { cache: "no-store" }
+  );
+
+  return usuarios.map((usuario) => ({
+    id: usuario.id,
+    nombre: usuario.nombre,
+    apellido: usuario.apellido,
+    nombreUsuario: usuario.nombre_usuario,
+    fotoUrl: usuario.foto_url ?? undefined,
+  }));
+}
 
 /**
  * Lo que el perfil muestra y la base todavía no guarda. Son los mismos valores

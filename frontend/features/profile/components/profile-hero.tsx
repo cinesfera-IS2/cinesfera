@@ -78,7 +78,10 @@ export function ProfileHero({ perfil, esPropio, haySesion }: ProfileHeroProps) {
         )}
 
         <div className="mt-6 pb-8">
-          <ProfileStats estadisticas={perfil.estadisticas} />
+          <ProfileStats
+            usuarioId={perfil.id}
+            estadisticas={perfil.estadisticas}
+          />
         </div>
       </div>
     </section>

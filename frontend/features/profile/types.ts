@@ -27,6 +27,15 @@ export type EstadisticasPerfil = {
   siguiendo: number;
 };
 
+/** Persona devuelta por las listas públicas de seguidores y seguidos. */
+export type UsuarioSeguimiento = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nombreUsuario: string;
+  fotoUrl?: string;
+};
+
 export type ResenaPerfil = {
   id: string;
   titulo: string;
