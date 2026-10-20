@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AuthLayout, LoginForm } from "@/features/auth";
+import { obtenerSesion } from "@/features/auth/session";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await obtenerSesion()) {
+    redirect("/catalogo");
+  }
+
   return (
     <AuthLayout
       title="Bienvenido de nuevo"

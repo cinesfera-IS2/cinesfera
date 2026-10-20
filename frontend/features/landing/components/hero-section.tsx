@@ -1,7 +1,11 @@
 import { ArrowRightIcon, CompassIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
-export function HeroSection() {
+import { obtenerSesion } from "@/features/auth/session";
+
+export async function HeroSection() {
+  const sesion = await obtenerSesion();
+
   return (
     <section className="relative overflow-hidden px-6 pb-20 pt-20 sm:pt-28">
       {/* Halo azul que baja desde el borde superior */}
@@ -43,23 +47,27 @@ export function HeroSection() {
               />
             </Link>
 
-            <Link
-              href="/register"
-              className="inline-flex items-center rounded-full border border-white/20 px-8 py-4 font-display text-sm font-bold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
-            >
-              Crear cuenta gratis
-            </Link>
+            {!sesion && (
+              <Link
+                href="/register"
+                className="inline-flex items-center rounded-full border border-white/20 px-8 py-4 font-display text-sm font-bold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
+              >
+                Crear cuenta gratis
+              </Link>
+            )}
           </div>
 
-          <p className="text-sm text-ink-400">
-            ¿Ya tenés cuenta?{" "}
-            <Link
-              href="/login"
-              className="underline underline-offset-4 transition-colors hover:text-ink-100"
-            >
-              Inicia sesión acá
-            </Link>
-          </p>
+          {!sesion && (
+            <p className="text-sm text-ink-400">
+              ¿Ya tenés cuenta?{" "}
+              <Link
+                href="/login"
+                className="underline underline-offset-4 transition-colors hover:text-ink-100"
+              >
+                Inicia sesión acá
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </section>
