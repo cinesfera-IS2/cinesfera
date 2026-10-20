@@ -16,6 +16,8 @@ type PerfilPublicoApi = {
   foto_url: string | null;
   /** Suma de los votos recibidos por todas sus reseñas. */
   reputacion: number;
+  seguidores: number;
+  siguiendo: number;
   resenas: ResenaApi[];
 };
 
@@ -46,8 +48,6 @@ const EJEMPLO = {
   rol: "usuario",
   fechaRegistro: "2026-02-14",
   vistas: 184,
-  seguidores: 212,
-  siguiendo: 97,
 } as const;
 
 /** Degradados de respaldo del póster, repartidos entre las reseñas por orden. */
@@ -75,7 +75,8 @@ export const obtenerPerfilPublico = cache(
 
     try {
       respuesta = await apiFetch<PerfilPublicoApi>(
-        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`
+        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`,
+        { cache: "no-store" }
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
@@ -109,8 +110,8 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     estadisticas: {
       resenas: api.resenas.length,
       vistas: EJEMPLO.vistas,
-      seguidores: EJEMPLO.seguidores,
-      siguiendo: EJEMPLO.siguiendo,
+      seguidores: api.seguidores,
+      siguiendo: api.siguiendo,
     },
   };
 }

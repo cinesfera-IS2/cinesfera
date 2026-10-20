@@ -54,7 +54,11 @@ export default async function ProfilePage({
       <LandingHeader />
 
       <main className="flex-1">
-        <ProfileHero perfil={perfil} esPropio={esPropio} />
+        <ProfileHero
+          perfil={perfil}
+          esPropio={esPropio}
+          haySesion={sesion !== null}
+        />
 
         <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 lg:grid-cols-[19rem_1fr] lg:items-start">
           <ProfileDetails perfil={perfil} esPropio={esPropio} />

@@ -20,4 +20,6 @@ class PerfilPublicoRespuesta(BaseModel):
     nombre_usuario: str
     foto_url: str | None
     reputacion: int
+    seguidores: int
+    siguiendo: int
     resenas: list[ResenaPublica]

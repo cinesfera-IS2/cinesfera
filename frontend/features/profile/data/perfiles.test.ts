@@ -28,6 +28,8 @@ const PERFIL_API = {
   nombre_usuario: "anatorres",
   foto_url: null,
   reputacion: 12,
+  seguidores: 8,
+  siguiendo: 3,
   resenas: [resenaApi("r1"), resenaApi("r2")],
 };
 
@@ -44,6 +46,7 @@ describe("obtenerPerfilPublico", () => {
     expect(fetchFalso.mock.calls[0][0]).toMatch(
       /\/usuarios\/por-nombre\/ana%20torres\/perfil-publico$/
     );
+    expect(fetchFalso.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
   });
 
   it("traduce el perfil de la API al formato de la pantalla", async () => {
@@ -57,7 +60,7 @@ describe("obtenerPerfilPublico", () => {
       nombre: "Ana",
       apellido: "Torres",
       fotoUrl: undefined,
-      estadisticas: { resenas: 2 },
+      estadisticas: { resenas: 2, seguidores: 8, siguiendo: 3 },
     });
   });
 
