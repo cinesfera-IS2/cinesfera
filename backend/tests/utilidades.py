@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.schema import BLANK_SCHEMA
 
 from app.core import security
 from app.core.enums import EstadoUsuario, RolUsuario
@@ -39,7 +40,13 @@ def crear_base_en_memoria(test: TestCase, *modelos) -> Session:
     # ellos y se completan desde Python antes de cada INSERT.
     metadata = MetaData()
     for modelo in modelos:
-        tabla = modelo.__table__.to_metadata(metadata, schema=None)
+        tabla = modelo.__table__.to_metadata(
+            metadata,
+            schema=None,
+            referred_schema_fn=(
+                lambda _tabla, _esquema, _fk, _esquema_referido: BLANK_SCHEMA
+            )
+        )
         for columna in tabla.columns:
             columna.server_default = None
     metadata.create_all(engine)

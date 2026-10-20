@@ -237,36 +237,34 @@ agregar una nueva, leé [`tests/README.md`](tests/README.md).
 
 ## Perfil de usuario
 
-## Solicitudes de amistad
+## Seguimientos y amigos
 
-Los tres endpoints requieren `Authorization: Bearer <access_token>` obtenido en
-`POST /auth/login`. En `amistades`, `usuario_id_1` es quien envía la solicitud y
-`usuario_id_2` quien la recibe.
+Los seguimientos son unidireccionales y no requieren aceptación. Cuando dos
+personas se siguen mutuamente se consideran amigas; la amistad se calcula desde
+esos dos seguimientos y no se guarda por separado.
 
-- `POST /amistades/solicitudes` con `{"destinatario_id":"UUID"}` crea una solicitud
-  `pendiente` y responde `201`. No permite enviarla a la propia cuenta (`400`),
-  a una cuenta inexistente (`404`) ni crear otra relación entre el mismo par de
-  usuarios en cualquier dirección (`409`).
-- `POST /amistades/solicitudes/{remitente_id}/aceptar` permite al destinatario
-  pasar una solicitud pendiente a `aceptada`.
-- `POST /amistades/solicitudes/{remitente_id}/rechazar` permite al destinatario
-  pasar una solicitud pendiente a `rechazada`.
-- `DELETE /amistades/{usuario_id}` permite a cualquiera de los dos usuarios
-  eliminar una amistad aceptada y responde `204`. Si no existe una amistad
-  aceptada entre ambos, responde `404`.
+- `POST /usuarios/{usuario_id}/seguir` sigue al usuario y responde `201`.
+- `DELETE /usuarios/{usuario_id}/seguir` deja de seguirlo y responde `204`.
+- `GET /usuarios/{usuario_id}/seguimiento` indica `siguiendo`, `te_sigue` y
+  `son_amigos` respecto de la sesión actual.
+- `GET /usuarios/{usuario_id}/seguidores` lista quiénes siguen al usuario.
+- `GET /usuarios/{usuario_id}/seguidos` lista a quiénes sigue.
+- `GET /usuarios/{usuario_id}/amigos` lista únicamente los seguimientos mutuos.
 
-Las respuestas incluyen ambos UUID, `estado`, `fecha_solicitud` y
-`fecha_respuesta`. Las solicitudes inexistentes o dirigidas a otra cuenta
-responden `404`; una solicitud ya respondida responde `409`.
+Seguirse a uno mismo responde `400`, repetir un seguimiento responde `409` y
+dejar de seguir una relación inexistente responde `404`. Los cambios requieren
+autenticación y CSRF cuando se usa la cookie de sesión. Dejar de seguir rompe la
+amistad, pero conserva el seguimiento que todavía exista en la otra dirección.
 
-Para probarlo en Postman, iniciá sesión con la cuenta A y enviá una solicitud
-con el UUID de B. Iniciá sesión con B y llamá a `/amistades/solicitudes/UUID-DE-A/aceptar`
-o `/rechazar`. Repetir la respuesta debe devolver `409`.
+La migración `002_reemplazar_amistades_por_seguimientos.sql` convierte cada
+amistad aceptada existente en dos seguimientos y descarta solicitudes pendientes
+o rechazadas.
 
 ### Perfil público con reseñas
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
-nombre de usuario, foto, reputación y reseñas de cualquier usuario existente.
+nombre de usuario, foto, reputación, cantidad de seguidores, cantidad de
+seguidos y reseñas de cualquier usuario existente.
 También se puede consultar por nombre de usuario con
 `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (por ejemplo,
 `/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y

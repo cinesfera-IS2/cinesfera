@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { obtenerPerfilPublico } from "./perfiles";
+import { obtenerListaSeguimientos, obtenerPerfilPublico } from "./perfiles";
 
 function simularRespuesta(status: number, cuerpo: unknown) {
   const fetchFalso = vi
@@ -28,6 +28,8 @@ const PERFIL_API = {
   nombre_usuario: "anatorres",
   foto_url: null,
   reputacion: 12,
+  seguidores: 8,
+  siguiendo: 3,
   resenas: [resenaApi("r1"), resenaApi("r2")],
 };
 
@@ -44,6 +46,7 @@ describe("obtenerPerfilPublico", () => {
     expect(fetchFalso.mock.calls[0][0]).toMatch(
       /\/usuarios\/por-nombre\/ana%20torres\/perfil-publico$/
     );
+    expect(fetchFalso.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
   });
 
   it("traduce el perfil de la API al formato de la pantalla", async () => {
@@ -57,7 +60,7 @@ describe("obtenerPerfilPublico", () => {
       nombre: "Ana",
       apellido: "Torres",
       fotoUrl: undefined,
-      estadisticas: { resenas: 2 },
+      estadisticas: { resenas: 2, seguidores: 8, siguiendo: 3 },
     });
   });
 
@@ -98,5 +101,38 @@ describe("obtenerPerfilPublico", () => {
     simularRespuesta(500, { detail: "Se rompió" });
 
     await expect(obtenerPerfilPublico("anatorres")).rejects.toThrow("Se rompió");
+  });
+});
+
+describe("obtenerListaSeguimientos", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("pide la lista indicada y adapta los nombres de sus campos", async () => {
+    const fetchFalso = simularRespuesta(200, [
+      {
+        id: "u2",
+        nombre: "Bruno",
+        apellido: "Díaz",
+        nombre_usuario: "brunod",
+        foto_url: null,
+      },
+    ]);
+
+    const usuarios = await obtenerListaSeguimientos("u1", "seguidores");
+
+    expect(fetchFalso.mock.calls[0][0]).toMatch(
+      /\/usuarios\/u1\/seguidores$/
+    );
+    expect(usuarios).toEqual([
+      {
+        id: "u2",
+        nombre: "Bruno",
+        apellido: "Díaz",
+        nombreUsuario: "brunod",
+        fotoUrl: undefined,
+      },
+    ]);
   });
 });

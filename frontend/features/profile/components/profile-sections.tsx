@@ -3,7 +3,6 @@
 import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
 
-import { CreateReviewDialog } from "@/features/profile/components/create-review-dialog";
 import { EmptyState } from "@/features/profile/components/empty-state";
 import { ReviewCard } from "@/features/profile/components/review-card";
 import type { ResenaPerfil, SeccionPerfil } from "@/features/profile/types";
@@ -13,7 +12,6 @@ type ProfileSectionsProps = {
   /** Nombre de pila, para el texto de la sección vacía. */
   nombre: string;
   esPropio: boolean;
-  usuarioId?: string;
 };
 
 const PESTANAS: Array<{
@@ -30,7 +28,6 @@ export function ProfileSections({
   resenas,
   nombre,
   esPropio,
-  usuarioId,
 }: ProfileSectionsProps) {
   const [activa, setActiva] = useState<SeccionPerfil>("resenas");
 
@@ -81,18 +78,11 @@ export function ProfileSections({
         className="pt-6"
       >
         {activa === "resenas" && (
-          <div className="flex flex-col gap-5">
-            {esPropio && usuarioId && (
-              <div className="flex justify-end">
-                <CreateReviewDialog usuarioId={usuarioId} />
-              </div>
-            )}
-            <ListaDeResenas
-              resenas={resenas}
-              nombre={nombre}
-              esPropio={esPropio}
-            />
-          </div>
+          <ListaDeResenas
+            resenas={resenas}
+            nombre={nombre}
+            esPropio={esPropio}
+          />
         )}
       </div>
     </section>
@@ -113,7 +103,7 @@ function ListaDeResenas({
         }
         descripcion={
           esPropio
-            ? "Puntuá una película y contá qué te pareció: tu reseña va a aparecer acá."
+            ? "Buscá una película y escribí la reseña desde su ficha: después va a aparecer acá."
             : "Cuando publique la primera, la vas a ver en esta sección."
         }
       />
