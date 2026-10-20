@@ -66,7 +66,6 @@ export default async function ProfilePage({
             resenas={resenas}
             nombre={perfil.nombre}
             esPropio={esPropio}
-            usuarioId={esPropio ? perfil.id : undefined}
           />
         </div>
       </main>
