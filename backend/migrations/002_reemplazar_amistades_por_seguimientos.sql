@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS public.seguimientos (
 CREATE INDEX IF NOT EXISTS ix_seguimientos_seguido_id
     ON public.seguimientos (seguido_id);
 
+-- La aplicación accede mediante el backend y su conexión PostgreSQL. No se
+-- crean políticas para anon/authenticated: esos roles no deben leer ni
+-- modificar seguimientos directamente mediante la API de Supabase.
+ALTER TABLE public.seguimientos ENABLE ROW LEVEL SECURITY;
+
 -- Una amistad aceptada equivale a dos seguimientos, uno por dirección. El
 -- bloque también permite aplicar la migración en instalaciones nuevas donde
 -- la tabla de amistades nunca llegó a existir.
