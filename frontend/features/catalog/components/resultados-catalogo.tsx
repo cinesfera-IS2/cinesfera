@@ -18,6 +18,8 @@ export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
   const { obras, pagina, totalPaginas } = await buscarObras(filtros);
   const filtrado = hayFiltrosActivos(filtros);
 
+  console.log(obras)
+
   if (obras.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-night-600 bg-night-900/40 px-6 py-16 text-center">

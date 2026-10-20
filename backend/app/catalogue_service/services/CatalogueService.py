@@ -10,11 +10,11 @@ class CatalogueService:
     def get_content(self, content_type=None, year=None, page=None):
         return self.repository.get_content(content_type, year, page)
 
-    def search_catalogue(self, query):
-        return self.repository.search_catalogue(query)
+    def search_catalogue(self, query, year):
+        return self.repository.search_catalogue(query, year)
 
-    def search_movie_by_name(self, query):
-        return self.repository.search_movie_by_name(query)
+    def search_movie_by_name(self, query, year):
+        return self.repository.search_movie_by_name(query, year)
 
-    def search_series_by_name(self, query):
-        return self.repository.search_series_by_name(query)
+    def search_series_by_name(self, query, year):
+        return self.repository.search_series_by_name(query, year)
