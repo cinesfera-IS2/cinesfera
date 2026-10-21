@@ -44,16 +44,20 @@ type UsuarioSeguimientoApi = {
   foto_url: string | null;
 };
 
-export type ListaSeguimientos = "seguidores" | "seguidos";
+export type ListaSeguimientos = "seguidores" | "seguidos" | "amigos";
 
-/** Trae una de las dos listas sociales públicas de un perfil. */
+/**
+ * Trae una lista social. Seguidores y seguidos son públicos; amigos requiere
+ * que la sesión corresponda al perfil solicitado.
+ */
 export async function obtenerListaSeguimientos(
   usuarioId: string,
-  lista: ListaSeguimientos
+  lista: ListaSeguimientos,
+  options: RequestInit = {}
 ): Promise<UsuarioSeguimiento[]> {
   const usuarios = await apiFetch<UsuarioSeguimientoApi[]>(
     `/usuarios/${usuarioId}/${lista}`,
-    { cache: "no-store" }
+    { ...options, cache: "no-store" }
   );
 
   return usuarios.map((usuario) => ({
@@ -80,7 +84,6 @@ const EJEMPLO = {
   generosFavoritos: ["Thriller", "Sci-Fi", "Drama"],
   rol: "usuario",
   fechaRegistro: "2026-02-14",
-  vistas: 184,
 } as const;
 
 /** Degradados de respaldo del póster, repartidos entre las reseñas por orden. */
@@ -142,7 +145,6 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     generosFavoritos: [...EJEMPLO.generosFavoritos],
     estadisticas: {
       resenas: api.resenas.length,
-      vistas: EJEMPLO.vistas,
       seguidores: api.seguidores,
       siguiendo: api.siguiendo,
     },

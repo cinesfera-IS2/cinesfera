@@ -2,7 +2,7 @@
 
 import { UserCircleIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   obtenerListaSeguimientos,
@@ -18,30 +18,42 @@ import { ApiError } from "@/lib/api";
 type ProfileStatsProps = {
   usuarioId: string;
   estadisticas: EstadisticasPerfil;
+  esPropio: boolean;
+  amigosIniciales?: UsuarioSeguimiento[];
 };
 
-const ETIQUETAS: Array<[keyof EstadisticasPerfil, string]> = [
-  ["resenas", "Reseñas"],
-  ["vistas", "Vistas"],
-  ["seguidores", "Seguidores"],
-  ["siguiendo", "Siguiendo"],
+const LISTAS_PUBLICAS: Array<Exclude<ListaSeguimientos, "amigos">> = [
+  "seguidores",
+  "seguidos",
 ];
 
-const LISTAS: ListaSeguimientos[] = ["seguidores", "seguidos"];
-
-export function ProfileStats({ usuarioId, estadisticas }: ProfileStatsProps) {
+export function ProfileStats({
+  usuarioId,
+  estadisticas,
+  esPropio,
+  amigosIniciales,
+}: ProfileStatsProps) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const [listaActiva, setListaActiva] =
     useState<ListaSeguimientos>("seguidores");
   const [usuarios, setUsuarios] = useState<
     Partial<Record<ListaSeguimientos, UsuarioSeguimiento[]>>
-  >({});
+  >(amigosIniciales ? { amigos: amigosIniciales } : {});
   const [cargando, setCargando] = useState<
     Partial<Record<ListaSeguimientos, boolean>>
   >({});
   const [errores, setErrores] = useState<
     Partial<Record<ListaSeguimientos, string>>
   >({});
+
+  useEffect(() => {
+    if (amigosIniciales) {
+      setUsuarios((actuales) => ({
+        ...actuales,
+        amigos: amigosIniciales,
+      }));
+    }
+  }, [amigosIniciales]);
 
   async function cargarLista(lista: ListaSeguimientos) {
     if (usuarios[lista] || cargando[lista]) return;
@@ -76,30 +88,65 @@ export function ProfileStats({ usuarioId, estadisticas }: ProfileStatsProps) {
   }
 
   const error = errores[listaActiva];
+  const listas: ListaSeguimientos[] = esPropio
+    ? [...LISTAS_PUBLICAS, "amigos"]
+    : LISTAS_PUBLICAS;
+  const tarjetas: Array<{
+    clave: "resenas" | ListaSeguimientos;
+    etiqueta: string;
+    cantidad: number;
+  }> = [
+    {
+      clave: "resenas",
+      etiqueta: "Reseñas",
+      cantidad: estadisticas.resenas,
+    },
+    ...(esPropio
+      ? [
+          {
+            clave: "amigos" as const,
+            etiqueta: "Amigos",
+            cantidad: amigosIniciales?.length ?? 0,
+          },
+        ]
+      : []),
+    {
+      clave: "seguidores" as const,
+      etiqueta: "Seguidores",
+      cantidad: estadisticas.seguidores,
+    },
+    {
+      clave: "seguidos" as const,
+      etiqueta: "Siguiendo",
+      cantidad: estadisticas.siguiendo,
+    },
+  ];
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {ETIQUETAS.map(([clave, etiqueta]) => {
-          const esLista = clave === "seguidores" || clave === "siguiendo";
+      <div
+        className={`grid grid-cols-2 gap-3 ${
+          esPropio ? "sm:grid-cols-4" : "sm:grid-cols-3"
+        }`}
+      >
+        {tarjetas.map(({ clave, etiqueta, cantidad }) => {
           const contenido = (
             <>
               <span className="text-[0.7rem] font-semibold uppercase tracking-wider text-ink-500">
                 {etiqueta}
               </span>
               <span className="font-display text-xl font-extrabold text-ink-100">
-                {numeroCorto(estadisticas[clave])}
+                {numeroCorto(cantidad)}
               </span>
             </>
           );
 
-          if (esLista) {
-            const lista = clave === "siguiendo" ? "seguidos" : "seguidores";
+          if (clave !== "resenas") {
             return (
               <div key={clave}>
                 <button
                   type="button"
-                  onClick={() => abrir(lista)}
+                  onClick={() => abrir(clave)}
                   aria-label={`Ver ${etiqueta.toLocaleLowerCase("es")}`}
                   className="flex w-full flex-col items-center gap-1 rounded-2xl border border-night-700 bg-night-900/60 px-4 py-4 transition-colors hover:border-frame/60 hover:bg-night-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
                 >
@@ -146,14 +193,18 @@ export function ProfileStats({ usuarioId, estadisticas }: ProfileStatsProps) {
           <div
             role="tablist"
             aria-label="Conexiones del perfil"
-            className="mt-4 grid grid-cols-2 border-b border-night-700 px-6"
+            className={`mt-4 grid border-b border-night-700 px-6 ${
+              esPropio ? "grid-cols-3" : "grid-cols-2"
+            }`}
           >
-            {LISTAS.map((lista) => {
+            {listas.map((lista) => {
               const seleccionada = listaActiva === lista;
               const cantidad =
                 lista === "seguidores"
                   ? estadisticas.seguidores
-                  : estadisticas.siguiendo;
+                  : lista === "seguidos"
+                    ? estadisticas.siguiendo
+                    : amigosIniciales?.length ?? 0;
               return (
                 <button
                   key={lista}
@@ -204,7 +255,9 @@ export function ProfileStats({ usuarioId, estadisticas }: ProfileStatsProps) {
                 <p className="text-sm">
                   {listaActiva === "seguidores"
                     ? "Este perfil todavía no tiene seguidores."
-                    : "Este perfil todavía no sigue a nadie."}
+                    : listaActiva === "seguidos"
+                      ? "Este perfil todavía no sigue a nadie."
+                      : "Todavía no tenés amigos."}
                 </p>
               </div>
             )}

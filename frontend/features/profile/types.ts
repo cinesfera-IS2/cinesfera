@@ -22,12 +22,11 @@ export type PerfilPublico = {
 
 export type EstadisticasPerfil = {
   resenas: number;
-  vistas: number;
   seguidores: number;
   siguiendo: number;
 };
 
-/** Persona devuelta por las listas públicas de seguidores y seguidos. */
+/** Persona devuelta por las listas sociales de un perfil. */
 export type UsuarioSeguimiento = {
   id: string;
   nombre: string;

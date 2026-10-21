@@ -210,8 +210,15 @@ def listar_seguidos(
 )
 def listar_amigos(
     usuario_id: UUID,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> list[Usuario]:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para consultar estos amigos"
+        )
+
     _obtener_usuario_activo(db, usuario_id)
     seguimiento_inverso = aliased(Seguimiento)
     return list(db.scalars(

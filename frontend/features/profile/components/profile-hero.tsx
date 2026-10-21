@@ -5,16 +5,25 @@ import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
 import { ProfileEditDialog } from "@/features/profile/components/profile-edit-dialog";
 import { ProfileStats } from "@/features/profile/components/profile-stats";
 import { mesYAnio } from "@/features/profile/lib/fechas";
-import type { PerfilPublico } from "@/features/profile/types";
+import type {
+  PerfilPublico,
+  UsuarioSeguimiento,
+} from "@/features/profile/types";
 
 type ProfileHeroProps = {
   perfil: PerfilPublico;
   /** Cambia las acciones: editar el propio perfil o seguir al ajeno. */
   esPropio: boolean;
   haySesion: boolean;
+  amigos?: UsuarioSeguimiento[];
 };
 
-export function ProfileHero({ perfil, esPropio, haySesion }: ProfileHeroProps) {
+export function ProfileHero({
+  perfil,
+  esPropio,
+  haySesion,
+  amigos,
+}: ProfileHeroProps) {
   return (
     <section className="border-b border-white/5">
       <div className="relative h-36 overflow-hidden bg-night-900 sm:h-48">
@@ -81,6 +90,8 @@ export function ProfileHero({ perfil, esPropio, haySesion }: ProfileHeroProps) {
           <ProfileStats
             usuarioId={perfil.id}
             estadisticas={perfil.estadisticas}
+            esPropio={esPropio}
+            amigosIniciales={amigos}
           />
         </div>
       </div>

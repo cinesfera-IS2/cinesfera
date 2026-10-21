@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { FollowButton } from "./follow-button";
 import { apiFetch } from "@/lib/api";
@@ -19,6 +19,15 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 }));
 
 describe("FollowButton", () => {
+  beforeAll(() => {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.open = false;
+    };
+  });
+
   afterEach(() => {
     cleanup();
     vi.mocked(apiFetch).mockReset();
@@ -64,7 +73,7 @@ describe("FollowButton", () => {
     expect(refreshMock).toHaveBeenCalledOnce();
   });
 
-  it("dejar de seguir rompe la amistad", async () => {
+  it("pide confirmación antes de romper una amistad", async () => {
     vi.mocked(apiFetch)
       .mockResolvedValueOnce({
         siguiendo: true,
@@ -79,6 +88,19 @@ describe("FollowButton", () => {
     const boton = await screen.findByRole("button", { name: "Amigos" });
     fireEvent.click(boton);
 
+    expect(screen.getByRole("dialog", { hidden: true })).toHaveProperty(
+      "open",
+      true
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "¿Dejar de seguir a este amigo?",
+      })
+    ).toBeTruthy();
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Dejar de seguir" }));
+
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Seguir" })).toBeTruthy();
     });
@@ -90,5 +112,25 @@ describe("FollowButton", () => {
         headers: { "X-CSRF-Token": "csrf-prueba" },
       }
     );
+  });
+
+  it("permite cancelar sin dejar de seguir", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      siguiendo: true,
+      te_sigue: true,
+      son_amigos: true,
+    });
+
+    render(<FollowButton usuarioId="u2" haySesion />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Amigos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.getByRole("dialog", { hidden: true })).toHaveProperty(
+      "open",
+      false
+    );
+    expect(screen.getByRole("button", { name: "Amigos" })).toBeTruthy();
+    expect(apiFetch).toHaveBeenCalledTimes(1);
   });
 });
