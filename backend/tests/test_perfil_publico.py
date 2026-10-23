@@ -16,7 +16,14 @@ class PerfilPublicoTests(unittest.TestCase):
             self, Usuario, Contenido, Resena, ValoracionResena, Seguimiento
         )
         ahora = datetime.now(timezone.utc)
-        self.db.add(Contenido(id=1, tmdb_id=42, tipo="pelicula"))
+        self.db.add(
+            Contenido(
+                id=1,
+                tmdb_id=42,
+                tipo="pelicula",
+                titulo="La película de prueba",
+            )
+        )
         self.usuario_id = crear_usuario(
             self.db, "ana", nombre="Ana", password_hash="secreto",
             foto_url="https://example.com/foto.jpg",
@@ -79,6 +86,11 @@ class PerfilPublicoTests(unittest.TestCase):
         )
         self.assertEqual(datos["resenas"][0]["calificacion"], 4.5)
         self.assertEqual(datos["resenas"][0]["contenido_tmdb_id"], 42)
+        self.assertEqual(datos["resenas"][0]["contenido_tipo"], "pelicula")
+        self.assertEqual(
+            datos["resenas"][0]["contenido_titulo"],
+            "La película de prueba",
+        )
         self.assertNotIn("email", datos)
         self.assertNotIn("password_hash", datos)
 

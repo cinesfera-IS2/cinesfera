@@ -1,6 +1,11 @@
 import { cache } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
+import { obtenerContenido } from "@/features/content/data/contenido";
+import type {
+  ContenidoDetalle,
+  TipoContenido,
+} from "@/features/content/types";
 import type {
   PerfilPublico,
   ResenaPerfil,
@@ -33,6 +38,8 @@ type PerfilPublicoApi = {
 type ResenaApi = {
   id: string;
   contenido_tmdb_id: number;
+  contenido_tipo: TipoContenido;
+  contenido_titulo: string | null;
   plataforma_id: number | null;
   /** De 0.5 a 5, en pasos de media estrella; `null` si quedó guardada sin nota. */
   calificacion: number | null;
@@ -110,10 +117,16 @@ export const obtenerPerfilPublico = cache(
       throw error;
     }
 
+    const contenidos = await obtenerContenidosDeResenas(respuesta.resenas);
+
     return {
       perfil: aPerfil(respuesta),
       resenas: respuesta.resenas.map((resena, indice) =>
-        aResena(resena, indice)
+        aResena(
+          resena,
+          indice,
+          contenidos.get(claveContenido(resena)) ?? null
+        )
       ),
     };
   }
@@ -139,15 +152,62 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
   };
 }
 
-function aResena(api: ResenaApi, indice: number): ResenaPerfil {
+async function obtenerContenidosDeResenas(
+  resenas: ResenaApi[]
+): Promise<Map<string, ContenidoDetalle>> {
+  const unicos = new Map<string, ResenaApi>();
+  for (const resena of resenas) {
+    unicos.set(claveContenido(resena), resena);
+  }
+
+  const resultados = await Promise.all(
+    [...unicos.entries()].map(async ([clave, resena]) => {
+      try {
+        const contenido = await obtenerContenido(
+          resena.contenido_tipo,
+          resena.contenido_tmdb_id
+        );
+        return contenido ? ([clave, contenido] as const) : null;
+      } catch {
+        // El perfil sigue siendo útil si TMDB atraviesa una incidencia.
+        return null;
+      }
+    })
+  );
+
+  return new Map(
+    resultados.filter(
+      (resultado): resultado is readonly [string, ContenidoDetalle] =>
+        resultado !== null
+    )
+  );
+}
+
+function claveContenido(resena: ResenaApi): string {
+  return `${resena.contenido_tipo}:${resena.contenido_tmdb_id}`;
+}
+
+function aResena(
+  api: ResenaApi,
+  indice: number,
+  contenido: ContenidoDetalle | null
+): ResenaPerfil {
+  const anio = contenido?.fecha_estreno
+    ? Number(contenido.fecha_estreno.slice(0, 4))
+    : undefined;
+
   return {
     id: api.id,
-    // La tabla `resenas` guarda solo el id de TMDB del contenido: el título, el
-    // año y el póster llegan cuando esté enchufado el servicio de catálogo.
-    titulo: `Película #${api.contenido_tmdb_id}`,
+    titulo:
+      contenido?.titulo ??
+      api.contenido_titulo ??
+      `${api.contenido_tipo === "serie" ? "Serie" : "Película"} #${api.contenido_tmdb_id}`,
+    anio: Number.isFinite(anio) ? anio : undefined,
     puntaje: api.calificacion,
     fecha: api.fecha.slice(0, 10),
     comentario: api.texto,
+    posterUrl: contenido?.poster_url ?? undefined,
     posterGradient: DEGRADADOS[indice % DEGRADADOS.length],
+    href: `/content/${api.contenido_tipo}/${api.contenido_tmdb_id}#resena-${api.id}`,
   };
 }

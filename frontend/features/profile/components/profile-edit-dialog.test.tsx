@@ -1,6 +1,14 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { ProfileEditDialog } from "./profile-edit-dialog";
 import type { PerfilPublico } from "@/features/profile/types";
@@ -34,6 +42,15 @@ const PERFIL: PerfilPublico = {
   estadisticas: { resenas: 0, seguidores: 0, siguiendo: 0 },
 };
 
+const GENEROS = [
+  { id: 28, nombre: "Acción" },
+  { id: 12, nombre: "Aventura" },
+  { id: 35, nombre: "Comedia" },
+  { id: 18, nombre: "Drama" },
+  { id: 14, nombre: "Fantasía" },
+  { id: 27, nombre: "Terror" },
+];
+
 function dialogo() {
   return screen.getByRole("dialog", { hidden: true }) as HTMLDialogElement;
 }
@@ -49,6 +66,13 @@ describe("ProfileEditDialog", () => {
     };
   });
 
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockImplementation(async (ruta) => {
+      if (ruta === "/contenidos/generos") return GENEROS as never;
+      throw new Error(`Pedido inesperado: ${ruta}`);
+    });
+  });
+
   afterEach(() => {
     cleanup();
     vi.mocked(apiFetch).mockReset();
@@ -59,6 +83,7 @@ describe("ProfileEditDialog", () => {
   async function abrir() {
     render(<ProfileEditDialog perfil={PERFIL} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
+    await screen.findByRole("button", { name: "Drama" });
   }
 
   it("arranca cerrado y se abre con el botón", async () => {
@@ -68,6 +93,7 @@ describe("ProfileEditDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
 
     expect(dialogo().open).toBe(true);
+    expect(await screen.findByRole("button", { name: "Drama" })).toBeTruthy();
   });
 
   it("precarga los datos actuales del perfil", async () => {
@@ -81,7 +107,31 @@ describe("ProfileEditDialog", () => {
     expect(valor("Foto de perfil (URL)")).toBe("");
     expect(valor("Ubicación")).toBe("Montevideo, Uruguay");
     expect(valor("Sobre vos")).toBe("Fan de los thrillers.");
-    expect(valor("Géneros favoritos")).toBe("Drama");
+    expect(
+      screen.getByRole("button", { name: "Drama" }).getAttribute("aria-pressed")
+    ).toBe("true");
+    expect(screen.getByText("1 de 5 seleccionados")).toBeTruthy();
+  });
+
+  it("permite elegir hasta cinco géneros mediante tarjetas", async () => {
+    await abrir();
+
+    for (const genero of ["Acción", "Aventura", "Comedia", "Fantasía"]) {
+      await userEvent.click(screen.getByRole("button", { name: genero }));
+    }
+
+    expect(screen.getByText("5 de 5 seleccionados")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Terror" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Drama" }));
+    expect(screen.getByText("4 de 5 seleccionados")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Terror" }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
   });
 
   it.each(["Cerrar", "Cancelar", "Guardar cambios"])(
@@ -96,9 +146,14 @@ describe("ProfileEditDialog", () => {
   );
 
   it("guarda los cambios y navega si cambia el nombre de usuario", async () => {
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce({ csrf_token: "csrf-prueba" })
-      .mockResolvedValueOnce({ nombre_usuario: "ana.nueva" });
+    vi.mocked(apiFetch).mockImplementation(async (ruta) => {
+      if (ruta === "/contenidos/generos") return GENEROS as never;
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf-prueba" } as never;
+      if (ruta === "/usuarios/u1/perfil") {
+        return { nombre_usuario: "ana.nueva" } as never;
+      }
+      throw new Error(`Pedido inesperado: ${ruta}`);
+    });
     await abrir();
 
     const usuario = screen.getByLabelText("Nombre de usuario");
@@ -107,13 +162,11 @@ describe("ProfileEditDialog", () => {
     const bio = screen.getByLabelText("Sobre vos");
     await userEvent.clear(bio);
     await userEvent.type(bio, "Nueva biografía");
-    const generos = screen.getByLabelText("Géneros favoritos");
-    await userEvent.clear(generos);
-    await userEvent.type(generos, "Drama, Comedia");
+    await userEvent.click(screen.getByRole("button", { name: "Comedia" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/profile/ana.nueva"));
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/usuarios/u1/perfil", {
+    expect(apiFetch).toHaveBeenNthCalledWith(3, "/usuarios/u1/perfil", {
       method: "PATCH",
       headers: { "X-CSRF-Token": "csrf-prueba" },
       body: JSON.stringify({
@@ -125,9 +178,11 @@ describe("ProfileEditDialog", () => {
   });
 
   it("mantiene el diálogo abierto si el backend rechaza los cambios", async () => {
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce({ csrf_token: "csrf-prueba" })
-      .mockRejectedValueOnce(new Error("fallo"));
+    vi.mocked(apiFetch).mockImplementation(async (ruta) => {
+      if (ruta === "/contenidos/generos") return GENEROS as never;
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf-prueba" } as never;
+      throw new Error("fallo");
+    });
     await abrir();
 
     await userEvent.clear(screen.getByLabelText("Nombre"));

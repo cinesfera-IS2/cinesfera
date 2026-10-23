@@ -16,6 +16,7 @@ function resena(datos: Partial<ResenaPerfil> & Pick<ResenaPerfil, "id">): Resena
     fecha: "2026-09-04",
     comentario: `Comentario ${datos.id}`,
     posterGradient: "",
+    href: `/content/pelicula/1#resena-${datos.id}`,
     ...datos,
   };
 }

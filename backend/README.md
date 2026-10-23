@@ -273,7 +273,8 @@ También se puede consultar por nombre de usuario con
 minúsculas y exige el nombre completo; si no existe, responde `404`.
 No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
 iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
-`plataforma_id`, `calificacion`, `texto` y `fecha`. La reputación es la suma de
+`contenido_tipo`, `contenido_titulo`, `plataforma_id`, `calificacion`, `texto`
+y `fecha`. La reputación es la suma de
 `valoraciones_resena.valor` recibidas por todas las reseñas del usuario; si no
 tiene valoraciones, es `0`. No se devuelve el email ni la contraseña.
 
@@ -290,13 +291,17 @@ Para probarlo vos misma en Postman:
 4. Repetí con un UUID inexistente: debe responder `404 Not Found` con
    `{"detail":"Usuario no encontrado"}`.
 
-La respuesta utiliza IDs de TMDB porque el esquema de la base no guarda el
-título ni el póster del contenido en `resenas`.
+La respuesta identifica cada contenido con su tipo e ID de TMDB. El frontend
+usa esos datos para consultar la ficha actual y mostrar título, año y póster;
+`contenido_titulo` queda como respaldo si TMDB no está disponible.
 
 ## Ficha de película o serie
 
 La ficha consume dos endpoints públicos e independientes:
 
+- `GET /contenidos/generos` combina las listas oficiales de géneros de
+  películas y series de TMDB. La respuesta se conserva en memoria durante la
+  vida del proceso para evitar consultas repetidas.
 - `GET /contenidos/{tipo}/{tmdb_id}` obtiene el detalle desde TMDB. `tipo`
   admite `pelicula` o `serie`.
 - `GET /contenidos/{tipo}/{tmdb_id}/resenas` obtiene las reseñas locales,
@@ -312,6 +317,7 @@ Ejemplos:
 
 ```http
 GET http://localhost:8000/contenidos/pelicula/550
+GET http://localhost:8000/contenidos/generos
 GET http://localhost:8000/contenidos/pelicula/550/resenas
 GET http://localhost:8000/contenidos/serie/1399
 GET http://localhost:8000/contenidos/serie/1399/resenas
@@ -350,7 +356,8 @@ Los endpoints de perfil trabajan con el UUID que devuelve el registro o
   la ruta debe coincidir con el usuario del token.
 
 El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `foto_url`,
-`bio`, `ubicacion` y `generos_favoritos` (hasta cinco valores distintos).
+`bio`, `ubicacion` y `generos_favoritos` (hasta cinco valores distintos que
+deben pertenecer a la lista oficial devuelta por `GET /contenidos/generos`).
 El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
 URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
 Supabase Storage. Para quitar la foto, biografía o ubicación se envía el campo

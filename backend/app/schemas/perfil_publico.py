@@ -9,6 +9,8 @@ from app.core.enums import RolUsuario
 class ResenaPublica(BaseModel):
     id: UUID
     contenido_tmdb_id: int
+    contenido_tipo: str
+    contenido_titulo: str | None
     plataforma_id: int | None
     calificacion: float | None
     texto: str

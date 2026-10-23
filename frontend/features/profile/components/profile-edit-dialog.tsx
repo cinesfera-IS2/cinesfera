@@ -1,6 +1,11 @@
 "use client";
 
-import { InfoIcon, PencilSimpleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  CheckIcon,
+  InfoIcon,
+  PencilSimpleIcon,
+  XIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
@@ -13,11 +18,56 @@ type ProfileEditDialogProps = {
   perfil: PerfilPublico;
 };
 
+type Genero = {
+  id: number;
+  nombre: string;
+};
+
+const LIMITE_GENEROS = 5;
+
 export function ProfileEditDialog({ perfil }: ProfileEditDialogProps) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string>();
+  const [cargandoGeneros, setCargandoGeneros] = useState(false);
+  const [generosDisponibles, setGenerosDisponibles] = useState<Genero[]>();
+  const [generosSeleccionados, setGenerosSeleccionados] = useState<string[]>(
+    perfil.generosFavoritos
+  );
+
+  async function abrir() {
+    setError(undefined);
+    setGenerosSeleccionados(perfil.generosFavoritos);
+    dialogo.current?.showModal();
+
+    if (generosDisponibles) return;
+
+    setCargandoGeneros(true);
+    try {
+      setGenerosDisponibles(
+        await apiFetch<Genero[]>("/contenidos/generos", { cache: "no-store" })
+      );
+    } catch (fallo) {
+      setError(
+        fallo instanceof ApiError
+          ? fallo.message
+          : "No se pudieron cargar los géneros disponibles"
+      );
+    } finally {
+      setCargandoGeneros(false);
+    }
+  }
+
+  function alternarGenero(nombre: string) {
+    setGenerosSeleccionados((actuales) => {
+      if (actuales.includes(nombre)) {
+        return actuales.filter((genero) => genero !== nombre);
+      }
+      if (actuales.length >= LIMITE_GENEROS) return actuales;
+      return [...actuales, nombre];
+    });
+  }
 
   async function guardar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -31,10 +81,7 @@ export function ProfileEditDialog({ perfil }: ProfileEditDialogProps) {
     const fotoUrl = texto("foto_url");
     const bio = texto("bio");
     const ubicacion = texto("ubicacion");
-    const generosFavoritos = texto("generos_favoritos")
-      .split(",")
-      .map((genero) => genero.trim())
-      .filter(Boolean);
+    const generosFavoritos = generosSeleccionados;
 
     if (nombre !== perfil.nombre) cambios.nombre = nombre;
     if (apellido !== perfil.apellido) cambios.apellido = apellido;
@@ -94,7 +141,7 @@ export function ProfileEditDialog({ perfil }: ProfileEditDialogProps) {
     <>
       <button
         type="button"
-        onClick={() => dialogo.current?.showModal()}
+        onClick={abrir}
         className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
       >
         <PencilSimpleIcon weight="bold" className="size-4" />
@@ -192,17 +239,62 @@ export function ProfileEditDialog({ perfil }: ProfileEditDialogProps) {
             />
           </div>
 
-          <AuthField
-            label="Géneros favoritos"
-            name="generos_favoritos"
-            required={false}
-            defaultValue={perfil.generosFavoritos.join(", ")}
-            placeholder="Drama, Comedia, Ciencia ficción"
-            aria-describedby="ayuda-generos"
-          />
-          <p id="ayuda-generos" className="-mt-3 text-xs text-ink-500">
-            Separalos con comas. Podés elegir hasta cinco.
-          </p>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+              Géneros favoritos
+            </legend>
+            <span
+              aria-live="polite"
+              className="-mt-6 self-end text-xs font-semibold text-ink-500"
+            >
+              {generosSeleccionados.length} de {LIMITE_GENEROS} seleccionados
+            </span>
+
+            {cargandoGeneros && (
+              <p className="text-sm text-ink-400">Cargando géneros…</p>
+            )}
+
+            {generosDisponibles && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {generosDisponibles.map((genero) => {
+                  const seleccionado = generosSeleccionados.includes(
+                    genero.nombre
+                  );
+                  const deshabilitado =
+                    !seleccionado &&
+                    generosSeleccionados.length >= LIMITE_GENEROS;
+
+                  return (
+                    <button
+                      key={genero.id}
+                      type="button"
+                      aria-pressed={seleccionado}
+                      disabled={deshabilitado}
+                      onClick={() => alternarGenero(genero.nombre)}
+                      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                        seleccionado
+                          ? "border-brand-400 bg-brand-500/20 text-ink-100"
+                          : "border-night-600 bg-night-900 text-ink-300 hover:border-white/30 hover:bg-white/5"
+                      } disabled:cursor-not-allowed disabled:opacity-35`}
+                    >
+                      <span>{genero.nombre}</span>
+                      {seleccionado && (
+                        <CheckIcon
+                          weight="bold"
+                          aria-hidden="true"
+                          className="size-4 shrink-0 text-glow-400"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-ink-500">
+              Elegí hasta cinco opciones.
+            </p>
+          </fieldset>
 
           <p className="flex items-start gap-2 rounded-lg border border-night-600 bg-night-900/60 px-3 py-2.5 text-xs text-ink-400">
             <InfoIcon className="mt-0.5 size-4 shrink-0 text-glow-400" />

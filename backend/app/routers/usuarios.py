@@ -32,6 +32,11 @@ from app.services.usuario_service import (
     obtener_perfil_publico_por_nombre,
     suspender_usuario
 )
+from app.services.contenido_service import (
+    CatalogoNoDisponibleError,
+    GeneroFavoritoInvalidoError,
+    normalizar_generos_favoritos,
+)
 
 
 router = APIRouter(
@@ -170,6 +175,14 @@ def modificar_perfil(
         )
 
     try:
+        if "generos_favoritos" in datos.model_fields_set:
+            datos = datos.model_copy(
+                update={
+                    "generos_favoritos": normalizar_generos_favoritos(
+                        datos.generos_favoritos or []
+                    )
+                }
+            )
         return actualizar_perfil(db, usuario_id, datos)
     except UsuarioNoEncontradoError as error:
         raise HTTPException(
@@ -188,6 +201,16 @@ def modificar_perfil(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="No fue posible actualizar el perfil"
+        ) from error
+    except GeneroFavoritoInvalidoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error)
+        ) from error
+    except CatalogoNoDisponibleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error)
         ) from error
 
 

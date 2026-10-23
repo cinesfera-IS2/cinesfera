@@ -1,4 +1,8 @@
-import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  GearSixIcon,
+  ShieldCheckIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 
 import { FollowButton } from "@/features/profile/components/follow-button";
 import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
@@ -73,7 +77,17 @@ export function ProfileHero({
 
           <div className="flex shrink-0 items-center gap-3 pb-1">
             {esPropio ? (
-              <ProfileEditDialog perfil={perfil} />
+              <>
+                <ProfileEditDialog perfil={perfil} />
+                <Link
+                  href="/configuracion/cuenta"
+                  aria-label="Configuración de la cuenta"
+                  title="Configuración de la cuenta"
+                  className="grid size-10 shrink-0 place-items-center rounded-full border border-white/20 text-ink-300 transition-colors hover:border-white/40 hover:bg-white/5 hover:text-ink-100"
+                >
+                  <GearSixIcon weight="bold" aria-hidden="true" className="size-5" />
+                </Link>
+              </>
             ) : (
               <FollowButton usuarioId={perfil.id} haySesion={haySesion} />
             )}
