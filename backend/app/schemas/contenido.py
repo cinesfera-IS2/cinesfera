@@ -54,7 +54,7 @@ class ResenaContenidoRespuesta(BaseModel):
 class ResenaCreacion(BaseModel):
     usuario_id: UUID
     texto: str = Field(min_length=1, max_length=5000)
-    calificacion: Decimal = Field(ge=0, le=5)
+    calificacion: Decimal = Field(ge=0.5, le=5, multiple_of=0.5)
     plataforma_id: int | None = Field(default=None, gt=0)
     resena_padre_id: UUID | None = None
 
