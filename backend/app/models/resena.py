@@ -42,6 +42,14 @@ class Resena(Base):
     def contenido_tmdb_id(self) -> int:
         return self.contenido.tmdb_id
 
+    @property
+    def contenido_tipo(self) -> str:
+        return self.contenido.tipo
+
+    @property
+    def contenido_titulo(self) -> str | None:
+        return self.contenido.titulo
+
 
 class ValoracionResena(Base):
     __tablename__ = "valoraciones_resena"
