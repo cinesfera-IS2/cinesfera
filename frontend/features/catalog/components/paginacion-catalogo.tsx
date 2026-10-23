@@ -1,6 +1,6 @@
 import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 
+import { EnlaceCatalogo } from "@/features/catalog/components/navegacion-catalogo";
 import { hrefCatalogo, paginasVisibles } from "@/features/catalog/lib/filtros";
 import type { FiltrosCatalogo } from "@/features/catalog/types";
 
@@ -46,7 +46,7 @@ export function PaginacionCatalogo({
             </li>
           ) : (
             <li key={clave} className="hidden sm:block">
-              <Link
+              <EnlaceCatalogo
                 href={hrefCatalogo(filtros, { pagina: numero })}
                 aria-label={`Página ${numero}`}
                 aria-current={numero === pagina ? "page" : undefined}
@@ -57,7 +57,7 @@ export function PaginacionCatalogo({
                 }
               >
                 {numero}
-              </Link>
+              </EnlaceCatalogo>
             </li>
           )
         )}
@@ -110,12 +110,12 @@ function FlechaPagina({ href, etiqueta, children }: FlechaPaginaProps) {
   }
 
   return (
-    <Link
+    <EnlaceCatalogo
       href={href}
       aria-label={etiqueta}
       className={`${BASE} border border-night-600 text-ink-300 hover:border-ink-500 hover:text-ink-100`}
     >
       {children}
-    </Link>
+    </EnlaceCatalogo>
   );
 }

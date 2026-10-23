@@ -1,6 +1,6 @@
 import { FilmSlateIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 
+import { EnlaceCatalogo } from "@/features/catalog/components/navegacion-catalogo";
 import { PaginacionCatalogo } from "@/features/catalog/components/paginacion-catalogo";
 import { ObraCard } from "@/features/catalog/components/obra-card";
 import { buscarObras } from "@/features/catalog/data/catalogo";
@@ -77,7 +77,7 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
         <ul aria-label="Filtros activos" className="flex flex-wrap items-center gap-2">
           {activos.map((filtro) => (
             <li key={filtro.clave}>
-              <Link
+              <EnlaceCatalogo
                 href={filtro.hrefSinFiltro}
                 scroll={false}
                 aria-label={`Quitar filtro ${filtro.etiqueta}`}
@@ -85,7 +85,7 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
               >
                 {filtro.etiqueta}
                 <XIcon weight="bold" className="size-3.5 text-ink-400" />
-              </Link>
+              </EnlaceCatalogo>
             </li>
           ))}
           {activos.length > 1 && (
@@ -101,12 +101,12 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
 
 function LimpiarFiltros() {
   return (
-    <Link
+    <EnlaceCatalogo
       href="/catalogo"
       scroll={false}
       className="rounded-full px-2 py-1.5 text-sm font-semibold text-glow-400 transition-colors hover:text-glow-300"
     >
       Limpiar filtros
-    </Link>
+    </EnlaceCatalogo>
   );
 }

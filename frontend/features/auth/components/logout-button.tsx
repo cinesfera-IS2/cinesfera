@@ -5,7 +5,11 @@ import { useState } from "react";
 
 import { cerrarSesion } from "@/features/auth/lib/cerrar-sesion";
 
-export function LogoutButton() {
+type LogoutButtonProps = {
+  className?: string;
+};
+
+export function LogoutButton({ className = "" }: LogoutButtonProps) {
   const [saliendo, setSaliendo] = useState(false);
   const [fallo, setFallo] = useState(false);
 
@@ -27,14 +31,10 @@ export function LogoutButton() {
       onClick={salir}
       disabled={saliendo}
       title={fallo ? "No pudimos cerrar la sesión. Probá de nuevo." : undefined}
-      aria-label="Cerrar sesión"
-      className={`grid size-9 place-items-center rounded-full border transition-colors disabled:opacity-50 ${
-        fallo
-          ? "border-rose-500/60 text-rose-300"
-          : "border-white/20 text-ink-300 hover:border-white/40 hover:bg-white/5 hover:text-ink-100"
-      }`}
+      className={`${className} disabled:opacity-50 ${fallo ? "text-rose-300" : ""}`}
     >
       <SignOutIcon weight="bold" className="size-4" />
+      Cerrar sesión
     </button>
   );
 }
