@@ -68,3 +68,22 @@ export async function buscarObras(
     totalPaginas: respuesta.total_pages,
   };
 }
+
+/**
+ * Pósters de la primera página del catálogo, para decorar pantallas como la
+ * de acceso. Cambian poco, así que se cachean una hora en lugar de pedirlos
+ * en cada visita.
+ */
+export async function postersDelCatalogo(): Promise<Pick<Obra, "tmdbId" | "titulo" | "poster">[]> {
+  const respuesta = await apiFetch<CatalogoApi>("/catalogue/?page=1", {
+    next: { revalidate: 3600 },
+  });
+
+  return respuesta.contents
+    .filter((contenido) => contenido.poster_url)
+    .map((contenido) => ({
+      tmdbId: contenido.tmdb_id,
+      titulo: contenido.title,
+      poster: contenido.poster_url ?? undefined,
+    }));
+}

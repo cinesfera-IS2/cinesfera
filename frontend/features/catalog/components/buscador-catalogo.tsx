@@ -8,9 +8,10 @@ import type { FiltrosCatalogo } from "@/features/catalog/types";
 
 type BuscadorCatalogoProps = {
   filtros: FiltrosCatalogo;
+  onSubmit?: React.FormEventHandler<HTMLFormElement>;
 };
 
-export function BuscadorCatalogo({ filtros }: BuscadorCatalogoProps) {
+export function BuscadorCatalogo({ filtros, onSubmit }: Readonly<BuscadorCatalogoProps>) {
   return (
     // La key remonta el formulario al cambiar los filtros por fuera (las
     // etiquetas de filtros activos), para que los campos no muestren valores viejos.
@@ -18,6 +19,7 @@ export function BuscadorCatalogo({ filtros }: BuscadorCatalogoProps) {
       key={hrefCatalogo(filtros, { pagina: 1 })}
       action="/catalogo"
       scroll={false}
+      onSubmit={onSubmit}
       role="search"
       className="flex flex-col gap-2.5 md:flex-row md:items-center"
     >

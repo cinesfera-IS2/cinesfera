@@ -1,7 +1,9 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
+import { Cartelera, CarteleraEsqueleto } from "@/features/auth/components/cartelera";
+import { DESTINO_POR_DEFECTO } from "@/features/auth/lib/destino";
 import { BrandLogo } from "@/features/landing/components/brand-logo";
 
 type AuthLayoutProps = {
@@ -9,71 +11,68 @@ type AuthLayoutProps = {
   description: string;
   children: ReactNode;
   footer: ReactNode;
-  /** "lg" para formularios que se reparten en dos columnas, como el registro. */
-  ancho?: "md" | "lg";
+  /** A dónde se vuelve al entrar; si es una página puntual, "Volver" lleva ahí. */
+  destino?: string;
 };
 
-/** Envoltorio de las páginas de acceso: tarjeta centrada, sin cabecera ni pie del sitio. */
+/**
+ * Envoltorio de las páginas de acceso, sin cabecera ni pie del sitio. En
+ * escritorio la pantalla se parte: la cartelera a la izquierda y el
+ * formulario a la derecha; en móvil la cartelera queda como una franja arriba.
+ */
 export function AuthLayout({
   title,
   description,
   children,
   footer,
-  ancho = "md",
-}: AuthLayoutProps) {
-  return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
-      <div
-        aria-hidden
-        className="hero-halo pointer-events-none absolute inset-x-0 -top-64 h-[42rem]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 -top-[26rem] size-[32rem] -translate-x-1/2 rounded-full bg-brand-500/45 blur-2xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 -top-[27rem] size-[34rem] -translate-x-1/2 rounded-full bg-glow-400/20 blur-3xl"
-      />
+  destino = DESTINO_POR_DEFECTO,
+}: Readonly<AuthLayoutProps>) {
+  const vuelveAOrigen = destino !== DESTINO_POR_DEFECTO;
 
-      <div
-        className={`relative flex w-full flex-col gap-4 ${
-          ancho === "lg" ? "max-w-2xl" : "max-w-md"
-        }`}
-      >
+  return (
+    <main className="grid min-h-[100dvh] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div aria-hidden className="relative hidden overflow-hidden lg:block">
+        <Suspense fallback={<CarteleraEsqueleto variante="muro" />}>
+          <Cartelera variante="muro" />
+        </Suspense>
+        {/* Oscurece la pared y la funde con la columna del formulario. */}
+        <div className="absolute inset-0 bg-night-950/55" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-night-950/30 to-night-950" />
+        <div className="hero-halo absolute inset-x-0 -top-40 h-[36rem] opacity-80" />
+      </div>
+
+      <div className="relative flex flex-col overflow-hidden px-5 pb-10 sm:px-8 lg:px-14 xl:px-20">
+        <div
+          aria-hidden
+          className="pointer-events-none -mx-5 h-32 overflow-hidden px-5 pt-5 [mask-image:linear-gradient(to_bottom,black_30%,transparent)] sm:-mx-8 sm:px-8 lg:hidden"
+        >
+          <Suspense fallback={<CarteleraEsqueleto variante="franja" />}>
+            <Cartelera variante="franja" />
+          </Suspense>
+        </div>
+
         <Link
-          href="/"
-          className="inline-flex w-fit items-center gap-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100"
+          href={vuelveAOrigen ? destino : "/"}
+          className="-ml-2 inline-flex h-11 w-fit items-center gap-2 rounded-full px-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100 lg:mt-8"
         >
           <ArrowLeftIcon weight="bold" className="size-4" />
-          Volver al inicio
+          {vuelveAOrigen ? "Volver" : "Volver al inicio"}
         </Link>
 
-        <div className="overflow-hidden rounded-2xl border border-night-600 bg-night-850/90 shadow-2xl shadow-black/40 backdrop-blur">
-          {/* Franja perforada, guiño a la tira de película */}
-          <div
-            aria-hidden
-            className="h-2 [background-image:radial-gradient(circle,var(--color-night-700)_2.5px,transparent_2.5px)] [background-position:8px_4px] [background-size:16px_16px]"
-          />
-
-          <div className="flex flex-col gap-6 px-8 pb-8 pt-3 sm:px-10">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 pt-6 lg:justify-center lg:py-12">
+          <div className="flex flex-col gap-6">
             <BrandLogo size="sm" />
-
             <div>
-              <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink-100">
+              <h1 className="font-display text-3xl font-extrabold tracking-tight text-balance text-ink-100">
                 {title}
               </h1>
-              <p className="mt-1.5 text-sm text-ink-400 text-pretty">
-                {description}
-              </p>
-            </div>
-
-            {children}
-
-            <div className="border-t border-night-600 pt-5 text-center text-sm text-ink-400">
-              {footer}
+              <p className="mt-2 text-pretty text-ink-400">{description}</p>
             </div>
           </div>
+
+          {children}
+
+          <p className="text-center text-sm text-ink-400">{footer}</p>
         </div>
       </div>
     </main>

@@ -8,6 +8,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { hrefAcceso } from "@/features/auth/lib/destino";
 import { ApiError, apiFetch } from "@/lib/api";
 
 type EstadoSeguimiento = {
@@ -66,7 +67,7 @@ export function FollowButton({ usuarioId, haySesion }: FollowButtonProps) {
 
   async function alternarSeguimiento() {
     if (!haySesion) {
-      router.push("/login");
+      router.push(hrefAcceso("/login", location.pathname + location.search));
       return;
     }
 
