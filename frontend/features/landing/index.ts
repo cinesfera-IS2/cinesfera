@@ -5,3 +5,4 @@ export { FeaturedCarousel } from "@/features/landing/components/featured-carouse
 export { FeaturedSection } from "@/features/landing/components/featured-section";
 export { TrendingSection } from "@/features/landing/components/trending-section";
 export { LandingFooter } from "@/features/landing/components/landing-footer";
+export { ListaLayout } from "@/features/landing/components/lista-layout";
