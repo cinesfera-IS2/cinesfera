@@ -14,7 +14,7 @@ type MenuCuentaProps = {
 };
 
 /** Menú de la cuenta en escritorio. En móvil lo mismo vive dentro de MenuMovil. */
-export function MenuCuenta({ usuario }: MenuCuentaProps) {
+export function MenuCuenta({ usuario }: Readonly<MenuCuentaProps>) {
   return (
     <Desplegable
       etiqueta={`Cuenta de ${usuario.nombre}`}
@@ -38,7 +38,7 @@ export function MenuCuenta({ usuario }: MenuCuentaProps) {
   );
 }
 
-export function CuentaResumen({ usuario }: MenuCuentaProps) {
+export function CuentaResumen({ usuario }: Readonly<MenuCuentaProps>) {
   return (
     <div className="flex items-center gap-3 px-3 pt-2 pb-3">
       <AvatarCuenta usuario={usuario} tamano="md" />
@@ -52,7 +52,7 @@ export function CuentaResumen({ usuario }: MenuCuentaProps) {
   );
 }
 
-export function AccionesCuenta({ usuario }: MenuCuentaProps) {
+export function AccionesCuenta({ usuario }: Readonly<MenuCuentaProps>) {
   return (
     <>
       <div aria-hidden className="mx-1.5 mb-1.5 h-px bg-white/5" />

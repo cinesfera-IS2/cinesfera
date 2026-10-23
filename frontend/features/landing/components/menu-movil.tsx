@@ -20,7 +20,7 @@ type MenuMovilProps = {
  * En móvil no entran los links ni la cuenta en la barra: todo queda en este
  * panel, que se despliega a lo ancho debajo de la cabecera.
  */
-export function MenuMovil({ usuario }: MenuMovilProps) {
+export function MenuMovil({ usuario }: Readonly<MenuMovilProps>) {
   return (
     <Desplegable
       etiqueta="Menú"

@@ -27,7 +27,7 @@ type RegisterFormProps = {
   destino?: string;
 };
 
-export function RegisterForm({ destino = DESTINO_POR_DEFECTO }: RegisterFormProps) {
+export function RegisterForm({ destino = DESTINO_POR_DEFECTO }: Readonly<RegisterFormProps>) {
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);

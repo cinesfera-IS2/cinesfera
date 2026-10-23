@@ -11,10 +11,10 @@ type EnlaceAccederProps = Omit<ComponentProps<typeof Link>, "href"> & {
 };
 
 /** Link a /login (o /register) que recuerda la página actual para volver a ella al entrar. */
-export function EnlaceAcceder({ ruta = "/login", ...props }: EnlaceAccederProps) {
+export function EnlaceAcceder({ ruta = "/login", ...props }: Readonly<EnlaceAccederProps>) {
   const pathname = usePathname();
   const busqueda = useSearchParams()?.toString();
-  const actual = pathname && `${pathname}${busqueda ? `?${busqueda}` : ""}`;
+  const actual = busqueda ? `${pathname}?${busqueda}` : pathname;
 
   return <Link {...props} href={hrefAcceso(ruta, actual)} />;
 }

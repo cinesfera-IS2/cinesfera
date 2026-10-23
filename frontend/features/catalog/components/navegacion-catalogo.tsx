@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, use, useTransition, type ComponentProps, type ReactNode } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useMemo,
+  useTransition,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 type Navegacion = {
   navegar: (href: string, scroll?: boolean) => void;
@@ -17,15 +25,19 @@ const NavegacionContext = createContext<Navegacion | null>(null);
  * precargó (nunca en dev, y en producción no siempre a tiempo); con esto el
  * esqueleto sale en el mismo clic, sin esperar al servidor.
  */
-export function NavegacionCatalogo({ children }: { children: ReactNode }) {
+export function NavegacionCatalogo({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const [pendiente, startTransition] = useTransition();
 
-  function navegar(href: string, scroll = true) {
-    startTransition(() => router.push(href, { scroll }));
-  }
+  const navegar = useCallback(
+    (href: string, scroll = true) => {
+      startTransition(() => router.push(href, { scroll }));
+    },
+    [router]
+  );
+  const valor = useMemo(() => ({ navegar, pendiente }), [navegar, pendiente]);
 
-  return <NavegacionContext value={{ navegar, pendiente }}>{children}</NavegacionContext>;
+  return <NavegacionContext value={valor}>{children}</NavegacionContext>;
 }
 
 export function useNavegacionCatalogo() {
@@ -38,7 +50,7 @@ type ResultadosPendientesProps = {
   children: ReactNode;
 };
 
-export function ResultadosPendientes({ esqueleto, children }: ResultadosPendientesProps) {
+export function ResultadosPendientes({ esqueleto, children }: Readonly<ResultadosPendientesProps>) {
   const navegacion = useNavegacionCatalogo();
 
   return navegacion?.pendiente ? esqueleto : children;
@@ -49,7 +61,7 @@ type EnlaceCatalogoProps = Omit<ComponentProps<typeof Link>, "href"> & {
 };
 
 /** Link que, dentro del catálogo, muestra el esqueleto mientras carga el destino. */
-export function EnlaceCatalogo({ href, scroll, ...props }: EnlaceCatalogoProps) {
+export function EnlaceCatalogo({ href, scroll, ...props }: Readonly<EnlaceCatalogoProps>) {
   const navegacion = useNavegacionCatalogo();
 
   return (

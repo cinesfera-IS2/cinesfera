@@ -42,6 +42,19 @@ describe.each(PAGINAS)("página de $nombre", ({ Pagina, titulo }) => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  it("si viene de otra página, Volver lleva ahí y el texto lo aclara", async () => {
+    vi.mocked(obtenerSesion).mockResolvedValue(null);
+
+    render(
+      await Pagina({ searchParams: Promise.resolve({ volver: "/content/pelicula/603" }) } as never)
+    );
+
+    expect(screen.getByRole("link", { name: "Volver" }).getAttribute("href")).toBe(
+      "/content/pelicula/603"
+    );
+    expect(screen.getByText(/seguí donde estabas|seguir donde estabas/)).toBeTruthy();
+  });
+
   it("con sesión manda al catálogo", async () => {
     vi.mocked(obtenerSesion).mockResolvedValue({
       id: "u1",

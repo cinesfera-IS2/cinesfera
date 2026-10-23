@@ -19,7 +19,7 @@ type LoginFormProps = {
   destino?: string;
 };
 
-export function LoginForm({ destino = DESTINO_POR_DEFECTO }: LoginFormProps) {
+export function LoginForm({ destino = DESTINO_POR_DEFECTO }: Readonly<LoginFormProps>) {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [estado, setEstado] = useState<EstadoEnvio>("inactivo");
   const [error, setError] = useState<string | null>(null);

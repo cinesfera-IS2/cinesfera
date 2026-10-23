@@ -9,7 +9,7 @@ type LogoutButtonProps = {
   className?: string;
 };
 
-export function LogoutButton({ className = "" }: LogoutButtonProps) {
+export function LogoutButton({ className = "" }: Readonly<LogoutButtonProps>) {
   const [saliendo, setSaliendo] = useState(false);
   const [fallo, setFallo] = useState(false);
 

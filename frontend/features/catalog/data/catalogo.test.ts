@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "@/lib/api";
-import { buscarObras } from "./catalogo";
+import { buscarObras, postersDelCatalogo } from "./catalogo";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/api")>();
@@ -71,5 +71,24 @@ describe("buscarObras", () => {
     expect(apiFetchMock.mock.calls[0][0]).toBe(
       "/catalogue/?page=1&search=dark&content_type=series&year=2017"
     );
+  });
+});
+
+describe("postersDelCatalogo", () => {
+  it("devuelve solo las obras con póster y cachea la respuesta una hora", async () => {
+    apiFetchMock.mockResolvedValue(RESPUESTA);
+
+    const posters = await postersDelCatalogo();
+
+    expect(apiFetchMock).toHaveBeenCalledWith("/catalogue/?page=1", {
+      next: { revalidate: 3600 },
+    });
+    expect(posters).toEqual([
+      {
+        tmdbId: 603,
+        titulo: "Matrix",
+        poster: "https://image.tmdb.org/t/p/w500/matrix.jpg",
+      },
+    ]);
   });
 });

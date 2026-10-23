@@ -9,7 +9,7 @@ type AvatarCuentaProps = {
 };
 
 /** Es decorativo: el nombre siempre aparece al lado o en la etiqueta del botón. */
-export function AvatarCuenta({ usuario, tamano = "sm" }: AvatarCuentaProps) {
+export function AvatarCuenta({ usuario, tamano = "sm" }: Readonly<AvatarCuentaProps>) {
   const iniciales = `${usuario.nombre.at(0) ?? ""}${usuario.apellido.at(0) ?? ""}`.toUpperCase();
   const esChico = tamano === "sm";
 

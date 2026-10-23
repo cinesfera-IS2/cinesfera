@@ -26,7 +26,7 @@ export function AuthLayout({
   children,
   footer,
   destino = DESTINO_POR_DEFECTO,
-}: AuthLayoutProps) {
+}: Readonly<AuthLayoutProps>) {
   const vuelveAOrigen = destino !== DESTINO_POR_DEFECTO;
 
   return (

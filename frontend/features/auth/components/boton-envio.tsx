@@ -20,7 +20,7 @@ type BotonEnvioProps = {
  * servidor, confirma cuando respondió (la recarga que sigue también tarda) y
  * explica si la espera se alarga.
  */
-export function BotonEnvio({ estado, texto, textoEnviando, textoListo }: BotonEnvioProps) {
+export function BotonEnvio({ estado, texto, textoEnviando, textoListo }: Readonly<BotonEnvioProps>) {
   const demorado = useDemorado(estado === "enviando");
 
   return (

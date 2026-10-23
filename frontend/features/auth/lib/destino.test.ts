@@ -26,6 +26,10 @@ describe("destinoTrasAcceder", () => {
     }
   });
 
+  it("una dirección que ni siquiera se puede interpretar va al catálogo", () => {
+    expect(destinoTrasAcceder("//[")).toBe("/catalogo");
+  });
+
   it("no vuelve al propio login ni al registro", () => {
     expect(destinoTrasAcceder("/login")).toBe("/catalogo");
     expect(destinoTrasAcceder("/register?volver=/perfil")).toBe("/catalogo");

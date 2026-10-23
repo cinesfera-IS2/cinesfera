@@ -1,6 +1,6 @@
 export const DESTINO_POR_DEFECTO = "/catalogo";
 
-const ORIGEN_PROPIO = "http://cinesfera.invalid";
+const ORIGEN_PROPIO = "https://cinesfera.invalid";
 
 /**
  * A dónde volver después de iniciar sesión o registrarse. Solo se aceptan rutas

@@ -11,7 +11,7 @@ type BuscadorCatalogoProps = {
   onSubmit?: React.FormEventHandler<HTMLFormElement>;
 };
 
-export function BuscadorCatalogo({ filtros, onSubmit }: BuscadorCatalogoProps) {
+export function BuscadorCatalogo({ filtros, onSubmit }: Readonly<BuscadorCatalogoProps>) {
   return (
     // La key remonta el formulario al cambiar los filtros por fuera (las
     // etiquetas de filtros activos), para que los campos no muestren valores viejos.
