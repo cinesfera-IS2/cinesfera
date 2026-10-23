@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { PosterNoDisponible } from "@/features/catalog/components/poster-no-disponible";
 import type { Obra } from "@/features/catalog/types";
 
 type ObraCardProps = {
@@ -13,38 +14,40 @@ export function ObraCard({ obra, prioridad = false }: ObraCardProps) {
 
   return (
     <article className="group">
-      <Link href={`/content/${obra.tipo}/${obra.tmdbId}`} className="block">
-        <div className="relative aspect-2/3 overflow-hidden rounded-lg border border-white/5 bg-night-850 shadow-lg shadow-black/40 transition-colors group-hover:border-frame/70">
+      <Link
+        href={`/content/${obra.tipo}/${obra.tmdbId}`}
+        className="block rounded-lg focus-visible:outline-offset-4"
+      >
+        <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-night-850 shadow-lg shadow-black/40 ring-1 ring-white/5 transition-[box-shadow] duration-200 group-hover:ring-frame/70">
           {obra.poster ? (
             <Image
               src={obra.poster}
               alt={`Póster de ${obra.titulo}`}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
+              sizes="(min-width: 1280px) 200px, (min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
               priority={prioridad}
-              className="object-cover"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
             />
           ) : (
-            <div
-              aria-hidden
-              className={`absolute inset-0 bg-linear-to-b ${obra.posterGradient}`}
-            />
-          )}
-
-          {obra.tipo === "serie" && (
-            <span className="absolute top-2.5 left-2.5 rounded-md bg-night-950/80 px-2 py-1 text-xs font-semibold tracking-wide text-ink-100 uppercase backdrop-blur-sm">
-              Serie
-            </span>
+            <PosterNoDisponible degradado={obra.posterGradient} />
           )}
         </div>
 
         <h3
           title={obra.titulo}
-          className="mt-3 truncate font-display text-base font-bold text-ink-100 transition-colors group-hover:text-glow-300"
+          className="mt-3 line-clamp-2 font-display text-[0.9375rem] leading-snug font-bold text-ink-100 transition-colors group-hover:text-glow-300"
         >
           {obra.titulo}
         </h3>
-        {anio && <p className="mt-0.5 text-sm text-ink-400">{anio}</p>}
+        <p className="mt-1 flex gap-1.5 text-sm text-ink-400">
+          <span>{obra.tipo === "serie" ? "Serie" : "Película"}</span>
+          {anio && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{anio}</span>
+            </>
+          )}
+        </p>
       </Link>
     </article>
   );

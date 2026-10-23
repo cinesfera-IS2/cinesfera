@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { obtenerSesion } from "@/features/auth/session";
 import { LandingFooter, LandingHeader } from "@/features/landing";
+import { obtenerAmigosPropios } from "@/features/profile/data/amigos-servidor";
 import {
   ProfileDetails,
   ProfileHero,
@@ -47,6 +48,9 @@ export default async function ProfilePage({
   const perfil = esPropio
     ? { ...datos.perfil, email: sesion?.email }
     : datos.perfil;
+  const amigos = esPropio
+    ? await obtenerAmigosPropios(datos.perfil.id)
+    : undefined;
   const { resenas } = datos;
 
   return (
@@ -54,7 +58,12 @@ export default async function ProfilePage({
       <LandingHeader />
 
       <main className="flex-1">
-        <ProfileHero perfil={perfil} esPropio={esPropio} />
+        <ProfileHero
+          perfil={perfil}
+          esPropio={esPropio}
+          haySesion={sesion !== null}
+          amigos={amigos}
+        />
 
         <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 lg:grid-cols-[19rem_1fr] lg:items-start">
           <ProfileDetails perfil={perfil} esPropio={esPropio} />
@@ -62,7 +71,6 @@ export default async function ProfilePage({
             resenas={resenas}
             nombre={perfil.nombre}
             esPropio={esPropio}
-            usuarioId={esPropio ? perfil.id : undefined}
           />
         </div>
       </main>

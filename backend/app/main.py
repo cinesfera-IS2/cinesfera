@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers.amistades import router as amistades_router
 from app.routers.auth import router as auth_router
 from app.routers.contenidos import router as contenidos_router
+from app.routers.seguimientos import router as seguimientos_router
 from app.routers.usuarios import router as usuarios_router
 from app.catalogue_service.controllers.CatalogueController import router
 
@@ -26,8 +26,8 @@ app.add_middleware(
 
 
 app.include_router(auth_router)
-app.include_router(amistades_router)
 app.include_router(contenidos_router)
+app.include_router(seguimientos_router)
 app.include_router(usuarios_router)
 
 

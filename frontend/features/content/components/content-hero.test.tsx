@@ -36,12 +36,51 @@ describe("ContentHero", () => {
     render(<ContentHero contenido={PELICULA} />);
 
     expect(screen.getByRole("heading", { name: PELICULA.titulo })).toBeTruthy();
+    expect(screen.getByText("Fight Club")).toBeTruthy();
     expect(screen.getByText("Película")).toBeTruthy();
     expect(screen.getByText("1999")).toBeTruthy();
-    expect(screen.getByText("139 min")).toBeTruthy();
+    expect(screen.getByText("2 h 19 min")).toBeTruthy();
     expect(screen.getByText("Drama")).toBeTruthy();
-    expect(screen.getByText(PELICULA.sinopsis)).toBeTruthy();
-    expect(screen.getAllByRole("img")).toHaveLength(2);
+    // La portada de fondo es decorativa: solo el póster llega al lector de pantalla.
+    expect(screen.getAllByRole("img", { hidden: true })).toHaveLength(2);
+    expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
+      `Póster de ${PELICULA.titulo}`
+    );
+  });
+
+  it("no muestra el puntaje de TMDB: las reseñas son de la comunidad", () => {
+    render(<ContentHero contenido={PELICULA} />);
+
+    expect(screen.queryByText("TMDB")).toBeNull();
+    expect(screen.queryByText("8.4")).toBeNull();
+  });
+
+  it("lleva de vuelta al catálogo", () => {
+    render(<ContentHero contenido={PELICULA} />);
+
+    expect(
+      screen.getByRole("link", { name: "Catálogo" }).getAttribute("href")
+    ).toBe("/catalogo");
+  });
+
+  it("no repite el título original cuando coincide con el traducido", () => {
+    render(
+      <ContentHero
+        contenido={{ ...PELICULA, titulo: "Fight Club", titulo_original: "fight club" }}
+      />
+    );
+
+    expect(screen.getAllByText(/fight club/i)).toHaveLength(1);
+  });
+
+  it("usa el póster como fondo cuando no hay portada", () => {
+    render(<ContentHero contenido={{ ...PELICULA, portada_url: null }} />);
+
+    const imagenes = screen.getAllByRole("img", { hidden: true });
+    expect(imagenes).toHaveLength(2);
+    expect(
+      imagenes.every((imagen) => imagen.getAttribute("data-src") === PELICULA.poster_url)
+    ).toBe(true);
   });
 
   it("muestra los respaldos y el singular de una serie sin imágenes", () => {
@@ -64,10 +103,8 @@ describe("ContentHero", () => {
 
     expect(screen.getByText("Serie")).toBeTruthy();
     expect(screen.getByText("1 temporada")).toBeTruthy();
-    expect(screen.getByText("Póster no disponible")).toBeTruthy();
-    expect(
-      screen.getByText("La sinopsis todavía no está disponible.")
-    ).toBeTruthy();
+    expect(screen.getByText("Portada no disponible")).toBeTruthy();
+    expect(screen.queryByRole("img", { hidden: true })).toBeNull();
   });
 
   it("usa el plural cuando una serie tiene varias temporadas", () => {

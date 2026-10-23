@@ -8,7 +8,7 @@ class ResenaPublica(BaseModel):
     id: UUID
     contenido_tmdb_id: int
     plataforma_id: int | None
-    calificacion: float
+    calificacion: float | None
     texto: str
     fecha: datetime
 
@@ -20,4 +20,6 @@ class PerfilPublicoRespuesta(BaseModel):
     nombre_usuario: str
     foto_url: str | None
     reputacion: int
+    seguidores: int
+    siguiendo: int
     resenas: list[ResenaPublica]

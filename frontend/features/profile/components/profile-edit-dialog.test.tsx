@@ -15,7 +15,7 @@ const PERFIL: PerfilPublico = {
   fechaRegistro: "2026-02-14",
   bio: "Fan de los thrillers.",
   generosFavoritos: [],
-  estadisticas: { resenas: 0, vistas: 0, seguidores: 0, siguiendo: 0 },
+  estadisticas: { resenas: 0, seguidores: 0, siguiendo: 0 },
 };
 
 function dialogo() {

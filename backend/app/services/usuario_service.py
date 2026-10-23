@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.security import generar_hash_password, verificar_password
 from app.models.usuario import Usuario
 from app.models.resena import Resena, ValoracionResena
+from app.models.seguimiento import Seguimiento
 from app.schemas.perfil_publico import PerfilPublicoRespuesta, ResenaPublica
 from app.schemas.usuario import (
     UsuarioActualizacion,
@@ -89,6 +90,16 @@ def _construir_perfil_publico(
         .join(Resena, ValoracionResena.resena_id == Resena.id)
         .where(Resena.usuario_id == usuario_id)
     )
+    seguidores = db.scalar(
+        select(func.count()).select_from(Seguimiento).where(
+            Seguimiento.seguido_id == usuario_id
+        )
+    )
+    siguiendo = db.scalar(
+        select(func.count()).select_from(Seguimiento).where(
+            Seguimiento.seguidor_id == usuario_id
+        )
+    )
     return PerfilPublicoRespuesta(
         id=usuario.id,
         nombre=usuario.nombre,
@@ -96,6 +107,8 @@ def _construir_perfil_publico(
         nombre_usuario=usuario.nombre_usuario,
         foto_url=usuario.foto_url,
         reputacion=int(reputacion or 0),
+        seguidores=int(seguidores or 0),
+        siguiendo=int(siguiendo or 0),
         resenas=[ResenaPublica.model_validate(resena, from_attributes=True)
                  for resena in resenas]
     )

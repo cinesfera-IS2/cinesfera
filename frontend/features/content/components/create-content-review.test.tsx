@@ -45,7 +45,8 @@ describe("CreateContentReview", () => {
     );
 
     expect(dialogo().open).toBe(true);
-    expect(screen.getByLabelText("Calificación")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Calificación" })).toBeTruthy();
+    expect(screen.getAllByRole("radio")).toHaveLength(10);
     expect(screen.getByLabelText("Tu reseña")).toBeTruthy();
   });
 
@@ -62,10 +63,7 @@ describe("CreateContentReview", () => {
       screen.getByRole("button", { name: "Escribir una reseña" })
     );
 
-    await userEvent.selectOptions(
-      screen.getByLabelText("Calificación"),
-      "4.5"
-    );
+    await userEvent.click(screen.getByRole("radio", { name: "4.5 estrellas" }));
 
     await userEvent.type(
       screen.getByLabelText("Tu reseña"),
@@ -112,6 +110,7 @@ describe("CreateContentReview", () => {
       <CreateContentReview
         {...PROPS}
         resenaPadreId="resena-original"
+        subtitulo="Respondiendo a Ana Pérez"
         onPublicada={onPublicada}
       />
     );
@@ -121,6 +120,9 @@ describe("CreateContentReview", () => {
     );
 
     expect(screen.getByLabelText("Tu respuesta")).toBeTruthy();
+    expect(screen.getByText("Respondiendo a Ana Pérez")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("radio", { name: "4 estrellas" }));
 
     await userEvent.type(
       screen.getByLabelText("Tu respuesta"),
@@ -164,6 +166,7 @@ describe("CreateContentReview", () => {
       screen.getByRole("button", { name: "Escribir una reseña" })
     );
 
+    await userEvent.click(screen.getByRole("radio", { name: "3 estrellas" }));
     await userEvent.type(
       screen.getByLabelText("Tu reseña"),
       "Una película interesante"
@@ -177,6 +180,33 @@ describe("CreateContentReview", () => {
 
     expect(dialogo().open).toBe(true);
     expect(onPublicada).not.toHaveBeenCalled();
+  });
+
+  it("pide una calificación antes de publicar", async () => {
+    render(<CreateContentReview {...PROPS} onPublicada={vi.fn()} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Escribir una reseña" })
+    );
+    await userEvent.type(screen.getByLabelText("Tu reseña"), "Sin estrellas");
+    await userEvent.click(screen.getByRole("button", { name: "Publicar" }));
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Elegí una calificación"
+    );
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect(dialogo().open).toBe(true);
+  });
+
+  it("cuenta los caracteres de la reseña", async () => {
+    render(<CreateContentReview {...PROPS} onPublicada={vi.fn()} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Escribir una reseña" })
+    );
+    await userEvent.type(screen.getByLabelText("Tu reseña"), "Genial");
+
+    expect(screen.getByText("6 / 5000")).toBeTruthy();
   });
 
   it("permite cancelar sin publicar", async () => {

@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AuthLayout, RegisterForm } from "@/features/auth";
+import { obtenerSesion } from "@/features/auth/session";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  if (await obtenerSesion()) {
+    redirect("/catalogo");
+  }
+
   return (
     <AuthLayout
       title="Creá tu cuenta"

@@ -33,7 +33,7 @@ export function LoginForm() {
         }),
       });
 
-      recargarEn("/");
+      recargarEn("/catalogo");
     } catch (problema) {
       setError(
         problema instanceof ApiError
