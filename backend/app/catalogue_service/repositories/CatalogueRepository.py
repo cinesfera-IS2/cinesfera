@@ -188,6 +188,13 @@ class CatalogueRepository:
         for movie in data["results"]:
                 contents.append(self.movie_to_content(movie))
 
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date[:4] == str(year)
+            ]
+
         contents.sort(
             key=lambda content: content.release_date or "",
             reverse=True
@@ -234,6 +241,14 @@ class CatalogueRepository:
 
         contents = movies + series
 
+
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date[:4] == str(year)
+            ]
+
         contents.sort(
             key=lambda content: content.release_date or "",
             reverse=True
@@ -245,11 +260,6 @@ class CatalogueRepository:
     def search_keyword(self):
         pass
     
-    def search_seasons(self):
-        pass
-
-    def search_episodes(self):
-        pass
 
     #puede ser útil más adelante
     def search_by_id(self, id):
