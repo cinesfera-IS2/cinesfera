@@ -24,10 +24,11 @@ export function ContentReviewCard({
 
   return (
     <article
-      className={`flex gap-3 ${
+      id={`resena-${resena.id}`}
+      className={`flex scroll-mt-24 gap-3 target:rounded-2xl target:ring-2 target:ring-glow-400/30 ${
         esRespuesta
           ? "py-1"
-          : "rounded-2xl border border-white/5 bg-night-900/50 p-5 sm:gap-4 sm:p-6"
+          : "rounded-2xl border border-white/5 bg-night-900/50 p-5 target:border-glow-400/60 sm:gap-4 sm:p-6"
       }`}
     >
       <span

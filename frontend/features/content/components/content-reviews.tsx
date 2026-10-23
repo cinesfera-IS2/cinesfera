@@ -4,6 +4,7 @@ import {
   ArrowClockwiseIcon,
   ChatCircleTextIcon,
 } from "@phosphor-icons/react";
+import { useEffect } from "react";
 
 import type { UsuarioSesion } from "@/features/auth/session";
 import { ContentReviewThread } from "@/features/content/components/content-review-thread";
@@ -25,6 +26,15 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
 
   const { estado, tipo, tmdbId, reintentar, actualizar } = resenas;
   const hilos = estado.estado === "listo" ? agruparResenas(estado.resenas) : [];
+
+  useEffect(() => {
+    if (estado.estado !== "listo") return;
+
+    const objetivo = window.location.hash.slice(1);
+    if (!objetivo.startsWith("resena-")) return;
+
+    document.getElementById(objetivo)?.scrollIntoView({ block: "center" });
+  }, [estado]);
 
   return (
     <section aria-labelledby="titulo-resenas">

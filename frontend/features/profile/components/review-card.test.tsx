@@ -1,8 +1,15 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReviewCard } from "./review-card";
 import type { ResenaPerfil } from "@/features/profile/types";
+
+vi.mock("next/image", () => ({
+  default: ({ src, alt }: { src: string; alt: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} />
+  ),
+}));
 
 const RESENA: ResenaPerfil = {
   id: "r1",
@@ -10,7 +17,9 @@ const RESENA: ResenaPerfil = {
   puntaje: 3.5,
   fecha: "2026-09-04",
   comentario: "Sigue siendo increíble.",
+  posterUrl: "https://image.tmdb.org/t/p/w500/matrix.jpg",
   posterGradient: "",
+  href: "/content/pelicula/603#resena-r1",
 };
 
 describe("ReviewCard", () => {
@@ -25,6 +34,14 @@ describe("ReviewCard", () => {
       "2026-09-04"
     );
     expect(screen.getByText("Sigue siendo increíble.")).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: "Póster de Matrix" }).getAttribute("src")
+    ).toBe("https://image.tmdb.org/t/p/w500/matrix.jpg");
+    expect(
+      screen
+        .getByRole("link", { name: "Ver Matrix y esta reseña" })
+        .getAttribute("href")
+    ).toBe("/content/pelicula/603#resena-r1");
   });
 
   it("agrega el año y los me gusta solo cuando los hay", () => {

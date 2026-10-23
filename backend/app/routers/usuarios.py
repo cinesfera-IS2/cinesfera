@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
@@ -12,19 +12,30 @@ from app.dependencies.auth import (
     obtener_usuario_actual
 )
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioActualizacion, UsuarioRespuesta
+from app.schemas.usuario import (
+    CambioPassword,
+    UsuarioActualizacion,
+    UsuarioRespuesta
+)
 from app.schemas.perfil_publico import PerfilPublicoRespuesta
 from app.services.usuario_service import (
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
+    PasswordActualInvalidaError,
     TransicionEstadoInvalidaError,
     UsuarioNoEncontradoError,
     actualizar_perfil,
+    cambiar_password,
     eliminar_usuario,
     obtener_perfil,
     obtener_perfil_publico,
     obtener_perfil_publico_por_nombre,
     suspender_usuario
+)
+from app.services.contenido_service import (
+    CatalogoNoDisponibleError,
+    GeneroFavoritoInvalidoError,
+    normalizar_generos_favoritos,
 )
 
 
@@ -164,6 +175,14 @@ def modificar_perfil(
         )
 
     try:
+        if "generos_favoritos" in datos.model_fields_set:
+            datos = datos.model_copy(
+                update={
+                    "generos_favoritos": normalizar_generos_favoritos(
+                        datos.generos_favoritos or []
+                    )
+                }
+            )
         return actualizar_perfil(db, usuario_id, datos)
     except UsuarioNoEncontradoError as error:
         raise HTTPException(
@@ -183,3 +202,46 @@ def modificar_perfil(
             status_code=status.HTTP_409_CONFLICT,
             detail="No fue posible actualizar el perfil"
         ) from error
+    except GeneroFavoritoInvalidoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error)
+        ) from error
+    except CatalogoNoDisponibleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error)
+        ) from error
+
+
+@router.patch(
+    "/{usuario_id}/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verificar_csrf)]
+)
+def modificar_password(
+    usuario_id: UUID,
+    datos: CambioPassword,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
+) -> Response:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para cambiar esta contraseña"
+        )
+
+    try:
+        cambiar_password(
+            db,
+            usuario_actual,
+            datos.password_actual,
+            datos.password_nueva
+        )
+    except PasswordActualInvalidaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error)
+        ) from error
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
