@@ -95,15 +95,30 @@ def obtener_resenas_contenido(
         .subquery()
     )
 
+    # La tabla comunitaria contiene una puntuación vigente por usuario y padre.
+    # AVG conserva NULL cuando no hay estrellas; solo el contador pasa a cero.
+    calificaciones = (
+        select(
+            CalificacionResena.resena_id,
+            func.avg(CalificacionResena.calificacion).label("promedio"),
+            func.count(CalificacionResena.calificacion).label("cantidad"),
+        )
+        .group_by(CalificacionResena.resena_id)
+        .subquery()
+    )
+
     filas = db.execute(
         select(
             Resena,
             Usuario,
             func.coalesce(valoraciones.c.valoracion, 0),
+            calificaciones.c.promedio,
+            func.coalesce(calificaciones.c.cantidad, 0),
         )
         .join(Usuario, Usuario.id == Resena.usuario_id)
         .join(Contenido, Contenido.id == Resena.contenido_id)
         .outerjoin(valoraciones, valoraciones.c.resena_id == Resena.id)
+        .outerjoin(calificaciones, calificaciones.c.resena_id == Resena.id)
         .where(Contenido.tmdb_id == tmdb_id, Contenido.tipo == tipo)
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
@@ -118,9 +133,11 @@ def obtener_resenas_contenido(
             texto=resena.texto,
             fecha=resena.fecha,
             valoracion=int(valoracion),
+            promedio_comunitario=float(promedio) if promedio is not None else None,
+            cantidad_valoraciones=int(cantidad),
             autor=AutorResena.model_validate(usuario, from_attributes=True),
         )
-        for resena, usuario, valoracion in filas
+        for resena, usuario, valoracion, promedio, cantidad in filas
     ]
 
 

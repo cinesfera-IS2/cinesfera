@@ -46,6 +46,8 @@ class ResenaContenidoRespuesta(BaseModel):
     texto: str
     fecha: datetime
     valoracion: int
+    promedio_comunitario: float | None = Field(ge=0.5, le=5)
+    cantidad_valoraciones: int = Field(ge=0)
     autor: AutorResena
 
 

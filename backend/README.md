@@ -1,5 +1,15 @@
 # Backend (FastAPI)
 
+## Valoración comunitaria de reseñas (Scrum 123)
+
+`GET /contenidos/{tipo}/{tmdb_id}/resenas` incluye `promedio_comunitario`
+y `cantidad_valoraciones` en cada reseña. Por ejemplo, dos puntuaciones de
+3 y 5 devuelven `4.0` y `2`. Sin puntuaciones devuelve `null` y `0`.
+El cálculo usa las puntuaciones vigentes de `calificaciones_resenas`, agrupadas
+por reseña, y refleja las altas y ediciones en la siguiente consulta. Los
+comentarios sin estrellas y los votos positivos/negativos (`valoracion`) no
+participan en este promedio. Requiere la migración `002_calificaciones_comunidad.sql`.
+
 ## Requisitos
 
 - Python 3.10 o superior (en desarrollo se usa Python 3.14)
