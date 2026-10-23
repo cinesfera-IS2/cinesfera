@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 import jwt
@@ -7,6 +8,7 @@ import jwt
 from app.core import security
 from app.main import app
 from app.models.usuario import Usuario
+from app.schemas.contenido import GeneroContenido
 from tests.utilidades import (
     PASSWORD_DE_PRUEBA,
     conectar_api,
@@ -54,7 +56,15 @@ class PerfilAutenticadoTests(unittest.TestCase):
             "X-CSRF-Token": respuesta.json()["csrf_token"]
         }
 
-    def test_login_actualizacion_y_persistencia_de_datos_y_foto(self):
+    @patch("app.services.contenido_service.obtener_generos_contenido")
+    def test_login_actualizacion_y_persistencia_de_datos_y_foto(
+        self,
+        obtener_generos,
+    ):
+        obtener_generos.return_value = (
+            GeneroContenido(id=18, nombre="Drama"),
+            GeneroContenido(id=878, nombre="Ciencia ficción"),
+        )
         headers = self.iniciar_sesion()
         cambios = {
             "nombre": "  Nuevo  ", "apellido": "  Apellido  ",
