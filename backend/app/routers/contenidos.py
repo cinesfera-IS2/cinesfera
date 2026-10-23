@@ -9,6 +9,7 @@ from app.dependencies.auth import obtener_usuario_actual
 from app.models.usuario import Usuario
 from app.schemas.contenido import (
     ContenidoDetalleRespuesta,
+    GeneroContenido,
     ResenaCreacion,
     ResenaCreadaRespuesta,
     ResenaContenidoRespuesta,
@@ -21,11 +22,23 @@ from app.services.contenido_service import (
     ResenaPadreNoEncontradaError,
     crear_resena,
     obtener_detalle_contenido,
+    obtener_generos_contenido,
     obtener_resenas_contenido,
 )
 
 
 router = APIRouter(prefix="/contenidos", tags=["Contenidos"])
+
+
+@router.get("/generos", response_model=list[GeneroContenido])
+def consultar_generos() -> tuple[GeneroContenido, ...]:
+    try:
+        return obtener_generos_contenido()
+    except CatalogoNoDisponibleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 
 
 @router.post(

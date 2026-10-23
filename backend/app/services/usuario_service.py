@@ -28,6 +28,10 @@ class CredencialesInvalidasError(Exception):
     pass
 
 
+class PasswordActualInvalidaError(Exception):
+    pass
+
+
 class UsuarioNoEncontradoError(Exception):
     pass
 
@@ -106,6 +110,11 @@ def _construir_perfil_publico(
         apellido=usuario.apellido,
         nombre_usuario=usuario.nombre_usuario,
         foto_url=usuario.foto_url,
+        bio=usuario.bio,
+        ubicacion=usuario.ubicacion,
+        generos_favoritos=usuario.generos_favoritos,
+        rol=usuario.rol,
+        fecha_registro=usuario.fecha_registro,
         reputacion=int(reputacion or 0),
         seguidores=int(seguidores or 0),
         siguiendo=int(siguiendo or 0),
@@ -207,6 +216,19 @@ def actualizar_perfil(
 
     db.refresh(usuario)
     return usuario
+
+
+def cambiar_password(
+    db: Session,
+    usuario: Usuario,
+    password_actual: str,
+    password_nueva: str
+) -> None:
+    if not verificar_password(password_actual, usuario.password_hash):
+        raise PasswordActualInvalidaError("La contraseña actual es incorrecta")
+
+    usuario.password_hash = generar_hash_password(password_nueva)
+    db.commit()
 
 
 def iniciar_sesion(

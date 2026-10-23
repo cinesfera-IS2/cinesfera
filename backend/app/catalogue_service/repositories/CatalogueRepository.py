@@ -192,7 +192,7 @@ class CatalogueRepository:
             contents = [
                 content for content in contents
                 if content.release_date
-                and content.release_date[:4] == str(year)
+                and content.release_date.startswith(str(year))
             ]
 
         contents.sort(
@@ -246,7 +246,7 @@ class CatalogueRepository:
             contents = [
                 content for content in contents
                 if content.release_date
-                and content.release_date[:4] == str(year)
+                and content.release_date.startswith(str(year))
             ]
 
         contents.sort(

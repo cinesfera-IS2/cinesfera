@@ -112,6 +112,9 @@ describe("página de perfil", () => {
     expect(screen.getByRole("button", { name: "Seguir" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Ana no publicó reseñas" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Configuración de la cuenta" })
+    ).toBeNull();
     expect(screen.queryByRole("button", { name: "Ver amigos" })).toBeNull();
     expect(obtenerAmigosPropios).not.toHaveBeenCalled();
   });
@@ -129,6 +132,9 @@ describe("página de perfil", () => {
 
     expect(screen.getByRole("button", { name: "Seguir" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Configuración de la cuenta" })
+    ).toBeNull();
     expect(screen.queryByText("otra@example.com")).toBeNull();
   });
 
@@ -147,6 +153,11 @@ describe("página de perfil", () => {
     render(await ProfilePage(props("anatorres")));
 
     expect(screen.getByRole("button", { name: "Editar perfil" })).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Configuración de la cuenta" })
+        .getAttribute("href")
+    ).toBe("/configuracion/cuenta");
     expect(screen.queryByRole("button", { name: "Seguir" })).toBeNull();
     expect(screen.getByText("ana@example.com")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ver amigos" })).toBeTruthy();

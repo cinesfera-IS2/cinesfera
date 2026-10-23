@@ -8,6 +8,10 @@ vi.mock("@/features/profile/components/follow-button", () => ({
   FollowButton: () => <button type="button">Seguir</button>,
 }));
 
+vi.mock("@/features/profile/components/profile-edit-dialog", () => ({
+  ProfileEditDialog: () => <button type="button">Editar perfil</button>,
+}));
+
 const PERFIL: PerfilPublico = {
   id: "u1",
   nombreUsuario: "anatorres",
@@ -66,12 +70,20 @@ describe("ProfileHero", () => {
 
     expect(screen.getByRole("button", { name: "Seguir" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Configuración de la cuenta" })
+    ).toBeNull();
   });
 
-  it("en el perfil propio ofrece editarlo", () => {
+  it("en el perfil propio ofrece editarlo y entrar a configuración", () => {
     render(<ProfileHero perfil={PERFIL} esPropio haySesion />);
 
     expect(screen.getByRole("button", { name: "Editar perfil" })).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Configuración de la cuenta" })
+        .getAttribute("href")
+    ).toBe("/configuracion/cuenta");
     expect(screen.queryByRole("button", { name: "Seguir" })).toBeNull();
   });
 
