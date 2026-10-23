@@ -31,9 +31,8 @@
 
 :root {
   color-scheme: dark;
-  /* Alto de LandingHeader (py-4 más su fila de botones, en todos los anchos).
-     Lo usan las barras que se pegan debajo de ella. */
-  --alto-cabecera: 71px;
+  /* Alto de LandingHeader (h-16). Lo usan las barras que se pegan debajo de ella. */
+  --alto-cabecera: 64px;
 }
 
 body {
@@ -122,6 +121,86 @@ body {
     }
   }
 
+  /* Arriba de todo la cabecera deja ver el halo de la página; al bajar se
+     vuelve sólida. Sin soporte de animation-timeline queda sólida siempre. */
+  .cabecera {
+    background-color: color-mix(in oklab, var(--color-night-950) 92%, transparent);
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+    backdrop-filter: blur(12px);
+  }
+
+  /* El haz: la sección activa se ilumina sobre el borde inferior de la
+     cabecera y derrama un poco de luz hacia abajo, como el halo del hero. El
+     elemento con .haz tiene que ocupar todo el alto de la cabecera. */
+  .haz {
+    position: relative;
+  }
+
+  .haz::after {
+    content: "";
+    position: absolute;
+    right: 12%;
+    bottom: -1px;
+    left: 12%;
+    height: 2px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, var(--color-glow-400), transparent);
+    opacity: 0;
+    transform: scaleX(0.4);
+    transition:
+      opacity 200ms ease-out,
+      transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+    pointer-events: none;
+  }
+
+  .haz::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    height: 28px;
+    background: radial-gradient(
+      50% 100% at 50% 0%,
+      color-mix(in oklab, var(--color-glow-400) 38%, transparent),
+      transparent
+    );
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+    pointer-events: none;
+  }
+
+  .haz:has([aria-current="page"])::after {
+    opacity: 1;
+    transform: none;
+  }
+
+  .haz:has([aria-current="page"])::before {
+    opacity: 1;
+  }
+
+  /* Abre con una curva que arranca rápido y cierra más rápido de lo que abre;
+     la visibilidad espera al final del cierre para que no se corte. */
+  .panel-desplegable {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+    transition:
+      opacity 120ms ease-out,
+      transform 120ms ease-out,
+      visibility 0s linear 120ms;
+  }
+
+  .panel-desplegable[data-abierto="true"] {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s;
+  }
+
   /* Oculta la barra de scroll del carrusel "Joyas de la cartelera" sin quitar el scroll. */
   .scrollbar-hide {
     scrollbar-width: none;
@@ -133,6 +212,29 @@ body {
   }
 }
 
+@keyframes cabecera-al-scrollear {
+  from {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .cabecera {
+    animation: cabecera-al-scrollear linear both;
+    animation-timeline: scroll();
+    animation-range: 0 120px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .haz:not(:has([aria-current="page"])):hover::after {
+    opacity: 0.45;
+    transform: scaleX(0.7);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .proyeccion {
     animation: proyeccion 1100ms cubic-bezier(0.23, 1, 0.32, 1) both;
@@ -141,7 +243,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .dialogo-animado,
-  .dialogo-animado[open] {
+  .dialogo-animado[open],
+  .panel-desplegable,
+  .haz::after,
+  .haz:not(:has([aria-current="page"])):hover::after {
     transform: none;
   }
 
