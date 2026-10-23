@@ -1,8 +1,13 @@
 import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { Suspense } from "react";
 
-import { TrendingCard } from "@/features/landing/components/trending-card";
-import { TRENDING_TITLES } from "@/features/landing/data/landing-content";
+import { ListaNoDisponible, ObraCard, ObraCardEsqueleto, obrasEnTendencia } from "@/features/catalog";
+
+/** Llenan filas completas con 2, 3 y 6 columnas. */
+export const TENDENCIAS_EN_PORTADA = 12;
+
+const GRILLA = "mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6";
 
 export function TrendingSection() {
   return (
@@ -14,12 +19,12 @@ export function TrendingSection() {
               Tendencias de la Semana
             </h2>
             <p className="mt-1.5 text-sm text-ink-400">
-              Las producciones que están dando de qué hablar en la comunidad hoy.
+              Lo que más se está viendo esta semana. ¿Ya lo viste? Contá qué te pareció.
             </p>
           </div>
 
           <Link
-            href="#tendencias"
+            href="/tendencias"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-glow-400 transition-colors hover:text-glow-300"
           >
             Ver todas las tendencias
@@ -27,14 +32,48 @@ export function TrendingSection() {
           </Link>
         </div>
 
-        <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {TRENDING_TITLES.map((item) => (
-            <li key={item.id}>
-              <TrendingCard item={item} />
-            </li>
-          ))}
-        </ul>
+        <Suspense fallback={<GrillaEsqueleto />}>
+          <GrillaTendencias />
+        </Suspense>
       </div>
     </section>
+  );
+}
+
+export async function GrillaTendencias() {
+  const lista = await obrasEnTendencia().catch(() => null);
+
+  if (!lista) {
+    return (
+      <div className="mt-8">
+        <ListaNoDisponible />
+      </div>
+    );
+  }
+
+  const conPoster = lista.obras.filter((obra) => obra.poster).slice(0, TENDENCIAS_EN_PORTADA);
+
+  return (
+    <ul className={GRILLA}>
+      {conPoster.map((obra) => (
+        <li key={`${obra.tipo}-${obra.tmdbId}`}>
+          <ObraCard obra={obra} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const SILUETAS_GRILLA = Array.from({ length: TENDENCIAS_EN_PORTADA }, (_, indice) => `silueta-${indice}`);
+
+export function GrillaEsqueleto() {
+  return (
+    <ul aria-busy="true" aria-label="Cargando tendencias" className={GRILLA}>
+      {SILUETAS_GRILLA.map((clave) => (
+        <li key={clave}>
+          <ObraCardEsqueleto />
+        </li>
+      ))}
+    </ul>
   );
 }
