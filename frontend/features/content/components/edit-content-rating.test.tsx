@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/lib/api";
 import { EditContentRating } from "./edit-content-rating";
 import { ContentReviews } from "./content-reviews";
+import { ResenasProvider } from "./resenas-provider";
 import type { ResenaContenido } from "../types";
 
 vi.mock("@/lib/api", () => ({ apiFetch: vi.fn() }));
@@ -30,14 +31,14 @@ describe("Editar valoración", () => {
     const onActualizada = vi.fn();
     render(<EditContentRating {...props} onActualizada={onActualizada} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    expect((screen.getByLabelText("Calificación") as HTMLSelectElement).value).toBe("2");
-    expect(screen.getByRole("img", { name: "2 de 5 estrellas" })).toBeTruthy();
-    await userEvent.selectOptions(screen.getByLabelText("Calificación"), "4.5");
+    expect((screen.getByRole("radio", { name: "2 estrellas" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getAllByRole("radio")).toHaveLength(10);
+    await userEvent.click(screen.getByRole("radio", { name: "4.5 estrellas" }));
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(api).not.toHaveBeenCalled();
     expect(onActualizada).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    expect((screen.getByLabelText("Calificación") as HTMLSelectElement).value).toBe("2");
+    expect((screen.getByRole("radio", { name: "2 estrellas" }) as HTMLInputElement).checked).toBe(true);
   });
 
   it("guarda solo la puntuación por PATCH con CSRF", async () => {
@@ -45,7 +46,7 @@ describe("Editar valoración", () => {
     api.mockResolvedValueOnce({ csrf_token: "csrf" }).mockResolvedValueOnce(actualizada);
     const { rerender } = render(<EditContentRating {...props} onActualizada={onActualizada} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    await userEvent.selectOptions(screen.getByLabelText("Calificación"), "4.5");
+    await userEvent.click(screen.getByRole("radio", { name: "4.5 estrellas" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
     await waitFor(() => expect(onActualizada).toHaveBeenCalledWith(actualizada));
     expect(api).toHaveBeenNthCalledWith(1, "/auth/csrf", { cache: "no-store" });
@@ -55,7 +56,7 @@ describe("Editar valoración", () => {
     expect((screen.getByRole("dialog", { hidden: true }) as HTMLDialogElement).open).toBe(false);
     rerender(<EditContentRating {...props} calificacion={4.5} onActualizada={onActualizada} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    expect((screen.getByLabelText("Calificación") as HTMLSelectElement).value).toBe("4.5");
+    expect((screen.getByRole("radio", { name: "4.5 estrellas" }) as HTMLInputElement).checked).toBe(true);
   });
 
   it("mantiene el valor guardado ante un error y permite reintentar", async () => {
@@ -63,7 +64,7 @@ describe("Editar valoración", () => {
     api.mockResolvedValueOnce({ csrf_token: "csrf" }).mockRejectedValueOnce(new Error("Error de red"));
     render(<EditContentRating {...props} onActualizada={onActualizada} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    await userEvent.selectOptions(screen.getByLabelText("Calificación"), "4.5");
+    await userEvent.click(screen.getByRole("radio", { name: "4.5 estrellas" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
     expect((await screen.findByRole("alert")).textContent).toContain("No pudimos actualizar");
     expect(onActualizada).not.toHaveBeenCalled();
@@ -81,26 +82,26 @@ describe("Editar valoración", () => {
       if (ruta.endsWith("/valoraciones/mias")) return [{ resena_id: "padre", calificacion: 5 }];
       return [padre, comentario];
     });
-    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={usuario} />);
+    render(<ResenasProvider tipo="pelicula" tmdbId={550} usuarioId={usuario.id}><ContentReviews usuario={usuario} /></ResenasProvider>);
     await screen.findByText("Promedio de la comunidad: 4 / 5 · 2 valoraciones");
     expect(screen.getAllByRole("button", { name: "Editar valoración" })).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    expect((within(screen.getByRole("dialog")).getByLabelText("Calificación") as HTMLSelectElement).value).toBe("5");
-    await userEvent.selectOptions(within(screen.getByRole("dialog")).getByLabelText("Calificación"), "1");
+    expect((within(screen.getByRole("dialog")).getByRole("radio", { name: "5 estrellas" }) as HTMLInputElement).checked).toBe(true);
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("radio", { name: "1 estrella" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
     expect(await screen.findByText("Promedio de la comunidad: 2 / 5 · 2 valoraciones")).toBeTruthy();
     expect(screen.getByText("Mi comentario original")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
-    expect((within(screen.getByRole("dialog")).getByLabelText("Calificación") as HTMLSelectElement).value).toBe("1");
+    expect((within(screen.getByRole("dialog")).getByRole("radio", { name: "1 estrella" }) as HTMLInputElement).checked).toBe(true);
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     await userEvent.click(screen.getAllByRole("button", { name: "Responder" })[0]);
-    expect(within(screen.getByRole("dialog")).queryByLabelText("Calificación")).toBeNull();
+    expect(within(screen.getByRole("dialog")).queryByRole("group", { name: "Calificación" })).toBeNull();
   });
 
   it.each([null, usuario])("no ofrece editar si no hay valoración propia (sesión: %s)", async (sesion) => {
     api.mockImplementation(async (ruta) => ruta.endsWith("/valoraciones/mias") ? [] : [padre]);
-    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={sesion} />);
+    render(<ResenasProvider tipo="pelicula" tmdbId={550} usuarioId={sesion?.id}><ContentReviews usuario={sesion} /></ResenasProvider>);
     await screen.findByText("Reseña original");
     expect(screen.queryByRole("button", { name: "Editar valoración" })).toBeNull();
     if (!sesion) expect(api).toHaveBeenCalledTimes(1);

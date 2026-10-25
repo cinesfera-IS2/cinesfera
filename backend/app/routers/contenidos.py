@@ -13,6 +13,7 @@ from app.schemas.contenido import (
     CalificacionActualizacion,
     CalificacionActualizadaRespuesta,
     CalificacionPropiaRespuesta,
+    GeneroContenido,
     ResenaCreacion,
     ResenaCreadaRespuesta,
     ResenaContenidoRespuesta,
@@ -29,6 +30,7 @@ from app.services.contenido_service import (
     actualizar_calificacion,
     obtener_calificaciones_propias,
     obtener_detalle_contenido,
+    obtener_generos_contenido,
     obtener_resenas_contenido,
 )
 
@@ -68,6 +70,17 @@ def editar_calificacion(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except CalificacionNoEncontradaError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@router.get("/generos", response_model=list[GeneroContenido])
+def consultar_generos() -> tuple[GeneroContenido, ...]:
+    try:
+        return obtener_generos_contenido()
+    except CatalogoNoDisponibleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 
 
 @router.post(

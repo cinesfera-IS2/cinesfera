@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -46,6 +47,10 @@ class ResenaPadreInvalidaError(Exception):
 
 
 class CalificacionNoEncontradaError(Exception):
+    pass
+
+
+class GeneroFavoritoInvalidoError(Exception):
     pass
 
 
@@ -109,6 +114,43 @@ def actualizar_calificacion(
         db.rollback()
         raise
     return respuesta
+
+
+@lru_cache(maxsize=1)
+def obtener_generos_contenido() -> tuple[GeneroContenido, ...]:
+    """Devuelve la unión de géneros oficiales de películas y series de TMDB.
+
+    La lista cambia con muy poca frecuencia, por lo que se conserva durante la
+    vida del proceso para no consultar dos veces a TMDB en cada formulario.
+    """
+    generos_por_id: dict[int, GeneroContenido] = {}
+
+    for ruta in ("movie", "tv"):
+        for genero in _consultar_lista_generos_tmdb(ruta):
+            identificador = int(genero["id"])
+            generos_por_id.setdefault(
+                identificador,
+                GeneroContenido(id=identificador, nombre=genero["name"]),
+            )
+
+    return tuple(
+        sorted(generos_por_id.values(), key=lambda genero: genero.nombre.casefold())
+    )
+
+
+def normalizar_generos_favoritos(generos: list[str]) -> list[str]:
+    """Valida nombres enviados por el cliente y devuelve los nombres de TMDB."""
+    disponibles = {
+        genero.nombre.casefold(): genero.nombre
+        for genero in obtener_generos_contenido()
+    }
+    invalidos = [genero for genero in generos if genero.casefold() not in disponibles]
+    if invalidos:
+        raise GeneroFavoritoInvalidoError(
+            f"Género favorito inexistente: {', '.join(invalidos)}"
+        )
+
+    return [disponibles[genero.casefold()] for genero in generos]
 
 
 def obtener_detalle_contenido(
@@ -195,7 +237,9 @@ def obtener_resenas_contenido(
             contenido_tmdb_id=resena.contenido_tmdb_id,
             resena_padre_id=resena.resena_padre_id,
             plataforma_id=resena.plataforma_id,
-            calificacion=float(resena.calificacion) if resena.calificacion is not None else None,
+            calificacion=(
+                float(resena.calificacion) if resena.calificacion is not None else None
+            ),
             texto=resena.texto,
             fecha=resena.fecha,
             valoracion=int(valoracion),
@@ -310,12 +354,25 @@ def crear_resena(
 
 
 def _consultar_tmdb(ruta: str, tmdb_id: int) -> dict[str, Any]:
+    return _consultar_ruta_tmdb(f"{ruta}/{tmdb_id}", contenido=True)
+
+
+def _consultar_lista_generos_tmdb(ruta: str) -> list[dict[str, Any]]:
+    datos = _consultar_ruta_tmdb(f"genre/{ruta}/list")
+    return datos.get("genres", [])
+
+
+def _consultar_ruta_tmdb(
+    ruta: str,
+    *,
+    contenido: bool = False,
+) -> dict[str, Any]:
     if not settings.tmdb_access_token:
         raise CatalogoNoDisponibleError("El catálogo no está configurado")
 
     try:
         respuesta = httpx.get(
-            f"{settings.tmdb_api_url}/{ruta}/{tmdb_id}",
+            f"{settings.tmdb_api_url}/{ruta}",
             headers={
                 "Accept": "application/json",
                 "Authorization": f"Bearer {settings.tmdb_access_token}",
@@ -328,7 +385,7 @@ def _consultar_tmdb(ruta: str, tmdb_id: int) -> dict[str, Any]:
             "No fue posible consultar el catálogo"
         ) from error
 
-    if respuesta.status_code == 404:
+    if contenido and respuesta.status_code == 404:
         raise ContenidoNoEncontradoError("Contenido no encontrado")
 
     try:

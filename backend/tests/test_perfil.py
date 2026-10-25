@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import Mock
+from unittest.mock import patch
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ from app.main import app
 from app.models.usuario import Usuario
 from app.routers.usuarios import consultar_perfil, modificar_perfil
 from app.schemas.usuario import UsuarioActualizacion
+from app.services.contenido_service import GeneroFavoritoInvalidoError
 
 
 class PerfilTests(unittest.TestCase):
@@ -85,6 +87,41 @@ class PerfilTests(unittest.TestCase):
 
         self.assertIsNone(self.usuario.foto_url)
         self.db.commit.assert_called_once()
+
+    @patch("app.routers.usuarios.normalizar_generos_favoritos")
+    def test_actualiza_generos_con_nombres_oficiales(self, normalizar):
+        normalizar.return_value = ["Drama", "Comedia"]
+
+        modificar_perfil(
+            self.usuario_id,
+            UsuarioActualizacion(generos_favoritos=["drama", "comedia"]),
+            self.db,
+            self.usuario,
+        )
+
+        normalizar.assert_called_once_with(["drama", "comedia"])
+        self.assertEqual(self.usuario.generos_favoritos, ["Drama", "Comedia"])
+
+    @patch("app.routers.usuarios.normalizar_generos_favoritos")
+    def test_rechaza_un_genero_que_no_existe(self, normalizar):
+        normalizar.side_effect = GeneroFavoritoInvalidoError(
+            "Género favorito inexistente: kkk"
+        )
+
+        with self.assertRaises(HTTPException) as contexto:
+            modificar_perfil(
+                self.usuario_id,
+                UsuarioActualizacion(generos_favoritos=["kkk"]),
+                self.db,
+                self.usuario,
+            )
+
+        self.assertEqual(contexto.exception.status_code, 422)
+        self.assertEqual(
+            contexto.exception.detail,
+            "Género favorito inexistente: kkk",
+        )
+        self.db.commit.assert_not_called()
 
     def test_usuario_inexistente_responde_404(self):
         self.db.get.return_value = None

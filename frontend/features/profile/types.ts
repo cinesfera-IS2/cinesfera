@@ -22,23 +22,33 @@ export type PerfilPublico = {
 
 export type EstadisticasPerfil = {
   resenas: number;
-  vistas: number;
   seguidores: number;
   siguiendo: number;
+};
+
+/** Persona devuelta por las listas sociales de un perfil. */
+export type UsuarioSeguimiento = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nombreUsuario: string;
+  fotoUrl?: string;
 };
 
 export type ResenaPerfil = {
   id: string;
   titulo: string;
-  /** Falta mientras el catálogo no resuelva el id de TMDB. */
   anio?: number;
-  /** De 0 a 5, en pasos de media estrella. */
-  puntaje: number;
+  /** De 0 a 5, en pasos de media estrella; `null` si la reseña quedó sin nota. */
+  puntaje: number | null;
   /** ISO `YYYY-MM-DD`. */
   fecha: string;
   comentario: string;
-  /** Degradado de respaldo mientras no haya póster real. */
+  posterUrl?: string;
+  /** Degradado de respaldo cuando TMDB no tiene póster o no está disponible. */
   posterGradient: string;
+  /** Ficha del contenido, posicionada sobre esta reseña. */
+  href: string;
   /** El backend todavía no expone los votos de cada reseña por separado. */
   meGusta?: number;
 };

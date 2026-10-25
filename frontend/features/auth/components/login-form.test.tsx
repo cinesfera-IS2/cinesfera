@@ -39,7 +39,7 @@ describe("LoginForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("envía las credenciales a /auth/login y recarga en la portada", async () => {
+  it("envía las credenciales a /auth/login y recarga en el catálogo", async () => {
     const fetchFalso = simularRespuesta(200, {
       mensaje: "Sesion iniciada correctamente",
     });
@@ -54,7 +54,27 @@ describe("LoginForm", () => {
       identificador: "ana@example.com",
       password: "ClaveSegura123",
     });
-    expect(recargarEn).toHaveBeenCalledWith("/");
+    expect(recargarEn).toHaveBeenCalledWith("/catalogo");
+  });
+
+  it("sin completar no envía, explica qué falta y lleva el foco al primer campo", async () => {
+    const fetchFalso = simularRespuesta(200, {});
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Iniciar sesión" }));
+
+    expect(fetchFalso).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Completá este campo.")).toHaveLength(2);
+    expect(document.activeElement).toBe(screen.getByLabelText("Correo o nombre de usuario"));
+  });
+
+  it("si venía de otra página, recarga en esa página", async () => {
+    cleanup();
+    render(<LoginForm destino="/content/pelicula/603" />);
+    simularRespuesta(200, { mensaje: "Sesion iniciada correctamente" });
+
+    await completarFormulario();
+
+    expect(recargarEn).toHaveBeenCalledWith("/content/pelicula/603");
   });
 
   it("deja el botón deshabilitado mientras inicia sesión", async () => {

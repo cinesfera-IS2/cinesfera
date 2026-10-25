@@ -10,13 +10,17 @@ from app.core.config import settings
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
+from app.routers.contenidos import consultar_generos
 from app.schemas.contenido import ContenidoDetalleRespuesta, GeneroContenido
 from app.services.contenido_service import (
     CatalogoNoDisponibleError,
     ContenidoNoEncontradoError,
+    GeneroFavoritoInvalidoError,
     _consultar_tmdb,
     _url_imagen,
     obtener_detalle_contenido,
+    obtener_generos_contenido,
+    normalizar_generos_favoritos,
 )
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
@@ -185,6 +189,27 @@ class ContenidosTests(unittest.TestCase):
             [str(self.serie_id)],
         )
 
+    def test_resena_sin_calificacion_se_devuelve_como_null(self):
+        # La columna admite NULL en la base; una fila así no debe romper el listado.
+        self.db.add(
+            Resena(
+                id=uuid4(),
+                usuario_id=self.db.query(Usuario).first().id,
+                contenido_id=1,
+                resena_padre_id=self.reciente_id,
+                plataforma_id=None,
+                calificacion=None,
+                texto="Respuesta sin nota",
+                fecha=datetime.now(timezone.utc) + timedelta(days=3),
+            )
+        )
+        self.db.commit()
+
+        respuesta = self.client.get("/contenidos/pelicula/550/resenas")
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertIsNone(respuesta.json()[0]["calificacion"])
+
     def test_contenido_sin_resenas_devuelve_lista_vacia(self):
         respuesta = self.client.get("/contenidos/serie/404/resenas")
 
@@ -223,6 +248,58 @@ class ContenidosTests(unittest.TestCase):
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
         self.assertEqual(respuesta.json()["titulo"], "El club de la pelea")
         obtener_detalle.assert_called_once_with("pelicula", 550)
+
+    @patch("app.routers.contenidos.obtener_generos_contenido")
+    def test_endpoint_devuelve_generos_oficiales(self, obtener_generos):
+        obtener_generos.return_value = (
+            GeneroContenido(id=28, nombre="Acción"),
+            GeneroContenido(id=18, nombre="Drama"),
+        )
+
+        respuesta = consultar_generos()
+
+        self.assertEqual(
+            [genero.model_dump() for genero in respuesta],
+            [
+                {"id": 28, "nombre": "Acción"},
+                {"id": 18, "nombre": "Drama"},
+            ],
+        )
+
+    @patch("app.services.contenido_service._consultar_lista_generos_tmdb")
+    def test_combina_generos_de_peliculas_y_series_sin_repetirlos(self, consultar):
+        consultar.side_effect = [
+            [{"id": 18, "name": "Drama"}, {"id": 28, "name": "Acción"}],
+            [{"id": 18, "name": "Drama"}, {"id": 10765, "name": "Sci-Fi"}],
+        ]
+        obtener_generos_contenido.cache_clear()
+        self.addCleanup(obtener_generos_contenido.cache_clear)
+
+        generos = obtener_generos_contenido()
+        segunda_lectura = obtener_generos_contenido()
+
+        self.assertEqual(
+            [(genero.id, genero.nombre) for genero in generos],
+            [(28, "Acción"), (18, "Drama"), (10765, "Sci-Fi")],
+        )
+        self.assertIs(segunda_lectura, generos)
+        self.assertEqual(consultar.call_count, 2)
+
+    @patch("app.services.contenido_service.obtener_generos_contenido")
+    def test_valida_y_normaliza_generos_favoritos(self, obtener_generos):
+        obtener_generos.return_value = (
+            GeneroContenido(id=18, nombre="Drama"),
+            GeneroContenido(id=35, nombre="Comedia"),
+        )
+
+        self.assertEqual(
+            normalizar_generos_favoritos(["drama", "COMEDIA"]),
+            ["Drama", "Comedia"],
+        )
+        with self.assertRaisesRegex(
+            GeneroFavoritoInvalidoError, "Género favorito inexistente: kkk"
+        ):
+            normalizar_generos_favoritos(["Drama", "kkk"])
 
     @patch("app.routers.contenidos.obtener_detalle_contenido")
     def test_ficha_inexistente_devuelve_404(self, obtener_detalle):

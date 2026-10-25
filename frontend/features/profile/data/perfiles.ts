@@ -1,7 +1,16 @@
 import { cache } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import type { PerfilPublico, ResenaPerfil } from "@/features/profile/types";
+import { obtenerContenido } from "@/features/content/data/contenido";
+import type {
+  ContenidoDetalle,
+  TipoContenido,
+} from "@/features/content/types";
+import type {
+  PerfilPublico,
+  ResenaPerfil,
+  UsuarioSeguimiento,
+} from "@/features/profile/types";
 
 /**
  * Respuesta de `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico`.
@@ -14,41 +23,63 @@ type PerfilPublicoApi = {
   apellido: string;
   nombre_usuario: string;
   foto_url: string | null;
+  bio: string | null;
+  ubicacion: string | null;
+  generos_favoritos: string[];
+  rol: "usuario" | "admin";
+  fecha_registro: string;
   /** Suma de los votos recibidos por todas sus reseñas. */
   reputacion: number;
+  seguidores: number;
+  siguiendo: number;
   resenas: ResenaApi[];
 };
 
 type ResenaApi = {
   id: string;
   contenido_tmdb_id: number;
+  contenido_tipo: TipoContenido;
+  contenido_titulo: string | null;
   plataforma_id: number | null;
-  /** De 0.5 a 5, en pasos de media estrella. */
-  calificacion: number;
+  /** De 0.5 a 5, en pasos de media estrella; `null` si quedó guardada sin nota. */
+  calificacion: number | null;
   texto: string;
   /** ISO con hora y zona. */
   fecha: string;
 };
 
+type UsuarioSeguimientoApi = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nombre_usuario: string;
+  foto_url: string | null;
+};
+
+export type ListaSeguimientos = "seguidores" | "seguidos" | "amigos";
+
 /**
- * Lo que el perfil muestra y la base todavía no guarda. Son los mismos valores
- * para todas las personas a propósito: sirven para ver la pantalla completa
- * mientras los campos no existen, y se van a ir cayendo de a uno.
- *
- * `rol` y `fechaRegistro` sí están en la tabla `usuarios`, pero el endpoint
- * público no los devuelve; alcanzaría con sumarlos a `PerfilPublicoRespuesta`
- * para que dejen de ser de ejemplo.
+ * Trae una lista social. Seguidores y seguidos son públicos; amigos requiere
+ * que la sesión corresponda al perfil solicitado.
  */
-const EJEMPLO = {
-  bio: "Cazador de thrillers lentos y bandas sonoras que no puedo sacarme de la cabeza. Si la película dura más de tres horas, mejor.",
-  ubicacion: "Montevideo, Uruguay",
-  generosFavoritos: ["Thriller", "Sci-Fi", "Drama"],
-  rol: "usuario",
-  fechaRegistro: "2026-02-14",
-  vistas: 184,
-  seguidores: 212,
-  siguiendo: 97,
-} as const;
+export async function obtenerListaSeguimientos(
+  usuarioId: string,
+  lista: ListaSeguimientos,
+  options: RequestInit = {}
+): Promise<UsuarioSeguimiento[]> {
+  const usuarios = await apiFetch<UsuarioSeguimientoApi[]>(
+    `/usuarios/${usuarioId}/${lista}`,
+    { ...options, cache: "no-store" }
+  );
+
+  return usuarios.map((usuario) => ({
+    id: usuario.id,
+    nombre: usuario.nombre,
+    apellido: usuario.apellido,
+    nombreUsuario: usuario.nombre_usuario,
+    fotoUrl: usuario.foto_url ?? undefined,
+  }));
+}
 
 /** Degradados de respaldo del póster, repartidos entre las reseñas por orden. */
 const DEGRADADOS = [
@@ -75,7 +106,8 @@ export const obtenerPerfilPublico = cache(
 
     try {
       respuesta = await apiFetch<PerfilPublicoApi>(
-        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`
+        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`,
+        { cache: "no-store" }
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
@@ -85,10 +117,16 @@ export const obtenerPerfilPublico = cache(
       throw error;
     }
 
+    const contenidos = await obtenerContenidosDeResenas(respuesta.resenas);
+
     return {
       perfil: aPerfil(respuesta),
       resenas: respuesta.resenas.map((resena, indice) =>
-        aResena(resena, indice)
+        aResena(
+          resena,
+          indice,
+          contenidos.get(claveContenido(resena)) ?? null
+        )
       ),
     };
   }
@@ -101,29 +139,75 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     nombre: api.nombre,
     apellido: api.apellido,
     fotoUrl: api.foto_url ?? undefined,
-    rol: EJEMPLO.rol,
-    fechaRegistro: EJEMPLO.fechaRegistro,
-    bio: EJEMPLO.bio,
-    ubicacion: EJEMPLO.ubicacion,
-    generosFavoritos: [...EJEMPLO.generosFavoritos],
+    rol: api.rol,
+    fechaRegistro: api.fecha_registro.slice(0, 10),
+    bio: api.bio ?? undefined,
+    ubicacion: api.ubicacion ?? undefined,
+    generosFavoritos: api.generos_favoritos,
     estadisticas: {
       resenas: api.resenas.length,
-      vistas: EJEMPLO.vistas,
-      seguidores: EJEMPLO.seguidores,
-      siguiendo: EJEMPLO.siguiendo,
+      seguidores: api.seguidores,
+      siguiendo: api.siguiendo,
     },
   };
 }
 
-function aResena(api: ResenaApi, indice: number): ResenaPerfil {
+async function obtenerContenidosDeResenas(
+  resenas: ResenaApi[]
+): Promise<Map<string, ContenidoDetalle>> {
+  const unicos = new Map<string, ResenaApi>();
+  for (const resena of resenas) {
+    unicos.set(claveContenido(resena), resena);
+  }
+
+  const resultados = await Promise.all(
+    [...unicos.entries()].map(async ([clave, resena]) => {
+      try {
+        const contenido = await obtenerContenido(
+          resena.contenido_tipo,
+          resena.contenido_tmdb_id
+        );
+        return contenido ? ([clave, contenido] as const) : null;
+      } catch {
+        // El perfil sigue siendo útil si TMDB atraviesa una incidencia.
+        return null;
+      }
+    })
+  );
+
+  return new Map(
+    resultados.filter(
+      (resultado): resultado is readonly [string, ContenidoDetalle] =>
+        resultado !== null
+    )
+  );
+}
+
+function claveContenido(resena: ResenaApi): string {
+  return `${resena.contenido_tipo}:${resena.contenido_tmdb_id}`;
+}
+
+function aResena(
+  api: ResenaApi,
+  indice: number,
+  contenido: ContenidoDetalle | null
+): ResenaPerfil {
+  const anio = contenido?.fecha_estreno
+    ? Number(contenido.fecha_estreno.slice(0, 4))
+    : undefined;
+
   return {
     id: api.id,
-    // La tabla `resenas` guarda solo el id de TMDB del contenido: el título, el
-    // año y el póster llegan cuando esté enchufado el servicio de catálogo.
-    titulo: `Película #${api.contenido_tmdb_id}`,
+    titulo:
+      contenido?.titulo ??
+      api.contenido_titulo ??
+      `${api.contenido_tipo === "serie" ? "Serie" : "Película"} #${api.contenido_tmdb_id}`,
+    anio: Number.isFinite(anio) ? anio : undefined,
     puntaje: api.calificacion,
     fecha: api.fecha.slice(0, 10),
     comentario: api.texto,
+    posterUrl: contenido?.poster_url ?? undefined,
     posterGradient: DEGRADADOS[indice % DEGRADADOS.length],
+    href: `/content/${api.contenido_tipo}/${api.contenido_tmdb_id}#resena-${api.id}`,
   };
 }

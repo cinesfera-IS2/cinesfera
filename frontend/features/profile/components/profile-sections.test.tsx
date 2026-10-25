@@ -16,6 +16,7 @@ function resena(datos: Partial<ResenaPerfil> & Pick<ResenaPerfil, "id">): Resena
     fecha: "2026-09-04",
     comentario: `Comentario ${datos.id}`,
     posterGradient: "",
+    href: `/content/pelicula/1#resena-${datos.id}`,
     ...datos,
   };
 }
@@ -61,14 +62,17 @@ describe("ProfileSections", () => {
     expect(screen.getByRole("tab", { name: "Reseñas" })).toBeTruthy();
   });
 
-  it("sin reseñas propias invita a escribir la primera", () => {
-    render(
-      <ProfileSections resenas={[]} nombre="Ana" esPropio usuarioId="u1" />
-    );
+  it("sin reseñas propias indica que se escriben desde la película", () => {
+    render(<ProfileSections resenas={[]} nombre="Ana" esPropio />);
 
     expect(
       screen.getByRole("heading", { name: "Todavía no escribiste reseñas" })
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Escribir una reseña/ })).toBeTruthy();
+    expect(
+      screen.getByText(/escribí la reseña desde su ficha/)
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /Escribir una reseña/ })
+    ).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 
+import { EnlaceCatalogo } from "@/features/catalog/components/navegacion-catalogo";
 import { hrefCatalogo, paginasVisibles } from "@/features/catalog/lib/filtros";
 import type { FiltrosCatalogo } from "@/features/catalog/types";
 
@@ -11,7 +11,7 @@ type PaginacionCatalogoProps = {
 };
 
 const BASE =
-  "grid h-10 min-w-10 place-items-center rounded-lg px-3 text-sm font-semibold transition-colors";
+  "grid h-10 min-w-10 place-items-center rounded-lg px-3 text-sm font-semibold tabular-nums transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.96]";
 
 export function PaginacionCatalogo({
   filtros,
@@ -34,14 +34,19 @@ export function PaginacionCatalogo({
           </FlechaPagina>
         </li>
 
-        {paginasVisibles(pagina, totalPaginas).map((numero, indice) =>
+        {/* En móvil no entran todos los números: se resume la posición. */}
+        <li aria-hidden className="px-3 text-sm font-semibold text-ink-300 tabular-nums sm:hidden">
+          {pagina} / {totalPaginas}
+        </li>
+
+        {conClaves(paginasVisibles(pagina, totalPaginas)).map(({ numero, clave }) =>
           numero === "…" ? (
-            <li key={`salto-${indice}`} aria-hidden className="px-1 text-ink-500">
+            <li key={clave} aria-hidden className="hidden px-1 text-ink-400 sm:block">
               …
             </li>
           ) : (
-            <li key={numero}>
-              <Link
+            <li key={clave} className="hidden sm:block">
+              <EnlaceCatalogo
                 href={hrefCatalogo(filtros, { pagina: numero })}
                 aria-label={`Página ${numero}`}
                 aria-current={numero === pagina ? "page" : undefined}
@@ -52,7 +57,7 @@ export function PaginacionCatalogo({
                 }
               >
                 {numero}
-              </Link>
+              </EnlaceCatalogo>
             </li>
           )
         )}
@@ -72,6 +77,17 @@ export function PaginacionCatalogo({
       </ul>
     </nav>
   );
+}
+
+/**
+ * Puede haber dos "…" en la lista; cada uno se identifica por la página que lo
+ * precede, que siempre es un número (la primera nunca se saltea).
+ */
+function conClaves(paginas: (number | "…")[]) {
+  return paginas.map((numero, posicion) => ({
+    numero,
+    clave: numero === "…" ? `salto-despues-de-${paginas[posicion - 1]}` : `pagina-${numero}`,
+  }));
 }
 
 type FlechaPaginaProps = {
@@ -94,12 +110,12 @@ function FlechaPagina({ href, etiqueta, children }: FlechaPaginaProps) {
   }
 
   return (
-    <Link
+    <EnlaceCatalogo
       href={href}
       aria-label={etiqueta}
       className={`${BASE} border border-night-600 text-ink-300 hover:border-ink-500 hover:text-ink-100`}
     >
       {children}
-    </Link>
+    </EnlaceCatalogo>
   );
 }

@@ -65,7 +65,7 @@ class CatalogueRepository:
             )
 
     #función que devuelva las películas y las transforme a clase content usando la funcion movie_to_content
-    def get_movies(self, page):
+    def get_movies(self, page, year):
         url = f"{self.base_url}/discover/movie"
 
         params = {
@@ -74,6 +74,9 @@ class CatalogueRepository:
                 "primary_release_date.lte": date.today().isoformat(),
                 "page": page
             }
+
+        if year is not None:
+            params["primary_release_year"] = year
 
         response = self._get(
                 url,
@@ -96,7 +99,7 @@ class CatalogueRepository:
 
     #misma función pero para series
 
-    def get_series(self, page):
+    def get_series(self, page, year):
         url = f"{self.base_url}/discover/tv"
 
         params = {
@@ -105,6 +108,9 @@ class CatalogueRepository:
             "first_air_date.lte": date.today().isoformat(),
             "page": page
         }
+
+        if year is not None:
+            params["first_air_date_year"] = year
 
         response = self._get(
             url,
@@ -130,19 +136,18 @@ class CatalogueRepository:
     #tmb permite filtrar por película/serie y/o año 
     def get_content(self, content_type=None, year=None, page = None):
 
-
     #si se filtra para que catálogo solo devuelva películas
         if content_type == "movie":
-            contents, total_pages = self.get_movies(page)
+            contents, total_pages = self.get_movies(page, year)
 
     #si se filtra para solo devolver series
         elif content_type == "series":
-            contents, total_pages = self.get_series(page)
+            contents, total_pages = self.get_series(page, year)
 
     #si no hay filtro por tipo devuelve ambas listas juntas 
         else:
-            movies, total_pages_movies = self.get_movies(page)
-            series, total_pages_series = self.get_series(page)
+            movies, total_pages_movies = self.get_movies(page, year)
+            series, total_pages_series = self.get_series(page, year)
             contents = movies + series
             total_pages = max(total_pages_movies, total_pages_series)
 
@@ -169,14 +174,17 @@ class CatalogueRepository:
 
     #para realizar búsquedas 
 
-    def search_movie_by_name(self, name):
+    def search_movie_by_name(self, name, year):
 
         url = f"{self.base_url}/search/movie"
 
         params = {
-                "query": name,
-                "language": "es-ES"
-            }
+            "query": name,
+            "language": "es-ES"
+        }
+
+        if year is not None:
+            params["year"] = year
 
         response = self._get(url, headers=self.headers, params=params)
 
@@ -188,18 +196,33 @@ class CatalogueRepository:
 
         for movie in data["results"]:
                 contents.append(self.movie_to_content(movie))
+
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date.startswith(str(year))
+            ]
+
+        contents.sort(
+            key=lambda content: content.release_date or "",
+            reverse=True
+        )
     
         return contents
     
 
-    def search_series_by_name(self, name):
+    def search_series_by_name(self, name, year):
     
             url = f"{self.base_url}/search/tv"
     
             params = {
-                    "query": name,
-                    "language": "es-ES"
-                }
+                "query": name,
+                "language": "es-ES"
+            }
+
+            if year is not None:
+                params["first_air_date_year"] = year
     
             response = self._get(url, headers=self.headers, params=params)
     
@@ -211,26 +234,41 @@ class CatalogueRepository:
     
             for series in data["results"]:
                     contents.append(self.series_to_content(series))
+
+            contents.sort(
+                key=lambda content: content.release_date or "",
+                reverse=True
+            )
            
             return contents
 
         #def search_by_keyword (tmb podria implementarlo? )
 
-    def search_catalogue(self, query):
-        movies = self.search_movie_by_name(query)
-        series = self.search_series_by_name(query)
+    def search_catalogue(self, query, year):
+        movies = self.search_movie_by_name(query, year)
+        series = self.search_series_by_name(query, year)
 
-        return movies + series
+        contents = movies + series
+
+
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date.startswith(str(year))
+            ]
+
+        contents.sort(
+            key=lambda content: content.release_date or "",
+            reverse=True
+        )
+
+        return contents
     
 
     def search_keyword(self):
         pass
     
-    def search_seasons(self):
-        pass
-
-    def search_episodes(self):
-        pass
 
     #puede ser útil más adelante
     def search_by_id(self, id):

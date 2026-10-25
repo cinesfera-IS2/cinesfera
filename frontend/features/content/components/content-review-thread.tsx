@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ContentReviewCard } from "@/features/content/components/content-review-card";
@@ -35,7 +34,34 @@ export function ContentReviewThread({
 
   return (
     <div>
-      <ContentReviewCard resena={hilo.resena} />
+      <ContentReviewCard
+        resena={hilo.resena}
+        esRespuesta={profundidad > 0}
+        acciones={
+          usuarioId && (
+            <>
+              <CreateContentReview
+                tipo={tipo}
+                tmdbId={tmdbId}
+                usuarioId={usuarioId}
+                resenaPadreId={hilo.resena.id}
+                permiteCalificacion={esPadre && hilo.resena.autor.id !== usuarioId && !propia}
+                subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
+                onPublicada={onPublicada}
+              />
+              {propia && (
+                <EditContentRating
+                  tipo={tipo}
+                  tmdbId={tmdbId}
+                  resenaId={hilo.resena.id}
+                  calificacion={propia.calificacion}
+                  onActualizada={onValoracionActualizada}
+                />
+              )}
+            </>
+          )
+        }
+      />
 
       {esPadre && (
         <p className="mt-2 text-sm text-ink-400" aria-live="polite">
@@ -45,32 +71,10 @@ export function ContentReviewThread({
         </p>
       )}
 
-      {usuarioId && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          <CreateContentReview
-            tipo={tipo}
-            tmdbId={tmdbId}
-            usuarioId={usuarioId}
-            resenaPadreId={hilo.resena.id}
-            permiteCalificacion={esPadre && hilo.resena.autor.id !== usuarioId && !propia}
-            onPublicada={onPublicada}
-          />
-          {propia && (
-            <EditContentRating
-              tipo={tipo}
-              tmdbId={tmdbId}
-              resenaId={hilo.resena.id}
-              calificacion={propia.calificacion}
-              onActualizada={onValoracionActualizada}
-            />
-          )}
-        </div>
-      )}
-
       {hilo.respuestas.length > 0 && (
         <div
-          className={`mt-4 flex flex-col gap-4 border-l-2 border-night-600 pl-4 ${
-            profundidad < 2 ? "sm:ml-6" : ""
+          className={`mt-3 flex flex-col gap-3 border-l border-night-600 pl-4 sm:pl-5 ${
+            profundidad < 2 ? "ml-5 sm:ml-7" : ""
           }`}
         >
           {hilo.respuestas.map((respuesta) => (

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
+from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
@@ -12,13 +13,23 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 class PerfilPublicoTests(unittest.TestCase):
     def setUp(self):
         self.db = crear_base_en_memoria(
-            self, Usuario, Contenido, Resena, ValoracionResena
+            self, Usuario, Contenido, Resena, ValoracionResena, Seguimiento
         )
         ahora = datetime.now(timezone.utc)
-        self.db.add(Contenido(id=1, tmdb_id=42, tipo="pelicula"))
+        self.db.add(
+            Contenido(
+                id=1,
+                tmdb_id=42,
+                tipo="pelicula",
+                titulo="La película de prueba",
+            )
+        )
         self.usuario_id = crear_usuario(
             self.db, "ana", nombre="Ana", password_hash="secreto",
-            foto_url="https://example.com/foto.jpg"
+            foto_url="https://example.com/foto.jpg",
+            bio="Fan del cine clásico",
+            ubicacion="Montevideo, Uruguay",
+            generos_favoritos=["Drama", "Comedia"]
         ).id
         otro_id = crear_usuario(
             self.db, "bea", nombre="Bea", password_hash="secreto",
@@ -39,7 +50,17 @@ class PerfilPublicoTests(unittest.TestCase):
         self.db.add_all([
             ValoracionResena(usuario_id=otro_id, resena_id=antigua_id, valor=1),
             ValoracionResena(usuario_id=self.usuario_id, resena_id=reciente_id, valor=-1),
-            ValoracionResena(usuario_id=self.usuario_id, resena_id=ajena_id, valor=1)
+            ValoracionResena(usuario_id=self.usuario_id, resena_id=ajena_id, valor=1),
+            Seguimiento(
+                seguidor_id=otro_id,
+                seguido_id=self.usuario_id,
+                fecha_seguimiento=ahora
+            ),
+            Seguimiento(
+                seguidor_id=self.usuario_id,
+                seguido_id=otro_id,
+                fecha_seguimiento=ahora
+            )
         ])
         self.db.commit()
         self.client = conectar_api(self, self.db)
@@ -51,13 +72,25 @@ class PerfilPublicoTests(unittest.TestCase):
         datos = respuesta.json()
         self.assertEqual(datos["nombre"], "Ana")
         self.assertEqual(datos["foto_url"], "https://example.com/foto.jpg")
+        self.assertEqual(datos["bio"], "Fan del cine clásico")
+        self.assertEqual(datos["ubicacion"], "Montevideo, Uruguay")
+        self.assertEqual(datos["generos_favoritos"], ["Drama", "Comedia"])
+        self.assertEqual(datos["rol"], "usuario")
+        self.assertIsNotNone(datos["fecha_registro"])
         self.assertEqual(datos["reputacion"], 0)
+        self.assertEqual(datos["seguidores"], 1)
+        self.assertEqual(datos["siguiendo"], 1)
         self.assertEqual(
             [resena["id"] for resena in datos["resenas"]],
             [str(self.reciente_id), str(self.antigua_id)]
         )
         self.assertEqual(datos["resenas"][0]["calificacion"], 4.5)
         self.assertEqual(datos["resenas"][0]["contenido_tmdb_id"], 42)
+        self.assertEqual(datos["resenas"][0]["contenido_tipo"], "pelicula")
+        self.assertEqual(
+            datos["resenas"][0]["contenido_titulo"],
+            "La película de prueba",
+        )
         self.assertNotIn("email", datos)
         self.assertNotIn("password_hash", datos)
 

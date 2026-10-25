@@ -46,7 +46,7 @@ describe("RegisterForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("crea la cuenta, inicia sesión y recarga en la portada", async () => {
+  it("crea la cuenta, inicia sesión y recarga en el catálogo", async () => {
     const fetchFalso = simularRespuestas([201, { id: "1" }], [200, {}]);
 
     await completarFormulario();
@@ -69,7 +69,7 @@ describe("RegisterForm", () => {
       identificador: "ana@example.com",
       password: "ClaveSegura123",
     });
-    expect(recargarEn).toHaveBeenCalledWith("/");
+    expect(recargarEn).toHaveBeenCalledWith("/catalogo");
   });
 
   it("si la cuenta se creó pero el login falla, manda a iniciar sesión", async () => {
@@ -106,5 +106,63 @@ describe("RegisterForm", () => {
 
     const alerta = await screen.findByRole("alert");
     expect(alerta.textContent).toContain("No pudimos conectar con el servidor");
+  });
+
+  it("sin completar no envía y marca cada campo que falta", async () => {
+    const fetchFalso = simularRespuestas([201, {}]);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Crear cuenta" }));
+
+    expect(fetchFalso).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Completá este campo.")).toHaveLength(5);
+    expect(document.activeElement).toBe(screen.getByLabelText("Nombre"));
+  });
+
+  it("explica el error al salir del campo y lo saca apenas se corrige", async () => {
+    const usuario = userEvent.setup();
+    const email = screen.getByLabelText("Correo electrónico");
+
+    await usuario.type(email, "ana@");
+    await usuario.tab();
+    expect(screen.getByText(/Revisá el correo/)).toBeTruthy();
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+
+    await usuario.type(email, "example.com");
+    expect(screen.queryByText(/Revisá el correo/)).toBeNull();
+    expect(email.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("el usuario con caracteres no permitidos muestra la regla", async () => {
+    const usuario = userEvent.setup();
+
+    await usuario.type(screen.getByLabelText("Nombre de usuario"), "ana torres");
+    await usuario.tab();
+
+    expect(
+      screen.getAllByText("Solo minúsculas, números, puntos y guiones bajos.")
+    ).toHaveLength(1);
+    expect(
+      screen.getByLabelText("Nombre de usuario").getAttribute("aria-invalid")
+    ).toBe("true");
+  });
+
+  it("el medidor de la contraseña aparece recién al escribirla", async () => {
+    expect(screen.queryByText("Al menos un número")).toBeNull();
+
+    await userEvent.setup().type(screen.getByLabelText("Contraseña"), "clave");
+
+    expect(screen.getByText("Al menos un número")).toBeTruthy();
+  });
+
+  it("mientras crea la cuenta bloquea el formulario", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+
+    await completarFormulario();
+
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Creando cuenta..." }).disabled
+    ).toBe(true);
+    // El fieldset deshabilita a todos sus campos, aunque ellos no tengan el atributo.
+    expect(screen.getByLabelText("Nombre").matches(":disabled")).toBe(true);
   });
 });

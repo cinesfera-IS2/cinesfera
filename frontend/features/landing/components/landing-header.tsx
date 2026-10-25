@@ -1,64 +1,52 @@
-import { CompassIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
-import { LogoutButton } from "@/features/auth/components/logout-button";
+import { EnlaceAcceder } from "@/features/auth/components/enlace-acceder";
 import { obtenerSesion } from "@/features/auth/session";
 import { BrandLogo } from "@/features/landing/components/brand-logo";
+import { EnlaceExplorar } from "@/features/landing/components/enlace-explorar";
+import { MenuCuenta } from "@/features/landing/components/menu-cuenta";
+import { MenuMovil } from "@/features/landing/components/menu-movil";
 import { NAV_LINKS } from "@/features/landing/data/landing-content";
 
 export async function LandingHeader() {
   const sesion = await obtenerSesion();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-night-950/70 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
+    <header className="cabecera sticky top-0 z-50 h-16 w-full">
+      <div className="mx-auto flex h-full max-w-7xl items-center gap-8 px-4 sm:px-6">
         <BrandLogo />
 
-        <div className="flex items-center gap-3 sm:gap-8">
-          <nav aria-label="Principal" className="hidden items-center gap-8 md:flex">
+        <nav aria-label="Principal" className="hidden h-full md:block">
+          <ul className="flex h-full items-center gap-1">
             {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-ink-400 transition-colors hover:text-ink-100"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            {/* La acción principal del sitio: por eso va rellena y con brillo,
-                y no escondida entre los links del menú. */}
-            <Link
-              href="/catalogo"
-              className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-brand-500 to-glow-400 px-4 py-2 text-sm font-bold sm:px-5 text-white shadow-lg shadow-glow-400/25 transition hover:shadow-glow-400/50 hover:brightness-110"
-            >
-              <CompassIcon weight="bold" className="size-4" />
-              Explorar
-            </Link>
-
-            {sesion ? (
-              <>
+              <li key={link.href} className="haz flex h-full items-center">
                 <Link
-                  href={`/profile/${sesion.nombre_usuario}`}
-                  aria-label="Mi perfil"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
+                  href={link.href}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100"
                 >
-                  <UserCircleIcon weight="bold" className="size-4" />
-                  <span className="hidden sm:inline">{sesion.nombre}</span>
+                  {link.label}
                 </Link>
-                <LogoutButton />
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold sm:px-5 text-ink-100 transition-colors hover:border-white/40 hover:bg-white/5"
-              >
-                Acceder
-              </Link>
-            )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="ml-auto flex h-full items-center gap-2 sm:gap-3">
+          <div className="haz flex h-full items-center">
+            <EnlaceExplorar />
           </div>
+
+          {sesion ? (
+            <MenuCuenta usuario={sesion} />
+          ) : (
+            <EnlaceAcceder
+              className="hidden h-10 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-ink-100 transition-[background-color,border-color,transform] duration-150 ease-out hover:border-white/30 hover:bg-white/5 active:scale-[0.97] md:inline-flex"
+            >
+              Acceder
+            </EnlaceAcceder>
+          )}
+
+          <MenuMovil usuario={sesion} />
         </div>
       </div>
     </header>

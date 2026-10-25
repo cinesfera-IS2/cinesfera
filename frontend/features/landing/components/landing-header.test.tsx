@@ -18,9 +18,10 @@ describe("LandingHeader", () => {
 
     render(await LandingHeader());
 
-    expect(
-      screen.getByRole("link", { name: "Acceder" }).getAttribute("href")
-    ).toBe("/login");
+    // Una en la barra de escritorio y otra en el menú móvil; el CSS muestra una sola.
+    for (const acceder of screen.getAllByRole("link", { name: "Acceder" })) {
+      expect(acceder.getAttribute("href")).toBe("/login");
+    }
     expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull();
   });
 
@@ -36,10 +37,10 @@ describe("LandingHeader", () => {
 
     render(await LandingHeader());
 
-    expect(
-      screen.getByRole("link", { name: "Mi perfil" }).getAttribute("href")
-    ).toBe("/profile/anatorres");
-    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeTruthy();
+    for (const perfil of screen.getAllByRole("link", { name: "Mi perfil" })) {
+      expect(perfil.getAttribute("href")).toBe("/profile/anatorres");
+    }
+    expect(screen.getAllByRole("button", { name: "Cerrar sesión" })).not.toHaveLength(0);
     expect(screen.queryByRole("link", { name: "Acceder" })).toBeNull();
   });
 });

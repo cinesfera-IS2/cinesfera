@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "@/lib/api";
 import { ContentReviews } from "./content-reviews";
+import { ResenasProvider } from "./resenas-provider";
 import type { ResenaContenido } from "../types";
 
 
@@ -41,9 +42,23 @@ const USUARIO = {
 };
 
 
+function renderizar(
+  usuario: typeof USUARIO | null,
+  tipo: "pelicula" | "serie" = "pelicula",
+  tmdbId = 550
+) {
+  return render(
+    <ResenasProvider tipo={tipo} tmdbId={tmdbId} usuarioId={usuario?.id}>
+      <ContentReviews usuario={usuario} />
+    </ResenasProvider>
+  );
+}
+
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 
@@ -64,7 +79,7 @@ describe("ContentReviews", () => {
       },
     ]);
 
-    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
+    renderizar(null);
 
     const articulos = await screen.findAllByRole("article");
     expect(articulos).toHaveLength(2);
@@ -79,7 +94,7 @@ describe("ContentReviews", () => {
   it("informa cuando todavía no existen reseñas", async () => {
     apiFetchMock.mockResolvedValue([]);
 
-    render(<ContentReviews tipo="serie" tmdbId={1399} usuario={null} />);
+    renderizar(null, "serie", 1399);
 
     expect(
       await screen.findByText("Todavía no existen reseñas")
@@ -92,7 +107,7 @@ describe("ContentReviews", () => {
       .mockResolvedValueOnce([]);
     const user = userEvent.setup();
 
-    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
+    renderizar(null);
 
     expect(
       await screen.findByText("No pudimos cargar las reseñas")
@@ -108,7 +123,7 @@ describe("ContentReviews", () => {
   });
 
 
-  it("permite leer reseñas sin iniciar sesión, pero no publicar ni responder", async () => {
+  it("permite leer reseñas sin iniciar sesión, pero no responder", async () => {
     apiFetchMock.mockResolvedValue([
       {
         ...BASE,
@@ -118,20 +133,36 @@ describe("ContentReviews", () => {
       },
     ]);
 
-    render(<ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />);
+    renderizar(null);
 
     expect(await screen.findByText("Una película excelente")).toBeTruthy();
-
-    expect(
-      screen.queryByRole("button", { name: "Escribir una reseña" })
-    ).toBeNull();
 
     expect(
       screen.queryByRole("button", { name: "Responder" })
     ).toBeNull();
+    expect(screen.getByRole("article").id).toBe("resena-resena-1");
   });
 
-  it("muestra las opciones de publicación y respuesta al usuario autenticado", async () => {
+  it("desplaza hasta la reseña indicada en el fragmento de la URL", async () => {
+    const desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar;
+    window.history.replaceState(null, "", "#resena-resena-1");
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "resena-1",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Reseña enlazada",
+      },
+    ]);
+
+    renderizar(null);
+
+    await screen.findByText("Reseña enlazada");
+    await waitFor(() => expect(desplazar).toHaveBeenCalledWith({ block: "center" }));
+  });
+
+  it("permite responder al usuario autenticado", async () => {
     apiFetchMock.mockResolvedValue([
       {
         ...BASE,
@@ -141,23 +172,30 @@ describe("ContentReviews", () => {
       },
     ]);
 
-    render(
-      <ContentReviews
-        tipo="pelicula"
-        tmdbId={550}
-        usuario={USUARIO}
-      />
-    );
+    renderizar(USUARIO);
 
     expect(await screen.findByText("Una película excelente")).toBeTruthy();
 
     expect(
-      screen.getByRole("button", { name: "Escribir una reseña" })
-    ).toBeTruthy();
-
-    expect(
       screen.getByRole("button", { name: "Responder" })
     ).toBeTruthy();
+  });
+
+  it("muestra sin estrellas una reseña guardada sin calificación", async () => {
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "sin-nota",
+        calificacion: null,
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Respuesta sin nota",
+      },
+    ]);
+
+    renderizar(null);
+
+    expect(await screen.findByText("Respuesta sin nota")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /estrellas/ })).toBeNull();
   });
 
   it("muestra las respuestas anidadas dentro del hilo correspondiente", async () => {
@@ -178,9 +216,7 @@ describe("ContentReviews", () => {
       },
     ]);
 
-    const { container } = render(
-      <ContentReviews tipo="pelicula" tmdbId={550} usuario={null} />
-    );
+    const { container } = renderizar(null);
 
     expect(await screen.findByText("Estoy de acuerdo")).toBeTruthy();
 
@@ -193,7 +229,7 @@ describe("ContentReviews", () => {
     const hilo = articulos[1].parentElement;
 
     expect(hilo).not.toBeNull();
-    expect(hilo?.parentElement?.className).toContain("border-l-2");
+    expect(hilo?.parentElement?.className).toContain("border-l");
 
     expect(container.querySelectorAll("article")).toHaveLength(2);
   });

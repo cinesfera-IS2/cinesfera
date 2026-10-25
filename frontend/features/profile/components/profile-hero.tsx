@@ -1,18 +1,33 @@
-import { ShieldCheckIcon, UserPlusIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  GearSixIcon,
+  ShieldCheckIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 
+import { FollowButton } from "@/features/profile/components/follow-button";
 import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
 import { ProfileEditDialog } from "@/features/profile/components/profile-edit-dialog";
 import { ProfileStats } from "@/features/profile/components/profile-stats";
 import { mesYAnio } from "@/features/profile/lib/fechas";
-import type { PerfilPublico } from "@/features/profile/types";
+import type {
+  PerfilPublico,
+  UsuarioSeguimiento,
+} from "@/features/profile/types";
 
 type ProfileHeroProps = {
   perfil: PerfilPublico;
   /** Cambia las acciones: editar el propio perfil o seguir al ajeno. */
   esPropio: boolean;
+  haySesion: boolean;
+  amigos?: UsuarioSeguimiento[];
 };
 
-export function ProfileHero({ perfil, esPropio }: ProfileHeroProps) {
+export function ProfileHero({
+  perfil,
+  esPropio,
+  haySesion,
+  amigos,
+}: ProfileHeroProps) {
   return (
     <section className="border-b border-white/5">
       <div className="relative h-36 overflow-hidden bg-night-900 sm:h-48">
@@ -62,15 +77,19 @@ export function ProfileHero({ perfil, esPropio }: ProfileHeroProps) {
 
           <div className="flex shrink-0 items-center gap-3 pb-1">
             {esPropio ? (
-              <ProfileEditDialog perfil={perfil} />
+              <>
+                <ProfileEditDialog perfil={perfil} />
+                <Link
+                  href="/configuracion/cuenta"
+                  aria-label="Configuración de la cuenta"
+                  title="Configuración de la cuenta"
+                  className="grid size-10 shrink-0 place-items-center rounded-full border border-white/20 text-ink-300 transition-colors hover:border-white/40 hover:bg-white/5 hover:text-ink-100"
+                >
+                  <GearSixIcon weight="bold" aria-hidden="true" className="size-5" />
+                </Link>
+              </>
             ) : (
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-brand-600"
-              >
-                <UserPlusIcon weight="bold" className="size-4" />
-                Seguir
-              </button>
+              <FollowButton usuarioId={perfil.id} haySesion={haySesion} />
             )}
           </div>
         </div>
@@ -82,7 +101,12 @@ export function ProfileHero({ perfil, esPropio }: ProfileHeroProps) {
         )}
 
         <div className="mt-6 pb-8">
-          <ProfileStats estadisticas={perfil.estadisticas} />
+          <ProfileStats
+            usuarioId={perfil.id}
+            estadisticas={perfil.estadisticas}
+            esPropio={esPropio}
+            amigosIniciales={amigos}
+          />
         </div>
       </div>
     </section>
