@@ -558,6 +558,23 @@ Las respuestas de creación, listado y perfil admiten `calificacion: null`.
 La tabla `valoraciones_resena` conserva su función previa y es independiente
 de las calificaciones con estrellas de `calificaciones_resenas`.
 
+## Conexión con TMDB
+
+El catálogo, las búsquedas y las fichas comparten un cliente HTTP persistente.
+Por defecto las conexiones salientes usan IPv4 (`TMDB_FORCE_IPV4=true`),
+independientemente del host con el que se inicia Uvicorn. Para habilitar la
+resolución automática de ambas familias, configurar `TMDB_FORCE_IPV4=false` y
+reiniciar el backend.
+
+Solo se reintentan lecturas: hasta tres intentos ante cortes de transporte,
+timeouts y respuestas 429/500/502/503/504. Las lecturas exitosas se conservan
+60 segundos (hasta 128 combinaciones de ruta y filtros); ante un fallo
+transitorio se puede usar esa misma lectura por un máximo de cinco minutos.
+Los errores de autenticación y los contenidos inexistentes no usan ese respaldo.
+
+Publicar reseñas o valoraciones de contenidos que ya están en la base local no
+consulta TMDB. Las operaciones de escritura nunca se reintentan automáticamente.
+
 ## SCRUM-127: editar una valoración existente
 
 - `GET /contenidos/{tipo}/{tmdb_id}/valoraciones/mias` devuelve las puntuaciones

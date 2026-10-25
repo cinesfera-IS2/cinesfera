@@ -10,7 +10,7 @@ from app.core import security
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena
 from app.models.usuario import Usuario
-from app.services.contenido_service import ContenidoNoEncontradoError
+from app.services.contenido_service import CatalogoNoDisponibleError, ContenidoNoEncontradoError
 from tests.utilidades import (
     configurar_jwt,
     conectar_api,
@@ -68,7 +68,7 @@ class CrearResenaTests(unittest.TestCase):
         self.assertEqual(guardada.contenido_id, self.contenido.id)
         self.assertEqual(guardada.texto, self.datos["texto"])
         self.assertEqual(guardada.calificacion, Decimal("4.5000000000"))
-        detalle.assert_called_once_with("pelicula", 550)
+        detalle.assert_not_called()
 
     def test_rechaza_publicacion_sin_sesion(self):
         respuesta = self.client.post(
@@ -223,6 +223,15 @@ class CrearResenaTests(unittest.TestCase):
             self.assertEqual(respuesta.status_code, 422, respuesta.text)
         self.assertEqual(self._publicar(padre, texto="   ").status_code, 422)
         self.assertEqual(self._cantidad_resenas(), 1)
+
+    @patch("app.services.contenido_service.obtener_detalle_contenido")
+    def test_publicar_y_valorar_contenido_existente_no_depende_de_tmdb(self, detalle):
+        detalle.side_effect = CatalogoNoDisponibleError("TMDB no disponible")
+        padre = self._padre()
+        respuesta = self._publicar(padre, calificacion=3.5)
+        self.assertEqual(respuesta.status_code, 201, respuesta.text)
+        detalle.assert_not_called()
+        self.assertEqual(self.db.get(CalificacionResena, (self.usuario.id, padre.id)).calificacion, Decimal("3.5"))
 
     def _cantidad_resenas(self) -> int:
         return self.db.scalar(select(func.count()).select_from(Resena))

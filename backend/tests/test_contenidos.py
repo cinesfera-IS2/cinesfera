@@ -7,6 +7,7 @@ from uuid import uuid4
 import httpx
 
 from app.core.config import settings
+from app.core.tmdb import limpiar_cache_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
@@ -27,6 +28,8 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 class ContenidosTests(unittest.TestCase):
     def setUp(self):
+        limpiar_cache_tmdb()
+        self.addCleanup(limpiar_cache_tmdb)
         self.db = crear_base_en_memoria(
             self, Usuario, Contenido, Resena, ValoracionResena, CalificacionResena
         )
@@ -356,7 +359,7 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("movie", 550)
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_con_token_y_devuelve_json(self, get):
         respuesta = get.return_value
         respuesta.status_code = 200
@@ -373,11 +376,10 @@ class ContenidosTests(unittest.TestCase):
                 "Authorization": "Bearer token-de-prueba",
             },
             params={"language": "es-UY"},
-            timeout=10,
         )
         respuesta.raise_for_status.assert_called_once_with()
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_error_de_red(self, get):
         get.side_effect = httpx.ConnectError("Sin conexión")
 
@@ -387,9 +389,13 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("tv", 1399)
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_404(self, get):
         get.return_value.status_code = 404
+        get.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "No encontrado", request=httpx.Request("GET", "https://api.themoviedb.org"),
+            response=httpx.Response(404),
+        )
 
         with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
             with self.assertRaisesRegex(
@@ -397,9 +403,9 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("movie", 999999)
 
-        get.return_value.raise_for_status.assert_not_called()
+        get.return_value.raise_for_status.assert_called_once()
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_error_http(self, get):
         respuesta = get.return_value
         respuesta.status_code = 503

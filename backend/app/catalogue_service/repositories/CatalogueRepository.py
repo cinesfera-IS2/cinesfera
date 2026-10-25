@@ -1,14 +1,14 @@
-import httpx
 from datetime import date
 
 from app.catalogue_service.entities.content import Content
 from app.core.config import settings
+from app.core.tmdb import consultar_tmdb
 
 
 class CatalogueRepository:
 
     def __init__(self):
-        self.base_url = "https://api.themoviedb.org/3"
+        self.base_url = settings.tmdb_api_url
         self.token = settings.tmdb_access_token
 
         self.headers = {
@@ -18,13 +18,7 @@ class CatalogueRepository:
 
 
     def _get(self, url, **kwargs):
-        # Solo GET: reintentar cortes de red no duplica escrituras.
-        for intento in range(3):
-            try:
-                return httpx.get(url, timeout=10, **kwargs)
-            except (httpx.ConnectError, httpx.TimeoutException):
-                if intento == 2:
-                    raise
+        return consultar_tmdb(url, **kwargs)
 
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     

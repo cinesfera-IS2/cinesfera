@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.tmdb import consultar_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
@@ -258,10 +259,6 @@ def crear_resena(
     usuario_id: UUID,
     datos: ResenaCreacion,
 ) -> ResenaCreadaRespuesta:
-    # Comprobar el catálogo antes de agregar la entidad garantiza que un
-    # contenido inexistente nunca deje una reseña pendiente en la sesión.
-    detalle = obtener_detalle_contenido(tipo, tmdb_id)
-
     contenido = db.scalar(
         select(Contenido).where(
             Contenido.tmdb_id == tmdb_id,
@@ -269,6 +266,9 @@ def crear_resena(
         )
     )
     if contenido is None:
+        # Solo la primera reseña necesita incorporar el contenido desde TMDB.
+        # Responder o valorar contenido existente no depende de la red externa.
+        detalle = obtener_detalle_contenido(tipo, tmdb_id)
         contenido = Contenido(
             tmdb_id=tmdb_id,
             tipo=tipo,
@@ -371,26 +371,19 @@ def _consultar_ruta_tmdb(
         raise CatalogoNoDisponibleError("El catálogo no está configurado")
 
     try:
-        respuesta = httpx.get(
+        respuesta = consultar_tmdb(
             f"{settings.tmdb_api_url}/{ruta}",
             headers={
                 "Accept": "application/json",
                 "Authorization": f"Bearer {settings.tmdb_access_token}",
             },
             params={"language": "es-UY"},
-            timeout=10,
         )
-    except httpx.RequestError as error:
-        raise CatalogoNoDisponibleError(
-            "No fue posible consultar el catálogo"
-        ) from error
-
-    if contenido and respuesta.status_code == 404:
-        raise ContenidoNoEncontradoError("Contenido no encontrado")
-
-    try:
-        respuesta.raise_for_status()
     except httpx.HTTPStatusError as error:
+        if contenido and error.response.status_code == 404:
+            raise ContenidoNoEncontradoError("Contenido no encontrado") from error
+        raise CatalogoNoDisponibleError("No fue posible consultar el catálogo") from error
+    except httpx.RequestError as error:
         raise CatalogoNoDisponibleError(
             "No fue posible consultar el catálogo"
         ) from error

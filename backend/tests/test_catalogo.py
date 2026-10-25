@@ -6,6 +6,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
+from app.core.tmdb import limpiar_cache_tmdb
 from app.main import app
 
 
@@ -49,9 +50,10 @@ def respuesta_tmdb(url, paginas_peliculas=300, paginas_series=120, **_kwargs):
     )
 
 
-@patch("app.catalogue_service.repositories.CatalogueRepository.httpx.get")
+@patch("app.core.tmdb._solicitar")
 class CatalogoTests(unittest.TestCase):
     def setUp(self):
+        limpiar_cache_tmdb()
         self.client = TestClient(app)
         token = patch.object(settings, "tmdb_access_token", "token-de-prueba")
         token.start()
