@@ -63,14 +63,6 @@ export function ContentReviewThread({
         }
       />
 
-      {esPadre && (
-        <p className="mt-2 text-sm text-ink-400" aria-live="polite">
-          Promedio de la comunidad: {hilo.resena.promedio_comunitario != null && hilo.resena.cantidad_valoraciones > 0
-            ? `${hilo.resena.promedio_comunitario.toLocaleString("es", { maximumFractionDigits: 2 })} / 5 · ${hilo.resena.cantidad_valoraciones} ${hilo.resena.cantidad_valoraciones === 1 ? "valoración" : "valoraciones"}`
-            : "Sin valoraciones"}
-        </p>
-      )}
-
       {hilo.respuestas.length > 0 && (
         <div
           className={`mt-3 flex flex-col gap-3 border-l border-night-600 pl-4 sm:pl-5 ${

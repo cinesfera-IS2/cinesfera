@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -225,6 +225,7 @@ describe("ContentReviews", () => {
 
     expect(articulos[0].textContent).toContain("Una película excelente");
     expect(articulos[1].textContent).toContain("Estoy de acuerdo");
+    expect(within(articulos[1]).queryByRole("img", { name: /estrellas/ })).toBeNull();
 
     const hilo = articulos[1].parentElement;
 
