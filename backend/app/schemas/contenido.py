@@ -69,3 +69,19 @@ class ResenaCreadaRespuesta(BaseModel):
     calificacion: float | None
     texto: str
     fecha: datetime
+
+
+class CalificacionActualizacion(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    calificacion: Decimal = Field(ge=0.5, le=5, multiple_of=Decimal("0.5"))
+
+
+class CalificacionPropiaRespuesta(BaseModel):
+    resena_id: UUID
+    calificacion: float
+
+
+class CalificacionActualizadaRespuesta(CalificacionPropiaRespuesta):
+    promedio_comunitario: float
+    cantidad_valoraciones: int

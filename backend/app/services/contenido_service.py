@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,6 +13,9 @@ from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.schemas.contenido import (
     AutorResena,
+    CalificacionActualizacion,
+    CalificacionActualizadaRespuesta,
+    CalificacionPropiaRespuesta,
     ContenidoDetalleRespuesta,
     GeneroContenido,
     ResenaCreacion,
@@ -42,7 +45,70 @@ class ResenaPadreInvalidaError(Exception):
     pass
 
 
+class CalificacionNoEncontradaError(Exception):
+    pass
+
+
 RUTA_TMDB = {"pelicula": "movie", "serie": "tv"}
+
+
+def obtener_calificaciones_propias(
+    db: Session, tipo: TipoContenido, tmdb_id: int, usuario_id: UUID,
+) -> list[CalificacionPropiaRespuesta]:
+    filas = db.execute(
+        select(CalificacionResena.resena_id, CalificacionResena.calificacion)
+        .join(Resena, Resena.id == CalificacionResena.resena_id)
+        .join(Contenido, Contenido.id == Resena.contenido_id)
+        .where(
+            CalificacionResena.usuario_id == usuario_id,
+            Resena.resena_padre_id.is_(None),
+            Contenido.tipo == tipo,
+            Contenido.tmdb_id == tmdb_id,
+        )
+    ).all()
+    return [
+        CalificacionPropiaRespuesta(resena_id=resena_id, calificacion=float(puntaje))
+        for resena_id, puntaje in filas
+    ]
+
+
+def actualizar_calificacion(
+    db: Session, tipo: TipoContenido, tmdb_id: int, resena_id: UUID,
+    usuario_id: UUID, datos: CalificacionActualizacion,
+) -> CalificacionActualizadaRespuesta:
+    padre = db.scalar(
+        select(Resena)
+        .join(Contenido, Contenido.id == Resena.contenido_id)
+        .where(
+            Resena.id == resena_id, Resena.resena_padre_id.is_(None),
+            Contenido.tipo == tipo, Contenido.tmdb_id == tmdb_id,
+        )
+    )
+    if padre is None:
+        raise ResenaPadreNoEncontradaError("Reseña padre no encontrada")
+
+    # La identidad viene de la sesión, nunca de un usuario enviado por el cliente.
+    valoracion = db.get(CalificacionResena, (usuario_id, resena_id))
+    if valoracion is None:
+        raise CalificacionNoEncontradaError("No tenés una valoración para editar en esta reseña")
+
+    try:
+        valoracion.calificacion = datos.calificacion
+        valoracion.fecha_actualizacion = datetime.now(timezone.utc)
+        db.flush()
+        promedio, cantidad = db.execute(
+            select(func.avg(CalificacionResena.calificacion), func.count())
+            .where(CalificacionResena.resena_id == resena_id)
+        ).one()
+        respuesta = CalificacionActualizadaRespuesta(
+            resena_id=resena_id, calificacion=float(valoracion.calificacion),
+            promedio_comunitario=float(promedio), cantidad_valoraciones=cantidad,
+        )
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    return respuesta
 
 
 def obtener_detalle_contenido(

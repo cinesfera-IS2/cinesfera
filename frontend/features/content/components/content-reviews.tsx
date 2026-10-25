@@ -7,6 +7,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import type {
+  CalificacionActualizada,
+  CalificacionPropia,
   ResenaContenido,
   TipoContenido,
 } from "@/features/content/types";
@@ -27,12 +29,27 @@ type ContentReviewsProps = {
 type EstadoResenas =
   | { estado: "cargando" }
   | { estado: "error"; mensaje: string }
-  | { estado: "listo"; resenas: ResenaContenido[] };
+  | { estado: "listo"; resenas: ResenaContenido[]; propias: CalificacionPropia[] };
 
 
 export function ContentReviews({ tipo, tmdbId, usuario}: ContentReviewsProps) {
   const [estado, setEstado] = useState<EstadoResenas>({ estado: "cargando" });
   const [intento, setIntento] = useState(0);
+  const usuarioId = usuario?.id;
+
+  function actualizarValoracion(valoracion: CalificacionActualizada) {
+    setEstado((actual) => actual.estado !== "listo" ? actual : {
+      ...actual,
+      resenas: actual.resenas.map((resena) => resena.id === valoracion.resena_id ? {
+        ...resena,
+        promedio_comunitario: valoracion.promedio_comunitario,
+        cantidad_valoraciones: valoracion.cantidad_valoraciones,
+      } : resena),
+      propias: actual.propias.map((propia) => propia.resena_id === valoracion.resena_id ? {
+        resena_id: valoracion.resena_id, calificacion: valoracion.calificacion,
+      } : propia),
+    });
+  }
 
   const reintentar = useCallback(() => {
     setEstado({ estado: "cargando" });
@@ -46,15 +63,22 @@ export function ContentReviews({ tipo, tmdbId, usuario}: ContentReviewsProps) {
   useEffect(() => {
     const controlador = new AbortController();
 
-    apiFetch<ResenaContenido[]>(`/contenidos/${tipo}/${tmdbId}/resenas`, {
+    Promise.all([
+      apiFetch<ResenaContenido[]>(`/contenidos/${tipo}/${tmdbId}/resenas`, {
       cache: "no-store",
       signal: controlador.signal,
-    })
-      .then((resenas) => {
+      }),
+      usuarioId ? apiFetch<CalificacionPropia[]>(`/contenidos/${tipo}/${tmdbId}/valoraciones/mias`, {
+        cache: "no-store",
+        signal: controlador.signal,
+      }) : Promise.resolve([]),
+    ])
+      .then(([resenas, propias]) => {
+        if (controlador.signal.aborted) return;
         const ordenadas = [...resenas].sort((a, b) =>
           b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id)
         );
-        setEstado({ estado: "listo", resenas: ordenadas });
+        setEstado({ estado: "listo", resenas: ordenadas, propias });
       })
       .catch((error: unknown) => {
         if (controlador.signal.aborted) return;
@@ -68,7 +92,7 @@ export function ContentReviews({ tipo, tmdbId, usuario}: ContentReviewsProps) {
       });
 
     return () => controlador.abort();
-  }, [intento, tipo, tmdbId]);
+  }, [intento, tipo, tmdbId, usuarioId]);
 
   return (
     <section aria-labelledby="titulo-resenas">
@@ -145,6 +169,8 @@ export function ContentReviews({ tipo, tmdbId, usuario}: ContentReviewsProps) {
               tmdbId={tmdbId}
               usuarioId={usuario?.id}
               onPublicada={actualizarResenas}
+              calificacionesPropias={estado.propias}
+              onValoracionActualizada={actualizarValoracion}
             />
           ))}
         </div>

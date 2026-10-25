@@ -20,6 +20,8 @@ const BASE: Omit<ResenaContenido, "id" | "fecha" | "texto"> = {
   plataforma_id: null,
   calificacion: 4.5,
   valoracion: 2,
+  promedio_comunitario: null,
+  cantidad_valoraciones: 0,
   autor: {
     id: "usuario-1",
     nombre: "Ana",
