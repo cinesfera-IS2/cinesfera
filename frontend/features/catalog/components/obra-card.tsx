@@ -52,3 +52,14 @@ export function ObraCard({ obra, prioridad = false }: ObraCardProps) {
     </article>
   );
 }
+
+/** Silueta de ObraCard mientras llegan los datos. */
+export function ObraCardEsqueleto() {
+  return (
+    <div className="animate-pulse">
+      <div className="aspect-2/3 rounded-lg bg-night-800" />
+      <div className="mt-3 h-4 w-3/4 rounded bg-night-800" />
+      <div className="mt-2 h-3 w-1/2 rounded bg-night-800/70" />
+    </div>
+  );
+}

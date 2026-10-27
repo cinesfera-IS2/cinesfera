@@ -7,6 +7,7 @@ from app.routers.contenidos import router as contenidos_router
 from app.routers.seguimientos import router as seguimientos_router
 from app.routers.usuarios import router as usuarios_router
 from app.catalogue_service.controllers.CatalogueController import router
+from app.catalogue_service.controllers.LandingController import router as landing_router
 
 
 app = FastAPI(
@@ -48,3 +49,4 @@ def health():
 
 
 app.include_router(router)
+app.include_router(landing_router)
