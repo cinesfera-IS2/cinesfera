@@ -43,7 +43,7 @@ class LandingRepository(CatalogueRepository):
         response = httpx.get(
             f"{self.base_url}{path}",
             headers=self.headers,
-            params={"language": "es-UY", **params},
+            params={"language": "es-MX", **params},
             timeout=10,
         )
 

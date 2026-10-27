@@ -377,7 +377,7 @@ def _consultar_ruta_tmdb(
                 "Accept": "application/json",
                 "Authorization": f"Bearer {settings.tmdb_access_token}",
             },
-            params={"language": "es-UY"},
+            params={"language": "es-MX"},
         )
     except httpx.HTTPStatusError as error:
         if contenido and error.response.status_code == 404:
