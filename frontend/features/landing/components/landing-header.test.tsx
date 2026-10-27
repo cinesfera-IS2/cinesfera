@@ -18,11 +18,6 @@ describe("LandingHeader", () => {
 
     render(await LandingHeader());
 
-    for (const enlace of screen.getAllByRole("link", { name: "Buscar usuarios" })) {
-      expect(enlace.getAttribute("href")).toBe("/usuarios");
-    }
-    expect(screen.getAllByRole("link", { name: "Buscar usuarios" })).toHaveLength(2);
-
     // Una en la barra de escritorio y otra en el menú móvil; el CSS muestra una sola.
     for (const acceder of screen.getAllByRole("link", { name: "Acceder" })) {
       expect(acceder.getAttribute("href")).toBe("/login");

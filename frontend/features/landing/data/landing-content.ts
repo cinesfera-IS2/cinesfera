@@ -1,7 +1,6 @@
 import type { NavLink, ValueProp } from "@/features/landing/types";
 
 export const NAV_LINKS: NavLink[] = [
-  { label: "Buscar usuarios", href: "/usuarios" },
   { label: "Tendencias", href: "/tendencias" },
   { label: "Comunidad", href: "/comunidad" },
   { label: "Soporte", href: "/soporte" },

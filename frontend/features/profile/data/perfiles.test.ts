@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buscarPerfil, obtenerListaSeguimientos, obtenerPerfilPublico } from "./perfiles";
+import { obtenerListaSeguimientos, obtenerPerfilPublico } from "./perfiles";
 
 const CONTENIDO_API = {
   tmdb_id: 603,
@@ -143,31 +143,6 @@ describe("obtenerPerfilPublico", () => {
     simularRespuesta(500, { detail: "Se rompió" });
 
     await expect(obtenerPerfilPublico("anatorres")).rejects.toThrow("Se rompió");
-  });
-});
-
-describe("buscarPerfil", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("devuelve el perfil sin pedir las fichas de sus reseñas", async () => {
-    const fetchFalso = simularRespuesta(200, PERFIL_API);
-
-    const perfil = await buscarPerfil("anatorres");
-
-    expect(fetchFalso).toHaveBeenCalledTimes(1);
-    expect(perfil).toMatchObject({
-      nombreUsuario: "anatorres",
-      nombre: "Ana",
-      estadisticas: { resenas: 2, seguidores: 8, siguiendo: 3 },
-    });
-  });
-
-  it("devuelve null si el usuario no existe", async () => {
-    simularRespuesta(404, { detail: "Usuario no encontrado" });
-
-    expect(await buscarPerfil("nadie")).toBeNull();
   });
 });
 

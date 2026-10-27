@@ -59,7 +59,7 @@ describe("BuscadorUsuarios", () => {
     vi.mocked(apiFetch).mockRejectedValue(new ApiError(401, "Sesión vencida"));
     render(<BuscadorUsuarios />);
     buscar();
-    expect((await screen.findByRole("link", { name: "Acceder" })).getAttribute("href")).toBe("/login?volver=%2Fusuarios");
+    expect((await screen.findByRole("link", { name: "Acceder" })).getAttribute("href")).toBe("/login?volver=%2Fcomunidad");
   });
 
   it("pagina y vuelve al inicio al cambiar la búsqueda", async () => {

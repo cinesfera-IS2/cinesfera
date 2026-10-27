@@ -102,10 +102,19 @@ export const obtenerPerfilPublico = cache(
   async (
     nombreUsuario: string
   ): Promise<{ perfil: PerfilPublico; resenas: ResenaPerfil[] } | null> => {
-    const respuesta = await pedirPerfilPublico(nombreUsuario);
+    let respuesta: PerfilPublicoApi;
 
-    if (!respuesta) {
-      return null;
+    try {
+      respuesta = await apiFetch<PerfilPublicoApi>(
+        `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`,
+        { cache: "no-store" }
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
     }
 
     const contenidos = await obtenerContenidosDeResenas(respuesta.resenas);
@@ -122,30 +131,6 @@ export const obtenerPerfilPublico = cache(
     };
   }
 );
-
-/**
- * Solo los datos del perfil, sin las fichas de sus reseñas: para mostrarlo en
- * un listado no hace falta salir a TMDB.
- */
-export async function buscarPerfil(nombreUsuario: string): Promise<PerfilPublico | null> {
-  const respuesta = await pedirPerfilPublico(nombreUsuario);
-  return respuesta ? aPerfil(respuesta) : null;
-}
-
-async function pedirPerfilPublico(nombreUsuario: string): Promise<PerfilPublicoApi | null> {
-  try {
-    return await apiFetch<PerfilPublicoApi>(
-      `/usuarios/por-nombre/${encodeURIComponent(nombreUsuario)}/perfil-publico`,
-      { cache: "no-store" }
-    );
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      return null;
-    }
-
-    throw error;
-  }
-}
 
 function aPerfil(api: PerfilPublicoApi): PerfilPublico {
   return {
