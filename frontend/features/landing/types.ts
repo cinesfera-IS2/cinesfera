@@ -7,5 +7,6 @@ export type ValueProp = {
 
 export type NavLink = {
   label: string;
-  href: string;
+  /** Sin `href` el destino todavía no existe: se muestra como "próximamente", no como enlace. */
+  href?: string;
 };

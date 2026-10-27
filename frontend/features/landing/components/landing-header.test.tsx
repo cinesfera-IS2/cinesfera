@@ -30,6 +30,19 @@ describe("LandingHeader", () => {
     expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull();
   });
 
+  it("el menú principal lleva a tendencias, comunidad y soporte", async () => {
+    vi.mocked(obtenerSesion).mockResolvedValue(null);
+
+    render(await LandingHeader());
+
+    const destinos = { Tendencias: "/tendencias", Comunidad: "/comunidad", Soporte: "/soporte" };
+    for (const [nombre, href] of Object.entries(destinos)) {
+      for (const enlace of screen.getAllByRole("link", { name: nombre })) {
+        expect(enlace.getAttribute("href")).toBe(href);
+      }
+    }
+  });
+
   it("con sesión lleva al perfil propio y permite cerrarla", async () => {
     vi.mocked(obtenerSesion).mockResolvedValue({
       id: "u1",

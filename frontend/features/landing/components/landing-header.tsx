@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { EnlaceAcceder } from "@/features/auth/components/enlace-acceder";
 import { obtenerSesion } from "@/features/auth/session";
 import { BrandLogo } from "@/features/landing/components/brand-logo";
+import { EnlaceDestino } from "@/features/landing/components/enlace-destino";
 import { EnlaceExplorar } from "@/features/landing/components/enlace-explorar";
 import { MenuCuenta } from "@/features/landing/components/menu-cuenta";
 import { MenuMovil } from "@/features/landing/components/menu-movil";
@@ -19,13 +18,12 @@ export async function LandingHeader() {
         <nav aria-label="Principal" className="hidden h-full md:block">
           <ul className="flex h-full items-center gap-1">
             {NAV_LINKS.map((link) => (
-              <li key={link.href} className="haz flex h-full items-center">
-                <Link
-                  href={link.href}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100"
-                >
-                  {link.label}
-                </Link>
+              <li key={link.label} className="haz flex h-full items-center">
+                <EnlaceDestino
+                  link={link}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-ink-400 transition-colors hover:text-ink-100 aria-[current=page]:text-ink-100"
+                  pendienteClassName="px-3 py-2 text-sm font-medium text-ink-500/70"
+                />
               </li>
             ))}
           </ul>

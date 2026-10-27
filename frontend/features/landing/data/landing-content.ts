@@ -3,9 +3,11 @@ import type { NavLink, ValueProp } from "@/features/landing/types";
 export const NAV_LINKS: NavLink[] = [
   { label: "Buscar usuarios", href: "/usuarios" },
   { label: "Tendencias", href: "/tendencias" },
-  { label: "Comunidad", href: "#comunidad" },
-  { label: "Soporte", href: "#soporte" },
+  { label: "Comunidad", href: "/comunidad" },
+  { label: "Soporte", href: "/soporte" },
 ];
+
+export const EMAIL_SOPORTE = "soporte@cinesfera.com";
 
 export const VALUE_PROPS: ValueProp[] = [
   {
@@ -29,17 +31,19 @@ export const FOOTER_SECTIONS: { title: string; links: NavLink[] }[] = [
   {
     title: "Legal",
     links: [
-      { label: "Privacidad", href: "#privacidad" },
-      { label: "Términos", href: "#terminos" },
-      { label: "Cookies", href: "#cookies" },
+      { label: "Privacidad" },
+      { label: "Términos" },
+      { label: "Cookies" },
     ],
   },
   {
     title: "Comunidad",
     links: [
-      { label: "Foros", href: "#foros" },
-      { label: "Eventos", href: "#eventos" },
-      { label: "Creadores", href: "#creadores" },
+      { label: "Perfiles", href: "/comunidad" },
+      { label: "Soporte", href: "/soporte" },
+      { label: "Foros" },
+      { label: "Eventos" },
+      { label: "Creadores" },
     ],
   },
 ];

@@ -19,7 +19,7 @@ vi.mock("@/features/landing/components/landing-header", () => ({
   LandingHeader: () => <header>Cabecera</header>,
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/" }));
 
 const LISTAS = [
   { ruta: "/joyas", titulo: "Joyas de la cartelera", Layout: JoyasLayout, Cargando: CargandoJoyas, Page: JoyasPage, pedir: obrasDestacadas },
