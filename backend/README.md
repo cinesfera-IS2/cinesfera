@@ -1,5 +1,15 @@
 # Backend (FastAPI)
 
+## Valoración comunitaria de reseñas (Scrum 123)
+
+`GET /contenidos/{tipo}/{tmdb_id}/resenas` incluye `promedio_comunitario`
+y `cantidad_valoraciones` en cada reseña. Por ejemplo, dos puntuaciones de
+3 y 5 devuelven `4.0` y `2`. Sin puntuaciones devuelve `null` y `0`.
+El cálculo usa las puntuaciones vigentes de `calificaciones_resenas`, agrupadas
+por reseña, y refleja las altas y ediciones en la siguiente consulta. Los
+comentarios sin estrellas y los votos positivos/negativos (`valoracion`) no
+participan en este promedio. Requiere la migración `004_calificaciones_comunidad.sql`.
+
 ## Requisitos
 
 - Python 3.10 o superior (en desarrollo se usa Python 3.14)
@@ -524,3 +534,61 @@ cinesfera/
    ```
 
 2. Agregalo a `requirements.txt` (a mano, o regenerando el archivo con `pip freeze > requirements.txt`) y avisá al equipo para que actualicen su entorno con `pip install -r requirements.txt`.
+
+
+## SCRUM-123: valoraciones por usuario y reseña
+
+Aplicar en orden las migraciones `001_agregar_resena_padre.sql` y
+`004_calificaciones_comunidad.sql` antes de usar este backend. La migración comunitaria
+permite `calificacion = null` y crea `calificaciones_resenas` con una clave
+primaria `(usuario_id, resena_id)` que impide duplicados incluso concurrentes.
+No se requieren migraciones adicionales para SCRUM-123.
+
+En `POST /contenidos/{tipo}/{tmdb_id}/resenas`:
+
+- Sin `resena_padre_id`: la reseña original requiere calificación.
+- Con el ID de una reseña original: admite comentario y una valoración
+  de 0.5 a 5 en pasos de 0.5. La valoración y el comentario se guardan
+  en una sola transacción. Un duplicado devuelve `409` sin guardar el comentario.
+- Para comentar sin valorar, omitir `calificacion` o enviar `null`.
+- Las respuestas a comentarios y las autovaloraciones con estrellas
+  se rechazan con `422`. Se pueden responder comentarios sin estrellas.
+
+Las respuestas de creación, listado y perfil admiten `calificacion: null`.
+La tabla `valoraciones_resena` conserva su función previa y es independiente
+de las calificaciones con estrellas de `calificaciones_resenas`.
+
+## Conexión con TMDB
+
+El catálogo, las búsquedas y las fichas comparten un cliente HTTP persistente.
+Por defecto las conexiones salientes usan IPv4 (`TMDB_FORCE_IPV4=true`),
+independientemente del host con el que se inicia Uvicorn. Para habilitar la
+resolución automática de ambas familias, configurar `TMDB_FORCE_IPV4=false` y
+reiniciar el backend.
+
+Solo se reintentan lecturas: hasta tres intentos ante cortes de transporte,
+timeouts y respuestas 429/500/502/503/504. Las lecturas exitosas se conservan
+60 segundos (hasta 128 combinaciones de ruta y filtros); ante un fallo
+transitorio se puede usar esa misma lectura por un máximo de cinco minutos.
+Los errores de autenticación y los contenidos inexistentes no usan ese respaldo.
+
+Publicar reseñas o valoraciones de contenidos que ya están en la base local no
+consulta TMDB. Las operaciones de escritura nunca se reintentan automáticamente.
+
+## SCRUM-127: editar una valoración existente
+
+- `GET /contenidos/{tipo}/{tmdb_id}/valoraciones/mias` devuelve las puntuaciones
+  vigentes del usuario autenticado, con `resena_id` y `calificacion`.
+- `PATCH /contenidos/{tipo}/{tmdb_id}/resenas/{resena_id}/valoracion` recibe
+  únicamente `{"calificacion": 4.5}`. Admite valores de 0.5 a 5 en pasos de 0.5.
+  La identidad se obtiene de la sesión; no admite `usuario_id` ni texto.
+- La actualización modifica la fila existente de `calificaciones_resenas` y
+  devuelve la puntuación, el promedio comunitario y la cantidad de valoraciones.
+  El comentario, su fecha y la puntuación original de la película se conservan.
+- Sin sesión responde `401`; sin valoración propia, `403`; si la reseña padre
+  no pertenece al contenido indicado, `404`; ante datos inválidos, `422`.
+  Las sesiones por cookie requieren el encabezado `X-CSRF-Token`.
+
+El frontend precarga las estrellas, permite cancelar o reintentar y actualiza
+el promedio con la respuesta confirmada del backend. No requiere otra migración
+además de la tabla comunitaria de SCRUM-123.

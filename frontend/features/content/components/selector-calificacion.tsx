@@ -98,7 +98,7 @@ export function SelectorCalificacion({
                       type="radio"
                       name={name}
                       value={opcion}
-                      defaultChecked={opcion === valorInicial}
+                      checked={opcion === valor}
                       onChange={() => {
                         setValor(opcion);
                         // En pantallas táctiles nunca llega el mouseleave que borraría la vista previa.

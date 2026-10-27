@@ -17,6 +17,8 @@ function resena(
     texto: "Texto",
     fecha: "2026-10-16T12:00:00Z",
     valoracion: 0,
+    promedio_comunitario: null,
+    cantidad_valoraciones: 0,
     autor: {
       id: "u1",
       nombre: "Ana",

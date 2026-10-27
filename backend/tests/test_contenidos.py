@@ -7,8 +7,9 @@ from uuid import uuid4
 import httpx
 
 from app.core.config import settings
+from app.core.tmdb import limpiar_cache_tmdb
 from app.models.contenido import Contenido
-from app.models.resena import Resena, ValoracionResena
+from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.routers.contenidos import consultar_generos
 from app.schemas.contenido import ContenidoDetalleRespuesta, GeneroContenido
@@ -27,8 +28,10 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 class ContenidosTests(unittest.TestCase):
     def setUp(self):
+        limpiar_cache_tmdb()
+        self.addCleanup(limpiar_cache_tmdb)
         self.db = crear_base_en_memoria(
-            self, Usuario, Contenido, Resena, ValoracionResena
+            self, Usuario, Contenido, Resena, ValoracionResena, CalificacionResena
         )
         ahora = datetime.now(timezone.utc)
         # La serie comparte id de TMDB con la película a propósito: sus
@@ -94,6 +97,77 @@ class ContenidosTests(unittest.TestCase):
         ])
         self.db.commit()
         self.client = conectar_api(self, self.db)
+
+    def _calificar(self, resena_id, estrellas):
+        usuario = crear_usuario(self.db, f"votante-{uuid4().hex}")
+        calificacion = CalificacionResena(
+            usuario_id=usuario.id,
+            resena_id=resena_id,
+            calificacion=Decimal(str(estrellas)),
+            fecha_actualizacion=datetime.now(timezone.utc),
+        )
+        self.db.add(calificacion)
+        self.db.commit()
+        return calificacion
+
+    def _comprobar_promedio(self, promedio, cantidad, resena_id=None):
+        respuesta = self.client.get("/contenidos/pelicula/550/resenas")
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        resena = next(
+            fila for fila in respuesta.json()
+            if fila["id"] == str(resena_id or self.reciente_id)
+        )
+        self.assertEqual(resena["promedio_comunitario"], promedio)
+        self.assertEqual(resena["cantidad_valoraciones"], cantidad)
+
+    def test_promedio_comunitario_de_dos_valoraciones(self):
+        self._calificar(self.reciente_id, 3)
+        self._calificar(self.reciente_id, 5)
+        self._comprobar_promedio(4, 2)
+
+    def test_promedio_se_actualiza_al_agregar_valoracion(self):
+        self._calificar(self.reciente_id, 3)
+        self._comprobar_promedio(3, 1)
+        self._calificar(self.reciente_id, 5)
+        self._comprobar_promedio(4, 2)
+
+    def test_comentarios_sin_estrellas_no_alteran_promedio(self):
+        self._calificar(self.reciente_id, 3)
+        self._calificar(self.reciente_id, 5)
+        padre = self.db.get(Resena, self.reciente_id)
+        comentario = Resena(
+            id=uuid4(), usuario_id=padre.usuario_id, contenido_id=1,
+            resena_padre_id=padre.id, calificacion=None,
+            texto="Solo texto", fecha=datetime.now(timezone.utc),
+        )
+        self.db.add(comentario)
+        self.db.commit()
+        self._comprobar_promedio(4, 2)
+        self._comprobar_promedio(None, 0, comentario.id)
+
+    def test_sin_valoraciones_promedio_es_null_y_cantidad_cero(self):
+        self._comprobar_promedio(None, 0)
+
+    def test_promedio_no_incluye_valoraciones_de_otras_resenas(self):
+        self._calificar(self.reciente_id, 3)
+        self._calificar(self.reciente_id, 5)
+        self._calificar(self.antigua_id, 1)
+        self._calificar(self.serie_id, 0.5)
+        self._comprobar_promedio(4, 2)
+        self._comprobar_promedio(1, 1, self.antigua_id)
+
+    def test_editar_valoracion_recalcula_promedio_sin_aumentar_cantidad(self):
+        self._calificar(self.reciente_id, 3)
+        calificacion = self._calificar(self.reciente_id, 5)
+        self._comprobar_promedio(4, 2)
+        calificacion.calificacion = Decimal("1")
+        self.db.commit()
+        self._comprobar_promedio(2, 2)
+
+    def test_promedio_conserva_decimales(self):
+        self._calificar(self.reciente_id, 3)
+        self._calificar(self.reciente_id, 4.5)
+        self._comprobar_promedio(3.75, 2)
 
     def test_resenas_del_contenido_ordenadas_de_mas_nueva_a_mas_antigua(self):
         respuesta = self.client.get("/contenidos/pelicula/550/resenas")
@@ -285,7 +359,7 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("movie", 550)
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_con_token_y_devuelve_json(self, get):
         respuesta = get.return_value
         respuesta.status_code = 200
@@ -302,11 +376,10 @@ class ContenidosTests(unittest.TestCase):
                 "Authorization": "Bearer token-de-prueba",
             },
             params={"language": "es-UY"},
-            timeout=10,
         )
         respuesta.raise_for_status.assert_called_once_with()
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_error_de_red(self, get):
         get.side_effect = httpx.ConnectError("Sin conexión")
 
@@ -316,9 +389,13 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("tv", 1399)
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_404(self, get):
         get.return_value.status_code = 404
+        get.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "No encontrado", request=httpx.Request("GET", "https://api.themoviedb.org"),
+            response=httpx.Response(404),
+        )
 
         with patch.object(settings, "tmdb_access_token", "token-de-prueba"):
             with self.assertRaisesRegex(
@@ -326,9 +403,9 @@ class ContenidosTests(unittest.TestCase):
             ):
                 _consultar_tmdb("movie", 999999)
 
-        get.return_value.raise_for_status.assert_not_called()
+        get.return_value.raise_for_status.assert_called_once()
 
-    @patch("app.services.contenido_service.httpx.get")
+    @patch("app.core.tmdb._solicitar")
     def test_consulta_tmdb_traduce_error_http(self, get):
         respuesta = get.return_value
         respuesta.status_code = 503

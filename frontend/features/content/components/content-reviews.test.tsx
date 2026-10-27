@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -21,6 +21,8 @@ const BASE: Omit<ResenaContenido, "id" | "fecha" | "texto"> = {
   plataforma_id: null,
   calificacion: 4.5,
   valoracion: 2,
+  promedio_comunitario: null,
+  cantidad_valoraciones: 0,
   autor: {
     id: "usuario-1",
     nombre: "Ana",
@@ -46,7 +48,7 @@ function renderizar(
   tmdbId = 550
 ) {
   return render(
-    <ResenasProvider tipo={tipo} tmdbId={tmdbId}>
+    <ResenasProvider tipo={tipo} tmdbId={tmdbId} usuarioId={usuario?.id}>
       <ContentReviews usuario={usuario} />
     </ResenasProvider>
   );
@@ -223,6 +225,7 @@ describe("ContentReviews", () => {
 
     expect(articulos[0].textContent).toContain("Una película excelente");
     expect(articulos[1].textContent).toContain("Estoy de acuerdo");
+    expect(within(articulos[1]).queryByRole("img", { name: /estrellas/ })).toBeNull();
 
     const hilo = articulos[1].parentElement;
 

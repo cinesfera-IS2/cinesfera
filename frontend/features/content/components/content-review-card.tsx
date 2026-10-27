@@ -62,7 +62,7 @@ export function ContentReviewCard({
           <time dateTime={resena.fecha}>{fechaLarga(resena.fecha)}</time>
         </p>
 
-        {resena.calificacion !== null && (
+        {resena.resena_padre_id === null && resena.calificacion !== null && (
           <div className="mt-3">
             <StarRating puntaje={resena.calificacion} />
           </div>
@@ -70,6 +70,23 @@ export function ContentReviewCard({
         <p className="mt-2 leading-relaxed whitespace-pre-line text-pretty text-ink-300">
           {resena.texto}
         </p>
+
+        {resena.resena_padre_id === null && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3" aria-live="polite">
+            <span className="text-sm font-bold text-amber-200">Promedio de la comunidad</span>
+            {resena.promedio_comunitario != null && resena.cantidad_valoraciones > 0 ? (
+              <div className="flex items-baseline gap-3">
+                <span className="font-display text-2xl font-extrabold text-amber-300 tabular-nums">
+                  {resena.promedio_comunitario.toLocaleString("es", { maximumFractionDigits: 2 })}
+                  <span className="ml-1 text-sm font-semibold text-amber-200">/ 5</span>
+                </span>
+                <span className="text-sm text-amber-100">
+                  {resena.cantidad_valoraciones} {resena.cantidad_valoraciones === 1 ? "valoración" : "valoraciones"}
+                </span>
+              </div>
+            ) : <span className="text-sm font-semibold text-amber-100">Sin valoraciones</span>}
+          </div>
+        )}
 
         {(resena.valoracion > 0 || acciones) && (
           <div className="mt-3 flex items-center gap-4 text-xs text-ink-400">

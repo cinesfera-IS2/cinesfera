@@ -24,7 +24,7 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
     throw new Error("ContentReviews tiene que estar dentro de un ResenasProvider.");
   }
 
-  const { estado, tipo, tmdbId, reintentar, actualizar } = resenas;
+  const { estado, tipo, tmdbId, reintentar, actualizar, actualizarValoracion } = resenas;
   const hilos = estado.estado === "listo" ? agruparResenas(estado.resenas) : [];
 
   useEffect(() => {
@@ -96,6 +96,8 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
               tmdbId={tmdbId}
               usuarioId={usuario?.id}
               onPublicada={actualizar}
+              calificacionesPropias={estado.estado === "listo" ? estado.propias : []}
+              onValoracionActualizada={actualizarValoracion}
             />
           ))}
         </div>

@@ -122,6 +122,7 @@ describe("CreateContentReview", () => {
     expect(screen.getByLabelText("Tu respuesta")).toBeTruthy();
     expect(screen.getByText("Respondiendo a Ana Pérez")).toBeTruthy();
 
+    await userEvent.click(screen.getByRole("checkbox", { name: "Incluir valoración" }));
     await userEvent.click(screen.getByRole("radio", { name: "4 estrellas" }));
 
     await userEvent.type(

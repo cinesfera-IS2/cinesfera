@@ -1,14 +1,14 @@
-import httpx
 from datetime import date
 
 from app.catalogue_service.entities.content import Content
 from app.core.config import settings
+from app.core.tmdb import consultar_tmdb
 
 
 class CatalogueRepository:
 
     def __init__(self):
-        self.base_url = "https://api.themoviedb.org/3"
+        self.base_url = settings.tmdb_api_url
         self.token = settings.tmdb_access_token
 
         self.headers = {
@@ -16,6 +16,9 @@ class CatalogueRepository:
             "Authorization": f"Bearer {self.token}"
         }
 
+
+    def _get(self, url, **kwargs):
+        return consultar_tmdb(url, **kwargs)
 
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     
@@ -69,7 +72,7 @@ class CatalogueRepository:
         if year is not None:
             params["primary_release_year"] = year
 
-        response = httpx.get(
+        response = self._get(
                 url,
                 headers=self.headers,
                 params=params
@@ -103,7 +106,7 @@ class CatalogueRepository:
         if year is not None:
             params["first_air_date_year"] = year
 
-        response = httpx.get(
+        response = self._get(
             url,
             headers=self.headers,
             params=params
@@ -177,7 +180,7 @@ class CatalogueRepository:
         if year is not None:
             params["year"] = year
 
-        response = httpx.get(url, headers=self.headers, params=params)
+        response = self._get(url, headers=self.headers, params=params)
 
         response.raise_for_status()
 
@@ -215,7 +218,7 @@ class CatalogueRepository:
             if year is not None:
                 params["first_air_date_year"] = year
     
-            response = httpx.get(url, headers=self.headers, params=params)
+            response = self._get(url, headers=self.headers, params=params)
     
             response.raise_for_status()
     
