@@ -42,19 +42,19 @@ class ResenaContenidoRespuesta(BaseModel):
     contenido_tmdb_id: int
     resena_padre_id: UUID | None
     plataforma_id: int | None
-    # La columna admite NULL en la base aunque la API nunca lo guarde así;
-    # hasta definir la restricción, una reseña sin nota se devuelve como null.
     calificacion: float | None
     texto: str
     fecha: datetime
     valoracion: int
+    promedio_comunitario: float | None = Field(ge=0.5, le=5)
+    cantidad_valoraciones: int = Field(ge=0)
     autor: AutorResena
 
 
 class ResenaCreacion(BaseModel):
     usuario_id: UUID
     texto: str = Field(min_length=1, max_length=5000)
-    calificacion: Decimal = Field(ge=0, le=5)
+    calificacion: Decimal | None = Field(default=None, ge=0.5, le=5, multiple_of=Decimal("0.5"))
     plataforma_id: int | None = Field(default=None, gt=0)
     resena_padre_id: UUID | None = None
 
@@ -66,6 +66,22 @@ class ResenaCreadaRespuesta(BaseModel):
     contenido_tmdb_id: int
     resena_padre_id: UUID | None
     plataforma_id: int | None
-    calificacion: float
+    calificacion: float | None
     texto: str
     fecha: datetime
+
+
+class CalificacionActualizacion(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    calificacion: Decimal = Field(ge=0.5, le=5, multiple_of=Decimal("0.5"))
+
+
+class CalificacionPropiaRespuesta(BaseModel):
+    resena_id: UUID
+    calificacion: float
+
+
+class CalificacionActualizadaRespuesta(CalificacionPropiaRespuesta):
+    promedio_comunitario: float
+    cantidad_valoraciones: int

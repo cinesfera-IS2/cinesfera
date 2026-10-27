@@ -2,9 +2,10 @@
 
 import { ContentReviewCard } from "@/features/content/components/content-review-card";
 import { CreateContentReview } from "@/features/content/components/create-content-review";
-import type { HiloResena } from "@/features/content/lib/agrupar-resenas";
-import type { TipoContenido } from "@/features/content/types";
+import { EditContentRating } from "@/features/content/components/edit-content-rating";
 import type { UsuarioSesion } from "@/features/auth/session";
+import type { HiloResena } from "@/features/content/lib/agrupar-resenas";
+import type { CalificacionActualizada, CalificacionPropia, TipoContenido } from "@/features/content/types";
 import { ReportButton } from "@/features/reports/report-button";
 
 type ContentReviewThreadProps = {
@@ -14,6 +15,8 @@ type ContentReviewThreadProps = {
   usuario?: UsuarioSesion | null;
   onPublicada: () => void;
   profundidad?: number;
+  calificacionesPropias: CalificacionPropia[];
+  onValoracionActualizada: (valoracion: CalificacionActualizada) => void;
 };
 
 export function ContentReviewThread({
@@ -23,7 +26,15 @@ export function ContentReviewThread({
   usuario,
   onPublicada,
   profundidad = 0,
+  calificacionesPropias,
+  onValoracionActualizada,
 }: ContentReviewThreadProps) {
+  const usuarioId = usuario?.id;
+  const esPadre = hilo.resena.resena_padre_id === null;
+  const propia = usuarioId && esPadre
+    ? calificacionesPropias.find((valoracion) => valoracion.resena_id === hilo.resena.id)
+    : undefined;
+
   return (
     <div>
       <ContentReviewCard
@@ -37,9 +48,19 @@ export function ContentReviewThread({
                 tmdbId={tmdbId}
                 usuarioId={usuario.id}
                 resenaPadreId={hilo.resena.id}
+                permiteCalificacion={esPadre && hilo.resena.autor.id !== usuario.id && !propia}
                 subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
                 onPublicada={onPublicada}
               />
+              {propia && (
+                <EditContentRating
+                  tipo={tipo}
+                  tmdbId={tmdbId}
+                  resenaId={hilo.resena.id}
+                  calificacion={propia.calificacion}
+                  onActualizada={onValoracionActualizada}
+                />
+              )}
               {usuario.id !== hilo.resena.autor.id && (
                 <ReportButton tipo="comentario" objetivoId={hilo.resena.id} />
               )}
@@ -63,6 +84,8 @@ export function ContentReviewThread({
               usuario={usuario}
               onPublicada={onPublicada}
               profundidad={profundidad + 1}
+              calificacionesPropias={calificacionesPropias}
+              onValoracionActualizada={onValoracionActualizada}
             />
           ))}
         </div>

@@ -3,11 +3,10 @@
 import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { FeaturedPosterCard } from "@/features/landing/components/featured-poster-card";
-import type { FeaturedTitle } from "@/features/landing/types";
+import { ObraCard, type Obra } from "@/features/catalog";
 
 type FeaturedCarouselProps = {
-  items: FeaturedTitle[];
+  items: Obra[];
 };
 
 /**
@@ -139,18 +138,18 @@ export function FeaturedCarousel({ items }: FeaturedCarouselProps) {
 
           return (
             <li
-              key={item.id}
+              key={`${item.tipo}-${item.tmdbId}`}
               ref={(el) => {
                 cardRefs.current[index] = el;
               }}
-              className="w-72 shrink-0 snap-center sm:w-80"
+              className="w-44 shrink-0 snap-center sm:w-52"
               style={{
                 transform: `scale(${scale})`,
                 filter: `brightness(${brightness})`,
                 opacity: 0.55 + t * 0.45,
               }}
             >
-              <FeaturedPosterCard item={item} />
+              <ObraCard obra={item} />
             </li>
           );
         })}

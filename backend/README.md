@@ -1,5 +1,15 @@
 # Backend (FastAPI)
 
+## Valoración comunitaria de reseñas (Scrum 123)
+
+`GET /contenidos/{tipo}/{tmdb_id}/resenas` incluye `promedio_comunitario`
+y `cantidad_valoraciones` en cada reseña. Por ejemplo, dos puntuaciones de
+3 y 5 devuelven `4.0` y `2`. Sin puntuaciones devuelve `null` y `0`.
+El cálculo usa las puntuaciones vigentes de `calificaciones_resenas`, agrupadas
+por reseña, y refleja las altas y ediciones en la siguiente consulta. Los
+comentarios sin estrellas y los votos positivos/negativos (`valoracion`) no
+participan en este promedio. Requiere la migración `004_calificaciones_comunidad.sql`.
+
 ## Requisitos
 
 - Python 3.10 o superior (en desarrollo se usa Python 3.14)
@@ -265,15 +275,17 @@ o rechazadas.
 ### Perfil público con reseñas
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
-nombre de usuario, foto, reputación, cantidad de seguidores, cantidad de
-seguidos y reseñas de cualquier usuario existente.
+nombre de usuario, foto, biografía, ubicación, géneros favoritos, rol, fecha
+de registro, reputación, cantidad de seguidores, cantidad de seguidos y
+reseñas de cualquier usuario existente.
 También se puede consultar por nombre de usuario con
 `GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (por ejemplo,
 `/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
 minúsculas y exige el nombre completo; si no existe, responde `404`.
 No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
 iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
-`plataforma_id`, `calificacion`, `texto` y `fecha`. La reputación es la suma de
+`contenido_tipo`, `contenido_titulo`, `plataforma_id`, `calificacion`, `texto`
+y `fecha`. La reputación es la suma de
 `valoraciones_resena.valor` recibidas por todas las reseñas del usuario; si no
 tiene valoraciones, es `0`. No se devuelve el email ni la contraseña.
 
@@ -290,13 +302,17 @@ Para probarlo vos misma en Postman:
 4. Repetí con un UUID inexistente: debe responder `404 Not Found` con
    `{"detail":"Usuario no encontrado"}`.
 
-La respuesta utiliza IDs de TMDB porque el esquema de la base no guarda el
-título ni el póster del contenido en `resenas`.
+La respuesta identifica cada contenido con su tipo e ID de TMDB. El frontend
+usa esos datos para consultar la ficha actual y mostrar título, año y póster;
+`contenido_titulo` queda como respaldo si TMDB no está disponible.
 
 ## Ficha de película o serie
 
 La ficha consume dos endpoints públicos e independientes:
 
+- `GET /contenidos/generos` combina las listas oficiales de géneros de
+  películas y series de TMDB. La respuesta se conserva en memoria durante la
+  vida del proceso para evitar consultas repetidas.
 - `GET /contenidos/{tipo}/{tmdb_id}` obtiene el detalle desde TMDB. `tipo`
   admite `pelicula` o `serie`.
 - `GET /contenidos/{tipo}/{tmdb_id}/resenas` obtiene las reseñas locales,
@@ -312,6 +328,7 @@ Ejemplos:
 
 ```http
 GET http://localhost:8000/contenidos/pelicula/550
+GET http://localhost:8000/contenidos/generos
 GET http://localhost:8000/contenidos/pelicula/550/resenas
 GET http://localhost:8000/contenidos/serie/1399
 GET http://localhost:8000/contenidos/serie/1399/resenas
@@ -349,10 +366,13 @@ Los endpoints de perfil trabajan con el UUID que devuelve el registro o
   modifica solamente los campos enviados del usuario autenticado. El UUID de
   la ruta debe coincidir con el usuario del token.
 
-El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email` y `foto_url`.
+El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `foto_url`,
+`bio`, `ubicacion` y `generos_favoritos` (hasta cinco valores distintos que
+deben pertenecer a la lista oficial devuelta por `GET /contenidos/generos`).
 El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
 URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
-Supabase Storage. Para quitar la foto actual se envía `"foto_url": null`.
+Supabase Storage. Para quitar la foto, biografía o ubicación se envía el campo
+correspondiente con `null`.
 
 Para probar el flujo en Postman:
 
@@ -373,7 +393,10 @@ Authorization: Bearer TOKEN-DEL-LOGIN
   "nombre": "Persona",
   "apellido": "Actualizada",
   "nombre_usuario": "persona.actualizada",
-  "foto_url": "https://ejemplo.com/fotos/perfil.jpg"
+  "foto_url": "https://ejemplo.com/fotos/perfil.jpg",
+  "bio": "Fan del cine independiente",
+  "ubicacion": "Montevideo, Uruguay",
+  "generos_favoritos": ["Drama", "Comedia"]
 }
 ```
 
@@ -387,6 +410,15 @@ Respuestas relevantes:
 
 El cambio de foto guarda la URL de una imagen ya subida. Este endpoint no
 recibe archivos ni realiza la subida a Storage.
+
+`PATCH /usuarios/{usuario_id}/password` cambia la contraseña de la propia
+cuenta. Requiere `password_actual`, `password_nueva`, sesión y protección CSRF.
+La contraseña nueva debe tener entre 8 y 128 caracteres y ser distinta de la
+actual. Una contraseña actual incorrecta responde `400`; intentar modificar
+otra cuenta responde `403`.
+
+Las columnas de perfil se agregan a instalaciones existentes mediante
+`migrations/003_agregar_datos_perfil.sql`.
 
 ## Administración de cuentas
 
@@ -407,7 +439,7 @@ administrador recibe `403 Forbidden`.
 ### Administrador principal y moderación
 
 Antes de iniciar una instalación nueva, aplicá
-`migrations/004_administracion_moderacion.sql` y configurá
+`migrations/005_administracion_moderacion.sql` y configurá
 `ADMIN_INICIAL_EMAIL`, `ADMIN_INICIAL_PASSWORD` y
 `ADMIN_INICIAL_USUARIO`. Si todavía no existe ningún administrador, el arranque
 crea uno con `es_admin_principal=true`; la contraseña se transforma con el mismo
@@ -538,3 +570,61 @@ cinesfera/
    ```
 
 2. Agregalo a `requirements.txt` (a mano, o regenerando el archivo con `pip freeze > requirements.txt`) y avisá al equipo para que actualicen su entorno con `pip install -r requirements.txt`.
+
+
+## SCRUM-123: valoraciones por usuario y reseña
+
+Aplicar en orden las migraciones `001_agregar_resena_padre.sql` y
+`004_calificaciones_comunidad.sql` antes de usar este backend. La migración comunitaria
+permite `calificacion = null` y crea `calificaciones_resenas` con una clave
+primaria `(usuario_id, resena_id)` que impide duplicados incluso concurrentes.
+No se requieren migraciones adicionales para SCRUM-123.
+
+En `POST /contenidos/{tipo}/{tmdb_id}/resenas`:
+
+- Sin `resena_padre_id`: la reseña original requiere calificación.
+- Con el ID de una reseña original: admite comentario y una valoración
+  de 0.5 a 5 en pasos de 0.5. La valoración y el comentario se guardan
+  en una sola transacción. Un duplicado devuelve `409` sin guardar el comentario.
+- Para comentar sin valorar, omitir `calificacion` o enviar `null`.
+- Las respuestas a comentarios y las autovaloraciones con estrellas
+  se rechazan con `422`. Se pueden responder comentarios sin estrellas.
+
+Las respuestas de creación, listado y perfil admiten `calificacion: null`.
+La tabla `valoraciones_resena` conserva su función previa y es independiente
+de las calificaciones con estrellas de `calificaciones_resenas`.
+
+## Conexión con TMDB
+
+El catálogo, las búsquedas y las fichas comparten un cliente HTTP persistente.
+Por defecto las conexiones salientes usan IPv4 (`TMDB_FORCE_IPV4=true`),
+independientemente del host con el que se inicia Uvicorn. Para habilitar la
+resolución automática de ambas familias, configurar `TMDB_FORCE_IPV4=false` y
+reiniciar el backend.
+
+Solo se reintentan lecturas: hasta tres intentos ante cortes de transporte,
+timeouts y respuestas 429/500/502/503/504. Las lecturas exitosas se conservan
+60 segundos (hasta 128 combinaciones de ruta y filtros); ante un fallo
+transitorio se puede usar esa misma lectura por un máximo de cinco minutos.
+Los errores de autenticación y los contenidos inexistentes no usan ese respaldo.
+
+Publicar reseñas o valoraciones de contenidos que ya están en la base local no
+consulta TMDB. Las operaciones de escritura nunca se reintentan automáticamente.
+
+## SCRUM-127: editar una valoración existente
+
+- `GET /contenidos/{tipo}/{tmdb_id}/valoraciones/mias` devuelve las puntuaciones
+  vigentes del usuario autenticado, con `resena_id` y `calificacion`.
+- `PATCH /contenidos/{tipo}/{tmdb_id}/resenas/{resena_id}/valoracion` recibe
+  únicamente `{"calificacion": 4.5}`. Admite valores de 0.5 a 5 en pasos de 0.5.
+  La identidad se obtiene de la sesión; no admite `usuario_id` ni texto.
+- La actualización modifica la fila existente de `calificaciones_resenas` y
+  devuelve la puntuación, el promedio comunitario y la cantidad de valoraciones.
+  El comentario, su fecha y la puntuación original de la película se conservan.
+- Sin sesión responde `401`; sin valoración propia, `403`; si la reseña padre
+  no pertenece al contenido indicado, `404`; ante datos inválidos, `422`.
+  Las sesiones por cookie requieren el encabezado `X-CSRF-Token`.
+
+El frontend precarga las estrellas, permite cancelar o reintentar y actualiza
+el promedio con la respuesta confirmada del backend. No requiere otra migración
+además de la tabla comunitaria de SCRUM-123.

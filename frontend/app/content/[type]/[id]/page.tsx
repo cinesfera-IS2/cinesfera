@@ -62,7 +62,7 @@ export default async function ContentPage({
   <>
       <LandingHeader />
       <main className="flex-1">
-        <ResenasProvider tipo={datos.tipo} tmdbId={datos.tmdbId}>
+        <ResenasProvider tipo={datos.tipo} tmdbId={datos.tmdbId} usuarioId={usuario?.id}>
           <ContentHero contenido={datos.contenido} />
 
           {/* En móvil la ficha queda entre la sinopsis y las reseñas; desde lg

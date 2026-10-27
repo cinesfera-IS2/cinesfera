@@ -18,6 +18,7 @@ type CreateContentReviewProps = {
   tmdbId: number;
   usuarioId: string;
   resenaPadreId?: string;
+  permiteCalificacion?: boolean;
   /** Debajo del título del diálogo: qué se reseña o a quién se responde. */
   subtitulo?: string;
   onPublicada: () => void;
@@ -28,6 +29,7 @@ export function CreateContentReview({
   tmdbId,
   usuarioId,
   resenaPadreId,
+  permiteCalificacion = true,
   subtitulo,
   onPublicada,
 }: CreateContentReviewProps) {
@@ -40,6 +42,8 @@ export function CreateContentReview({
   const [largo, setLargo] = useState(0);
 
   const esRespuesta = Boolean(resenaPadreId);
+  const [incluirValoracion, setIncluirValoracion] = useState(!esRespuesta);
+  const valorar = permiteCalificacion && incluirValoracion;
   const titulo = esRespuesta ? "Responder reseña" : "Nueva reseña";
 
   function abrir() {
@@ -59,9 +63,9 @@ export function CreateContentReview({
     const campos = new FormData(formulario);
 
     const texto = String(campos.get("texto") ?? "").trim();
-    const calificacion = campos.get("calificacion");
+    const calificacion = valorar ? campos.get("calificacion") : null;
 
-    if (calificacion === null) {
+    if (valorar && calificacion === null) {
       setError("Elegí una calificación marcando las estrellas.");
       return;
     }
@@ -90,13 +94,14 @@ export function CreateContentReview({
         body: JSON.stringify({
           usuario_id: usuarioId,
           texto,
-          calificacion: Number(calificacion),
+          calificacion: calificacion === null ? null : Number(calificacion),
           plataforma_id: null,
           resena_padre_id: resenaPadreId ?? null,
         }),
       });
 
       formulario.reset();
+      setIncluirValoracion(!esRespuesta);
       setLargo(0);
       dialogo.current?.close();
       onPublicada();
@@ -161,7 +166,13 @@ export function CreateContentReview({
           </div>
 
           <div className="flex flex-col gap-6 px-6 py-6 sm:px-8">
-            <SelectorCalificacion name="calificacion" />
+            {esRespuesta && permiteCalificacion && (
+              <label className="flex items-center gap-2 text-sm text-ink-300">
+                <input type="checkbox" checked={incluirValoracion} onChange={(evento) => setIncluirValoracion(evento.target.checked)} />
+                Incluir valoración
+              </label>
+            )}
+            {valorar && <SelectorCalificacion name="calificacion" />}
 
             <div className="flex flex-col gap-2">
               <label htmlFor={idTexto} className="text-sm font-semibold text-ink-300">

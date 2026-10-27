@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { EnlaceAcceder } from "@/features/auth/components/enlace-acceder";
 import type { UsuarioSesion } from "@/features/auth/session";
 import { EscribirResena } from "@/features/content/components/escribir-resena";
 import {
@@ -75,12 +74,11 @@ export function ContentFicha({ contenido, usuario }: Readonly<ContentFichaProps>
             <p className="mb-4 text-sm text-ink-300">
               Iniciá sesión para escribir tu reseña y responder a la comunidad.
             </p>
-            <Link
-              href="/login"
+            <EnlaceAcceder
               className="flex w-full items-center justify-center rounded-full bg-brand-500 px-5 py-2.5 text-sm font-bold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-brand-600 active:scale-[0.97]"
             >
               Iniciar sesión
-            </Link>
+            </EnlaceAcceder>
           </>
         )}
       </div>

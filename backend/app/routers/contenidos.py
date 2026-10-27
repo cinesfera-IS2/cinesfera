@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
@@ -10,6 +11,10 @@ from app.models.usuario import Usuario
 from app.core.enums import RolUsuario
 from app.schemas.contenido import (
     ContenidoDetalleRespuesta,
+    CalificacionActualizacion,
+    CalificacionActualizadaRespuesta,
+    CalificacionPropiaRespuesta,
+    GeneroContenido,
     ResenaCreacion,
     ResenaCreadaRespuesta,
     ResenaContenidoRespuesta,
@@ -17,16 +22,66 @@ from app.schemas.contenido import (
 )
 from app.services.contenido_service import (
     CatalogoNoDisponibleError,
+    CalificacionDuplicadaError,
+    CalificacionNoEncontradaError,
     ContenidoNoEncontradoError,
     ResenaPadreInvalidaError,
     ResenaPadreNoEncontradaError,
     crear_resena,
+    actualizar_calificacion,
+    obtener_calificaciones_propias,
     obtener_detalle_contenido,
+    obtener_generos_contenido,
     obtener_resenas_contenido,
 )
 
 
 router = APIRouter(prefix="/contenidos", tags=["Contenidos"])
+
+
+@router.get(
+    "/{tipo}/{tmdb_id}/valoraciones/mias",
+    response_model=list[CalificacionPropiaRespuesta],
+)
+def consultar_calificaciones_propias(
+    tipo: TipoContenido,
+    tmdb_id: Annotated[int, Path(gt=0)],
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
+) -> list[CalificacionPropiaRespuesta]:
+    return obtener_calificaciones_propias(db, tipo, tmdb_id, usuario_actual.id)
+
+
+@router.patch(
+    "/{tipo}/{tmdb_id}/resenas/{resena_id}/valoracion",
+    response_model=CalificacionActualizadaRespuesta,
+    dependencies=[Depends(verificar_csrf)],
+)
+def editar_calificacion(
+    tipo: TipoContenido,
+    tmdb_id: Annotated[int, Path(gt=0)],
+    resena_id: UUID,
+    datos: CalificacionActualizacion,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
+) -> CalificacionActualizadaRespuesta:
+    try:
+        return actualizar_calificacion(db, tipo, tmdb_id, resena_id, usuario_actual.id, datos)
+    except ResenaPadreNoEncontradaError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except CalificacionNoEncontradaError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+@router.get("/generos", response_model=list[GeneroContenido])
+def consultar_generos() -> tuple[GeneroContenido, ...]:
+    try:
+        return obtener_generos_contenido()
+    except CatalogoNoDisponibleError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 
 
 @router.post(
@@ -70,7 +125,7 @@ def publicar_resena(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
-    except ResenaPadreInvalidaError as error:
+    except (ResenaPadreInvalidaError, CalificacionDuplicadaError) as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),

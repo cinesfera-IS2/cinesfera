@@ -16,10 +16,20 @@ class PerfilPublicoTests(unittest.TestCase):
             self, Usuario, Contenido, Resena, ValoracionResena, Seguimiento
         )
         ahora = datetime.now(timezone.utc)
-        self.db.add(Contenido(id=1, tmdb_id=42, tipo="pelicula"))
+        self.db.add(
+            Contenido(
+                id=1,
+                tmdb_id=42,
+                tipo="pelicula",
+                titulo="La película de prueba",
+            )
+        )
         self.usuario_id = crear_usuario(
             self.db, "ana", nombre="Ana", password_hash="secreto",
-            foto_url="https://example.com/foto.jpg"
+            foto_url="https://example.com/foto.jpg",
+            bio="Fan del cine clásico",
+            ubicacion="Montevideo, Uruguay",
+            generos_favoritos=["Drama", "Comedia"]
         ).id
         otro_id = crear_usuario(
             self.db, "bea", nombre="Bea", password_hash="secreto",
@@ -62,6 +72,11 @@ class PerfilPublicoTests(unittest.TestCase):
         datos = respuesta.json()
         self.assertEqual(datos["nombre"], "Ana")
         self.assertEqual(datos["foto_url"], "https://example.com/foto.jpg")
+        self.assertEqual(datos["bio"], "Fan del cine clásico")
+        self.assertEqual(datos["ubicacion"], "Montevideo, Uruguay")
+        self.assertEqual(datos["generos_favoritos"], ["Drama", "Comedia"])
+        self.assertEqual(datos["rol"], "usuario")
+        self.assertIsNotNone(datos["fecha_registro"])
         self.assertEqual(datos["reputacion"], 0)
         self.assertEqual(datos["seguidores"], 1)
         self.assertEqual(datos["siguiendo"], 1)
@@ -71,6 +86,11 @@ class PerfilPublicoTests(unittest.TestCase):
         )
         self.assertEqual(datos["resenas"][0]["calificacion"], 4.5)
         self.assertEqual(datos["resenas"][0]["contenido_tmdb_id"], 42)
+        self.assertEqual(datos["resenas"][0]["contenido_tipo"], "pelicula")
+        self.assertEqual(
+            datos["resenas"][0]["contenido_titulo"],
+            "La película de prueba",
+        )
         self.assertNotIn("email", datos)
         self.assertNotIn("password_hash", datos)
 

@@ -1,6 +1,7 @@
+import { ApiError } from "@/lib/api";
 import { FilmSlateIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 
+import { EnlaceCatalogo } from "@/features/catalog/components/navegacion-catalogo";
 import { PaginacionCatalogo } from "@/features/catalog/components/paginacion-catalogo";
 import { ObraCard } from "@/features/catalog/components/obra-card";
 import { buscarObras } from "@/features/catalog/data/catalogo";
@@ -15,7 +16,20 @@ export const GRILLA_OBRAS =
   "grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
 
 export async function ResultadosCatalogo({ filtros }: ResultadosCatalogoProps) {
-  const { obras, pagina, totalPaginas } = await buscarObras(filtros);
+  let resultado;
+  try {
+    resultado = await buscarObras(filtros);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status < 500) throw error;
+    return (
+      <section role="alert" className="rounded-2xl border border-night-600 p-8 text-center">
+        <h2 className="font-display text-lg font-bold">No pudimos cargar el catálogo</h2>
+        <p className="mt-3 text-ink-400">El servicio no responde en este momento. Probá nuevamente.</p>
+        <a href="/catalogo" className="mt-4 inline-block text-glow-400">Reintentar</a>
+      </section>
+    );
+  }
+  const { obras, pagina, totalPaginas } = resultado;
 
   return (
     <section aria-labelledby="titulo-resultados">
@@ -77,7 +91,7 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
         <ul aria-label="Filtros activos" className="flex flex-wrap items-center gap-2">
           {activos.map((filtro) => (
             <li key={filtro.clave}>
-              <Link
+              <EnlaceCatalogo
                 href={filtro.hrefSinFiltro}
                 scroll={false}
                 aria-label={`Quitar filtro ${filtro.etiqueta}`}
@@ -85,7 +99,7 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
               >
                 {filtro.etiqueta}
                 <XIcon weight="bold" className="size-3.5 text-ink-400" />
-              </Link>
+              </EnlaceCatalogo>
             </li>
           ))}
           {activos.length > 1 && (
@@ -101,12 +115,12 @@ function EncabezadoResultados({ filtros }: Readonly<ResultadosCatalogoProps>) {
 
 function LimpiarFiltros() {
   return (
-    <Link
+    <EnlaceCatalogo
       href="/catalogo"
       scroll={false}
       className="rounded-full px-2 py-1.5 text-sm font-semibold text-glow-400 transition-colors hover:text-glow-300"
     >
       Limpiar filtros
-    </Link>
+    </EnlaceCatalogo>
   );
 }

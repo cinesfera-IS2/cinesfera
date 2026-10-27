@@ -38,5 +38,17 @@ export type ResenaContenido = {
   texto: string;
   fecha: string;
   valoracion: number;
+  promedio_comunitario: number | null;
+  cantidad_valoraciones: number;
   autor: AutorResena;
+};
+
+export type CalificacionPropia = {
+  resena_id: string;
+  calificacion: number;
+};
+
+export type CalificacionActualizada = CalificacionPropia & {
+  promedio_comunitario: number;
+  cantidad_valoraciones: number;
 };

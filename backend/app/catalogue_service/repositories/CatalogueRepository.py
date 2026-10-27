@@ -1,14 +1,14 @@
-import httpx
 from datetime import date
 
 from app.catalogue_service.entities.content import Content
 from app.core.config import settings
+from app.core.tmdb import consultar_tmdb
 
 
 class CatalogueRepository:
 
     def __init__(self):
-        self.base_url = "https://api.themoviedb.org/3"
+        self.base_url = settings.tmdb_api_url
         self.token = settings.tmdb_access_token
 
         self.headers = {
@@ -16,6 +16,9 @@ class CatalogueRepository:
             "Authorization": f"Bearer {self.token}"
         }
 
+
+    def _get(self, url, **kwargs):
+        return consultar_tmdb(url, **kwargs)
 
     #defino dos funciones para que lo que devuelve la api pueda ser interpretado como objetos de la clase content
     
@@ -60,7 +63,7 @@ class CatalogueRepository:
         url = f"{self.base_url}/discover/movie"
 
         params = {
-                "language": "es-ES",
+                "language": "es-MX",
                 "sort_by": "primary_release_date.desc",
                 "primary_release_date.lte": date.today().isoformat(),
                 "page": page
@@ -69,7 +72,7 @@ class CatalogueRepository:
         if year is not None:
             params["primary_release_year"] = year
 
-        response = httpx.get(
+        response = self._get(
                 url,
                 headers=self.headers,
                 params=params
@@ -94,7 +97,7 @@ class CatalogueRepository:
         url = f"{self.base_url}/discover/tv"
 
         params = {
-            "language": "es-ES",
+            "language": "es-MX",
             "sort_by": "first_air_date.desc",
             "first_air_date.lte": date.today().isoformat(),
             "page": page
@@ -103,7 +106,7 @@ class CatalogueRepository:
         if year is not None:
             params["first_air_date_year"] = year
 
-        response = httpx.get(
+        response = self._get(
             url,
             headers=self.headers,
             params=params
@@ -171,13 +174,13 @@ class CatalogueRepository:
 
         params = {
             "query": name,
-            "language": "es-ES"
+            "language": "es-MX"
         }
 
         if year is not None:
             params["year"] = year
 
-        response = httpx.get(url, headers=self.headers, params=params)
+        response = self._get(url, headers=self.headers, params=params)
 
         response.raise_for_status()
 
@@ -187,6 +190,13 @@ class CatalogueRepository:
 
         for movie in data["results"]:
                 contents.append(self.movie_to_content(movie))
+
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date.startswith(str(year))
+            ]
 
         contents.sort(
             key=lambda content: content.release_date or "",
@@ -202,13 +212,13 @@ class CatalogueRepository:
     
             params = {
                 "query": name,
-                "language": "es-ES"
+                "language": "es-MX"
             }
 
             if year is not None:
                 params["first_air_date_year"] = year
     
-            response = httpx.get(url, headers=self.headers, params=params)
+            response = self._get(url, headers=self.headers, params=params)
     
             response.raise_for_status()
     
@@ -234,6 +244,14 @@ class CatalogueRepository:
 
         contents = movies + series
 
+
+        if year is not None:
+            contents = [
+                content for content in contents
+                if content.release_date
+                and content.release_date.startswith(str(year))
+            ]
+
         contents.sort(
             key=lambda content: content.release_date or "",
             reverse=True
@@ -245,11 +263,6 @@ class CatalogueRepository:
     def search_keyword(self):
         pass
     
-    def search_seasons(self):
-        pass
-
-    def search_episodes(self):
-        pass
 
     #puede ser útil más adelante
     def search_by_id(self, id):

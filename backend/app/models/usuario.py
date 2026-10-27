@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, String, Text, func, text
+from sqlalchemy import Boolean, JSON, DateTime, String, Text, func, text
 from sqlalchemy.dialects.postgresql import (
     ENUM as PostgreSQLEnum,
     UUID as PostgreSQLUUID
@@ -54,6 +54,23 @@ class Usuario(Base):
     foto_url: Mapped[str | None] = mapped_column(
         Text,
         nullable=True
+    )
+
+    bio: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
+
+    ubicacion: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True
+    )
+
+    generos_favoritos: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::json")
     )
 
     rol: Mapped[RolUsuario] = mapped_column(

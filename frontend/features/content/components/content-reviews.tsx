@@ -4,6 +4,7 @@ import {
   ArrowClockwiseIcon,
   ChatCircleTextIcon,
 } from "@phosphor-icons/react";
+import { useEffect } from "react";
 
 import type { UsuarioSesion } from "@/features/auth/session";
 import { ContentReviewThread } from "@/features/content/components/content-review-thread";
@@ -23,8 +24,17 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
     throw new Error("ContentReviews tiene que estar dentro de un ResenasProvider.");
   }
 
-  const { estado, tipo, tmdbId, reintentar, actualizar } = resenas;
+  const { estado, tipo, tmdbId, reintentar, actualizar, actualizarValoracion } = resenas;
   const hilos = estado.estado === "listo" ? agruparResenas(estado.resenas) : [];
+
+  useEffect(() => {
+    if (estado.estado !== "listo") return;
+
+    const objetivo = window.location.hash.slice(1);
+    if (!objetivo.startsWith("resena-")) return;
+
+    document.getElementById(objetivo)?.scrollIntoView({ block: "center" });
+  }, [estado]);
 
   return (
     <section aria-labelledby="titulo-resenas">
@@ -86,6 +96,8 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
               tmdbId={tmdbId}
               usuario={usuario}
               onPublicada={actualizar}
+              calificacionesPropias={estado.estado === "listo" ? estado.propias : []}
+              onValoracionActualizada={actualizarValoracion}
             />
           ))}
         </div>

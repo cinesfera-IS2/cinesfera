@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # Token de lectura de la API de TMDB. Se obtiene desde la sección
     # "API Read Access Token" de la cuenta de TMDB.
     tmdb_access_token: str = ""
+    tmdb_force_ipv4: bool = True
     tmdb_api_url: str = "https://api.themoviedb.org/3"
     tmdb_image_url: str = "https://image.tmdb.org/t/p"
 

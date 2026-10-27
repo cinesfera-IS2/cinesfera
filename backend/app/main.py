@@ -11,15 +11,13 @@ from app.routers.usuarios import router as usuarios_router
 from app.routers.reportes import router as reportes_router
 from app.routers.administracion import router as administracion_router
 from app.catalogue_service.controllers.CatalogueController import router
+from app.catalogue_service.controllers.LandingController import router as landing_router
 from app.database import SessionLocal, get_db
 from app.services.bootstrap_admin import crear_administrador_inicial
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Sin credenciales de bootstrap no se abre una conexión solo para comprobar
-    # si hay admins. Esto mantiene saludables los tests aislados y los entornos
-    # donde la creación inicial ya se deshabilitó quitando las variables.
     if (
         settings.admin_inicial_email
         and settings.admin_inicial_password
@@ -73,3 +71,4 @@ def health():
 
 
 app.include_router(router)
+app.include_router(landing_router)

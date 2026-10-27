@@ -33,6 +33,10 @@ class CuentaSuspendidaError(Exception):
     pass
 
 
+class PasswordActualInvalidaError(Exception):
+    pass
+
+
 class UsuarioNoEncontradoError(Exception):
     pass
 
@@ -81,9 +85,7 @@ def obtener_perfil_publico_por_nombre(
             func.lower(Usuario.nombre_usuario) == nombre_usuario.strip().lower()
         )
     )
-    if usuario is None:
-        raise UsuarioNoEncontradoError("Usuario no encontrado")
-    if usuario.estado != EstadoUsuario.ACTIVO:
+    if usuario is None or usuario.estado != EstadoUsuario.ACTIVO:
         raise UsuarioNoEncontradoError("Usuario no encontrado")
     return _construir_perfil_publico(db, usuario)
 
@@ -120,6 +122,9 @@ def _construir_perfil_publico(
         apellido=usuario.apellido,
         nombre_usuario=usuario.nombre_usuario,
         foto_url=usuario.foto_url,
+        bio=usuario.bio,
+        ubicacion=usuario.ubicacion,
+        generos_favoritos=usuario.generos_favoritos,
         rol=usuario.rol,
         fecha_registro=usuario.fecha_registro,
         reputacion=int(reputacion or 0),
@@ -225,6 +230,19 @@ def actualizar_perfil(
     return usuario
 
 
+def cambiar_password(
+    db: Session,
+    usuario: Usuario,
+    password_actual: str,
+    password_nueva: str
+) -> None:
+    if not verificar_password(password_actual, usuario.password_hash):
+        raise PasswordActualInvalidaError("La contraseña actual es incorrecta")
+
+    usuario.password_hash = generar_hash_password(password_nueva)
+    db.commit()
+
+
 def iniciar_sesion(
     db: Session,
     datos: UsuarioLogin
@@ -247,16 +265,18 @@ def iniciar_sesion(
             "Credenciales inválidas"
         )
 
+    ahora = datetime.now(timezone.utc)
     if (
         usuario.estado == EstadoUsuario.SUSPENDIDO
         and usuario.suspension_hasta is not None
-        and usuario.suspension_hasta <= datetime.now(timezone.utc)
+        and usuario.suspension_hasta <= ahora
     ):
         usuario.estado = EstadoUsuario.ACTIVO
         usuario.suspension_hasta = None
         usuario.motivo_suspension = None
         usuario.ocultar_contenido = False
         db.commit()
+        db.refresh(usuario)
 
     if usuario.estado == EstadoUsuario.SUSPENDIDO:
         detalle = "Tu cuenta ha sido suspendida"
