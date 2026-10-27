@@ -87,3 +87,26 @@ export async function postersDelCatalogo(): Promise<Pick<Obra, "tmdbId" | "titul
       poster: contenido.poster_url ?? undefined,
     }));
 }
+
+/** Las listas de la portada cambian poco en el día: se cachean una hora. */
+const CACHE_LISTAS = { next: { revalidate: 3600 } };
+
+async function pedirLista(path: string, pagina: number): Promise<PaginaCatalogo> {
+  const respuesta = await apiFetch<CatalogoApi>(path, CACHE_LISTAS);
+
+  return {
+    obras: respuesta.contents.map((contenido, indice) => aObra(contenido, indice)),
+    pagina,
+    totalPaginas: respuesta.total_pages,
+  };
+}
+
+/** Las películas más conocidas de TMDB: las de "Joyas de la cartelera". */
+export function obrasDestacadas(pagina = 1): Promise<PaginaCatalogo> {
+  return pedirLista(`/catalogue/highlights?page=${pagina}`, pagina);
+}
+
+/** Lo que está en tendencia en TMDB esta semana, películas y series mezcladas. */
+export function obrasEnTendencia(pagina = 1): Promise<PaginaCatalogo> {
+  return pedirLista(`/catalogue/trending?page=${pagina}`, pagina);
+}

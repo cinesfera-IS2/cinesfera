@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiFetch } from "@/lib/api";
-import { buscarObras, postersDelCatalogo } from "./catalogo";
+import {
+  buscarObras,
+  obrasDestacadas,
+  obrasEnTendencia,
+  postersDelCatalogo,
+} from "./catalogo";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/api")>();
@@ -90,5 +95,30 @@ describe("postersDelCatalogo", () => {
         poster: "https://image.tmdb.org/t/p/w500/matrix.jpg",
       },
     ]);
+  });
+});
+
+describe("listas de la portada", () => {
+  it("las joyas piden la página al backend y se cachean una hora", async () => {
+    apiFetchMock.mockResolvedValue(RESPUESTA);
+
+    const resultado = await obrasDestacadas(2);
+
+    expect(apiFetchMock).toHaveBeenCalledWith("/catalogue/highlights?page=2", {
+      next: { revalidate: 3600 },
+    });
+    expect(resultado).toMatchObject({ pagina: 2, totalPaginas: 500 });
+    expect(resultado.obras.map((obra) => obra.titulo)).toEqual(["Matrix", "Dark"]);
+  });
+
+  it("las tendencias arrancan por la primera página", async () => {
+    apiFetchMock.mockResolvedValue(RESPUESTA);
+
+    const resultado = await obrasEnTendencia();
+
+    expect(apiFetchMock).toHaveBeenCalledWith("/catalogue/trending?page=1", {
+      next: { revalidate: 3600 },
+    });
+    expect(resultado.obras[1]).toMatchObject({ tipo: "serie", tmdbId: 70523 });
   });
 });

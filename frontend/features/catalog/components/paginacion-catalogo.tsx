@@ -4,10 +4,15 @@ import { EnlaceCatalogo } from "@/features/catalog/components/navegacion-catalog
 import { hrefCatalogo, paginasVisibles } from "@/features/catalog/lib/filtros";
 import type { FiltrosCatalogo } from "@/features/catalog/types";
 
-type PaginacionCatalogoProps = {
-  filtros: FiltrosCatalogo;
+type PaginacionProps = {
   pagina: number;
   totalPaginas: number;
+  /** Arma el enlace de cada página; así sirve para el catálogo y para cualquier otra lista. */
+  hrefPagina: (numero: number) => string;
+};
+
+type PaginacionCatalogoProps = Omit<PaginacionProps, "hrefPagina"> & {
+  filtros: FiltrosCatalogo;
 };
 
 const BASE =
@@ -15,9 +20,21 @@ const BASE =
 
 export function PaginacionCatalogo({
   filtros,
+  ...props
+}: Readonly<PaginacionCatalogoProps>) {
+  return (
+    <Paginacion
+      {...props}
+      hrefPagina={(numero) => hrefCatalogo(filtros, { pagina: numero })}
+    />
+  );
+}
+
+export function Paginacion({
   pagina,
   totalPaginas,
-}: PaginacionCatalogoProps) {
+  hrefPagina,
+}: Readonly<PaginacionProps>) {
   if (totalPaginas <= 1) {
     return null;
   }
@@ -27,7 +44,7 @@ export function PaginacionCatalogo({
       <ul className="flex items-center gap-1.5">
         <li>
           <FlechaPagina
-            href={pagina > 1 ? hrefCatalogo(filtros, { pagina: pagina - 1 }) : undefined}
+            href={pagina > 1 ? hrefPagina(pagina - 1) : undefined}
             etiqueta="Página anterior"
           >
             <CaretLeftIcon weight="bold" className="size-4" />
@@ -47,7 +64,7 @@ export function PaginacionCatalogo({
           ) : (
             <li key={clave} className="hidden sm:block">
               <EnlaceCatalogo
-                href={hrefCatalogo(filtros, { pagina: numero })}
+                href={hrefPagina(numero)}
                 aria-label={`Página ${numero}`}
                 aria-current={numero === pagina ? "page" : undefined}
                 className={
@@ -65,9 +82,7 @@ export function PaginacionCatalogo({
         <li>
           <FlechaPagina
             href={
-              pagina < totalPaginas
-                ? hrefCatalogo(filtros, { pagina: pagina + 1 })
-                : undefined
+              pagina < totalPaginas ? hrefPagina(pagina + 1) : undefined
             }
             etiqueta="Página siguiente"
           >
