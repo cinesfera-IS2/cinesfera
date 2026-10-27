@@ -1,10 +1,10 @@
 import { ListIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 
 import { EnlaceAcceder } from "@/features/auth/components/enlace-acceder";
 import type { UsuarioSesion } from "@/features/auth/session";
 import { AvatarCuenta } from "@/features/landing/components/avatar-cuenta";
 import { Desplegable } from "@/features/landing/components/desplegable";
+import { EnlaceDestino } from "@/features/landing/components/enlace-destino";
 import {
   AccionesCuenta,
   CuentaResumen,
@@ -41,10 +41,12 @@ export function MenuMovil({ usuario }: Readonly<MenuMovilProps>) {
       <nav aria-label="Principal">
         <ul>
           {NAV_LINKS.map((link) => (
-            <li key={link.href}>
-              <Link href={link.href} className={`${ITEM_DESPLEGABLE} text-base`}>
-                {link.label}
-              </Link>
+            <li key={link.label}>
+              <EnlaceDestino
+                link={link}
+                className={`${ITEM_DESPLEGABLE} text-base aria-[current=page]:text-ink-100`}
+                pendienteClassName="flex h-11 w-full items-center px-3 text-base font-medium text-ink-500/70"
+              />
             </li>
           ))}
         </ul>
