@@ -78,7 +78,7 @@ export function BuscadorUsuarios() {
         {error && (
           <div role="alert" className="rounded-xl border border-white/15 bg-night-900 p-5">
             {sinSesion ? (
-              <p>Iniciá sesión para buscar usuarios. <Link href="/login?volver=%2Fusuarios" className="text-brand-400 underline">Acceder</Link></p>
+              <p>Iniciá sesión para buscar usuarios. <Link href="/login?volver=%2Fcomunidad" className="text-brand-400 underline">Acceder</Link></p>
             ) : (
               <><p>{error}</p><button className={`${BOTON} mt-4`} onClick={() => void buscar(busqueda, offset)}>Reintentar</button></>
             )}
