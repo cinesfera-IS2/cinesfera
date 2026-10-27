@@ -3,13 +3,14 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.usuario import Usuario
+from app.core.enums import EstadoResena, EstadoUsuario
 from app.schemas.contenido import (
     AutorResena,
     ContenidoDetalleRespuesta,
@@ -99,7 +100,15 @@ def obtener_resenas_contenido(
         .join(Usuario, Usuario.id == Resena.usuario_id)
         .join(Contenido, Contenido.id == Resena.contenido_id)
         .outerjoin(valoraciones, valoraciones.c.resena_id == Resena.id)
-        .where(Contenido.tmdb_id == tmdb_id, Contenido.tipo == tipo)
+        .where(
+            Contenido.tmdb_id == tmdb_id,
+            Contenido.tipo == tipo,
+            Resena.estado == EstadoResena.VISIBLE,
+            or_(
+                Usuario.estado == EstadoUsuario.ACTIVO,
+                Usuario.ocultar_contenido.is_(False),
+            ),
+        )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
 

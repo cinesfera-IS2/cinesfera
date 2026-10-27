@@ -142,11 +142,18 @@ class InicioSesionTests(unittest.TestCase):
                         self.db
                     )
 
-                self.assertEqual(contexto.exception.status_code, 401)
-                self.assertEqual(
-                    contexto.exception.detail,
-                    "Credenciales inválidas"
-                )
+                if estado == EstadoUsuario.SUSPENDIDO:
+                    self.assertEqual(contexto.exception.status_code, 403)
+                    self.assertIn(
+                        "Tu cuenta ha sido suspendida",
+                        contexto.exception.detail,
+                    )
+                else:
+                    self.assertEqual(contexto.exception.status_code, 401)
+                    self.assertEqual(
+                        contexto.exception.detail,
+                        "Credenciales inválidas"
+                    )
 
     def test_respuesta_publica_no_expone_password(self):
         self.db.scalar.return_value = self.usuario

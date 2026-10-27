@@ -4,12 +4,14 @@ import { ContentReviewCard } from "@/features/content/components/content-review-
 import { CreateContentReview } from "@/features/content/components/create-content-review";
 import type { HiloResena } from "@/features/content/lib/agrupar-resenas";
 import type { TipoContenido } from "@/features/content/types";
+import type { UsuarioSesion } from "@/features/auth/session";
+import { ReportButton } from "@/features/reports/report-button";
 
 type ContentReviewThreadProps = {
   hilo: HiloResena;
   tipo: TipoContenido;
   tmdbId: number;
-  usuarioId?: string;
+  usuario?: UsuarioSesion | null;
   onPublicada: () => void;
   profundidad?: number;
 };
@@ -18,7 +20,7 @@ export function ContentReviewThread({
   hilo,
   tipo,
   tmdbId,
-  usuarioId,
+  usuario,
   onPublicada,
   profundidad = 0,
 }: ContentReviewThreadProps) {
@@ -28,15 +30,20 @@ export function ContentReviewThread({
         resena={hilo.resena}
         esRespuesta={profundidad > 0}
         acciones={
-          usuarioId && (
-            <CreateContentReview
-              tipo={tipo}
-              tmdbId={tmdbId}
-              usuarioId={usuarioId}
-              resenaPadreId={hilo.resena.id}
-              subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
-              onPublicada={onPublicada}
-            />
+          usuario && usuario.rol !== "admin" && (
+            <>
+              <CreateContentReview
+                tipo={tipo}
+                tmdbId={tmdbId}
+                usuarioId={usuario.id}
+                resenaPadreId={hilo.resena.id}
+                subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
+                onPublicada={onPublicada}
+              />
+              {usuario.id !== hilo.resena.autor.id && (
+                <ReportButton tipo="comentario" objetivoId={hilo.resena.id} />
+              )}
+            </>
           )
         }
       />
@@ -53,7 +60,7 @@ export function ContentReviewThread({
               hilo={respuesta}
               tipo={tipo}
               tmdbId={tmdbId}
-              usuarioId={usuarioId}
+              usuario={usuario}
               onPublicada={onPublicada}
               profundidad={profundidad + 1}
             />

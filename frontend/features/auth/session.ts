@@ -11,6 +11,9 @@ export type UsuarioSesion = {
   nombre_usuario: string;
   email: string;
   foto_url: string | null;
+  rol?: "usuario" | "admin";
+  estado?: "activo" | "suspendido" | "eliminado";
+  es_admin_principal?: boolean;
 };
 
 /**
@@ -38,7 +41,7 @@ export const obtenerSesion = cache(async (): Promise<UsuarioSesion | null> => {
     // Cualquier otra falla también, pero queda registrada: esto corre en la
     // cabecera de todas las páginas, y que /auth/me falle no debería tirar
     // abajo contenido que es público.
-    if (!(error instanceof ApiError && error.status === 401)) {
+    if (!(error instanceof ApiError && (error.status === 401 || error.status === 403))) {
       console.error("No se pudo resolver la sesión", error);
     }
 

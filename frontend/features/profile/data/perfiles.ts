@@ -18,6 +18,8 @@ type PerfilPublicoApi = {
   apellido: string;
   nombre_usuario: string;
   foto_url: string | null;
+  rol?: "usuario" | "admin";
+  fecha_registro?: string;
   /** Suma de los votos recibidos por todas sus reseñas. */
   reputacion: number;
   seguidores: number;
@@ -138,8 +140,8 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     nombre: api.nombre,
     apellido: api.apellido,
     fotoUrl: api.foto_url ?? undefined,
-    rol: EJEMPLO.rol,
-    fechaRegistro: EJEMPLO.fechaRegistro,
+    rol: api.rol ?? EJEMPLO.rol,
+    fechaRegistro: api.fecha_registro ?? EJEMPLO.fechaRegistro,
     bio: EJEMPLO.bio,
     ubicacion: EJEMPLO.ubicacion,
     generosFavoritos: [...EJEMPLO.generosFavoritos],

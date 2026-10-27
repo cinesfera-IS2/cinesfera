@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -14,7 +15,7 @@ from app.schemas.usuario import (
     UsuarioLogin,
     UsuarioRegistro
 )
-from app.core.enums import EstadoUsuario, RolUsuario
+from app.core.enums import EstadoResena, EstadoUsuario, RolUsuario
 
 
 class EmailDuplicadoError(Exception):
@@ -25,6 +26,10 @@ class NombreUsuarioDuplicadoError(Exception):
 
 
 class CredencialesInvalidasError(Exception):
+    pass
+
+
+class CuentaSuspendidaError(Exception):
     pass
 
 
@@ -45,6 +50,7 @@ def suspender_usuario(db: Session, usuario_id: UUID) -> Usuario:
         )
 
     usuario.estado = EstadoUsuario.SUSPENDIDO
+    usuario.ocultar_contenido = True
     db.commit()
     db.refresh(usuario)
     return usuario
@@ -54,6 +60,7 @@ def eliminar_usuario(db: Session, usuario_id: UUID) -> Usuario:
     """Realiza una eliminación lógica para conservar datos relacionados."""
     usuario = obtener_perfil(db, usuario_id)
     usuario.estado = EstadoUsuario.ELIMINADO
+    usuario.ocultar_contenido = True
     db.commit()
     db.refresh(usuario)
     return usuario
@@ -61,6 +68,8 @@ def eliminar_usuario(db: Session, usuario_id: UUID) -> Usuario:
 
 def obtener_perfil_publico(db: Session, usuario_id: UUID) -> PerfilPublicoRespuesta:
     usuario = obtener_perfil(db, usuario_id)
+    if usuario.estado != EstadoUsuario.ACTIVO:
+        raise UsuarioNoEncontradoError("Usuario no encontrado")
     return _construir_perfil_publico(db, usuario)
 
 
@@ -74,6 +83,8 @@ def obtener_perfil_publico_por_nombre(
     )
     if usuario is None:
         raise UsuarioNoEncontradoError("Usuario no encontrado")
+    if usuario.estado != EstadoUsuario.ACTIVO:
+        raise UsuarioNoEncontradoError("Usuario no encontrado")
     return _construir_perfil_publico(db, usuario)
 
 
@@ -82,7 +93,10 @@ def _construir_perfil_publico(
 ) -> PerfilPublicoRespuesta:
     usuario_id = usuario.id
     resenas = db.scalars(
-        select(Resena).where(Resena.usuario_id == usuario_id)
+        select(Resena).where(
+            Resena.usuario_id == usuario_id,
+            Resena.estado == EstadoResena.VISIBLE,
+        )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
     reputacion = db.scalar(
@@ -106,6 +120,8 @@ def _construir_perfil_publico(
         apellido=usuario.apellido,
         nombre_usuario=usuario.nombre_usuario,
         foto_url=usuario.foto_url,
+        rol=usuario.rol,
+        fecha_registro=usuario.fecha_registro,
         reputacion=int(reputacion or 0),
         seguidores=int(seguidores or 0),
         siguiendo=int(siguiendo or 0),
@@ -226,14 +242,32 @@ def iniciar_sesion(
         )
     )
 
-    if (
-        usuario is None
-        or usuario.estado != EstadoUsuario.ACTIVO
-        or not verificar_password(datos.password, usuario.password_hash)
-    ):
+    if usuario is None or not verificar_password(datos.password, usuario.password_hash):
         raise CredencialesInvalidasError(
             "Credenciales inválidas"
         )
+
+    if (
+        usuario.estado == EstadoUsuario.SUSPENDIDO
+        and usuario.suspension_hasta is not None
+        and usuario.suspension_hasta <= datetime.now(timezone.utc)
+    ):
+        usuario.estado = EstadoUsuario.ACTIVO
+        usuario.suspension_hasta = None
+        usuario.motivo_suspension = None
+        usuario.ocultar_contenido = False
+        db.commit()
+
+    if usuario.estado == EstadoUsuario.SUSPENDIDO:
+        detalle = "Tu cuenta ha sido suspendida"
+        if usuario.suspension_hasta is not None:
+            detalle += f" hasta {usuario.suspension_hasta.isoformat()}"
+        if usuario.motivo_suspension:
+            detalle += f". Motivo: {usuario.motivo_suspension}"
+        raise CuentaSuspendidaError(detalle)
+
+    if usuario.estado != EstadoUsuario.ACTIVO:
+        raise CredencialesInvalidasError("Credenciales inválidas")
 
     return usuario
 

@@ -84,7 +84,7 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
               hilo={hilo}
               tipo={tipo}
               tmdbId={tmdbId}
-              usuarioId={usuario?.id}
+              usuario={usuario}
               onPublicada={actualizar}
             />
           ))}

@@ -2,9 +2,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
+from app.core.enums import AccionModeracion
 
 from app.database import get_db
 from app.dependencies.auth import (
@@ -26,12 +28,22 @@ from app.services.usuario_service import (
     obtener_perfil_publico_por_nombre,
     suspender_usuario
 )
+from app.services.moderacion_service import registrar_auditoria
 
 
 router = APIRouter(
     prefix="/usuarios",
     tags=["Usuarios"]
 )
+
+
+def _auditoria_disponible(db: Session) -> bool:
+    """Permite que instalaciones sin la migración fallen en la acción, no al importar.
+
+    En producción la migración 004 es obligatoria. La comprobación conserva la
+    compatibilidad de los tests históricos que crean únicamente `usuarios`.
+    """
+    return inspect(db.get_bind()).has_table("auditoria_moderacion")
 
 
 @router.patch(
@@ -48,8 +60,29 @@ def suspender_cuenta(
         Depends(obtener_administrador_actual)
     ]
 ) -> UsuarioRespuesta:
+    if usuario_id == _administrador.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No podés suspender tu propia cuenta",
+        )
+    objetivo = db.get(Usuario, usuario_id)
+    if objetivo is not None and objetivo.rol == _administrador.rol:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un administrador no puede suspender a otro administrador",
+        )
+    estado_anterior = objetivo.estado.value if objetivo is not None else None
     try:
-        return suspender_usuario(db, usuario_id)
+        usuario = suspender_usuario(db, usuario_id)
+        if _auditoria_disponible(db):
+            registrar_auditoria(
+                db, _administrador, AccionModeracion.SUSPENDER_USUARIO,
+                "usuario", usuario.id, "Acción administrativa directa",
+                estado_anterior,
+                usuario.estado.value,
+            )
+            db.commit()
+        return usuario
     except UsuarioNoEncontradoError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -76,8 +109,28 @@ def eliminar_cuenta(
         Depends(obtener_administrador_actual)
     ]
 ) -> UsuarioRespuesta:
+    if usuario_id == _administrador.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No podés eliminar tu propia cuenta",
+        )
+    objetivo = db.get(Usuario, usuario_id)
+    if objetivo is not None and objetivo.rol == _administrador.rol:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un administrador no puede eliminar a otro administrador",
+        )
     try:
-        return eliminar_usuario(db, usuario_id)
+        estado_anterior = objetivo.estado.value if objetivo is not None else None
+        usuario = eliminar_usuario(db, usuario_id)
+        if _auditoria_disponible(db):
+            registrar_auditoria(
+                db, _administrador, AccionModeracion.ELIMINAR_USUARIO,
+                "usuario", usuario.id, "Acción administrativa directa",
+                estado_anterior, usuario.estado.value,
+            )
+            db.commit()
+        return usuario
     except UsuarioNoEncontradoError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, String, Text, func, text
+from sqlalchemy import Boolean, DateTime, String, Text, func, text
 from sqlalchemy.dialects.postgresql import (
     ENUM as PostgreSQLEnum,
     UUID as PostgreSQLUUID
@@ -88,6 +88,26 @@ class Usuario(Base):
         server_default=text(
             "'activo'::public.estado_usuario"
         )
+    )
+
+    es_admin_principal: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false")
+    )
+
+    suspension_hasta: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    motivo_suspension: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    ocultar_contenido: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false")
     )
 
     fecha_registro: Mapped[datetime] = mapped_column(

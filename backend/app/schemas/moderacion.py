@@ -1,0 +1,131 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field, model_validator
+
+from app.core.enums import (
+    AccionModeracion,
+    EstadoReporte,
+    MotivoReporte,
+    TipoReporte,
+)
+
+
+class ReporteCreacion(BaseModel):
+    tipo: TipoReporte
+    objetivo_id: UUID
+    motivo: MotivoReporte
+    descripcion: str | None = Field(default=None, max_length=1000)
+
+
+class ReporteCreadoRespuesta(BaseModel):
+    id: UUID
+    estado: EstadoReporte
+    mensaje: str = "Reporte recibido. El contenido no se modificó automáticamente."
+
+
+class ReporteActualizacion(BaseModel):
+    estado: EstadoReporte
+    resolucion: str | None = Field(default=None, max_length=2000)
+    nota_interna: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validar_resolucion(self):
+        if self.estado == EstadoReporte.RESUELTO and not self.resolucion:
+            raise ValueError("Una resolución requiere una descripción")
+        return self
+
+
+class AccionReporteEntrada(BaseModel):
+    accion: AccionModeracion
+    motivo: str = Field(min_length=3, max_length=1000)
+    nota_interna: str | None = Field(default=None, max_length=2000)
+    horas_suspension: int | None = Field(default=None, ge=1, le=24 * 365)
+    ocultar_contenido: bool = True
+
+
+class ReporteAdminRespuesta(BaseModel):
+    id: UUID
+    tipo: TipoReporte
+    motivo: MotivoReporte
+    descripcion: str | None
+    contenido_snapshot: str
+    estado: EstadoReporte
+    reportante_id: UUID
+    reportante_usuario: str
+    objetivo_id: UUID
+    objetivo_usuario: str | None
+    administrador_id: UUID | None
+    resolucion: str | None
+    nota_interna: str | None
+    fecha_creacion: datetime
+    fecha_actualizacion: datetime
+    cantidad_reportes_objetivo: int
+    reportes_descartados_reportante: int
+
+
+class ReportesPagina(BaseModel):
+    items: list[ReporteAdminRespuesta]
+    total: int
+    pagina: int
+    por_pagina: int
+
+
+class ResumenModeracion(BaseModel):
+    pendientes: int
+    en_revision: int
+    resueltos: int
+    descartados: int
+    usuarios_suspendidos: int
+
+
+class AuditoriaRespuesta(BaseModel):
+    id: UUID
+    administrador_id: UUID
+    administrador_usuario: str
+    accion: AccionModeracion
+    tipo_objetivo: str
+    objetivo_id: UUID
+    reporte_id: UUID | None
+    estado_anterior: str | None
+    estado_nuevo: str | None
+    motivo: str
+    nota_interna: str | None
+    fecha: datetime
+
+
+class AuditoriaPagina(BaseModel):
+    items: list[AuditoriaRespuesta]
+    total: int
+    pagina: int
+    por_pagina: int
+
+
+class AdministradorCreacion(BaseModel):
+    nombre: str = Field(min_length=2, max_length=50)
+    apellido: str = Field(min_length=2, max_length=50)
+    nombre_usuario: str = Field(min_length=3, max_length=30, pattern=r"^[a-z0-9._]+$")
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+
+
+class UsuarioAdminResumen(BaseModel):
+    id: UUID
+    nombre: str
+    apellido: str
+    nombre_usuario: str
+    email: EmailStr
+    rol: str
+    estado: str
+    es_admin_principal: bool
+    suspension_hasta: datetime | None
+    motivo_suspension: str | None
+    ocultar_contenido: bool
+    cantidad_reportes: int
+
+
+class UsuariosAdminPagina(BaseModel):
+    items: list[UsuarioAdminResumen]
+    total: int
+    pagina: int
+    por_pagina: int

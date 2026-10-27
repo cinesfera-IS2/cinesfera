@@ -59,6 +59,7 @@ plantillas `.env.example` y `.env.production.example`, sin valores reales.
 | `API_URL` | `http://localhost:8000` | `https://cinesfera.onrender.com` |
 | `CORS_ORIGINS` | `http://localhost:3000` | URL del frontend publicado |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Supabase | Supabase |
+| `DB_SSLMODE` | `require` para Supabase; `disable` solo para PostgreSQL local sin SSL | `require` |
 | `DATABASE_URL` | *(opcional)* | *(opcional)* |
 | `TMDB_ACCESS_TOKEN` | Token de lectura de TMDB | Token de lectura de TMDB |
 
@@ -402,6 +403,41 @@ suspendida o eliminada no puede iniciar sesión ni seguir usando un token ya
 emitido. Suspender una cuenta eliminada devuelve `409 Conflict`; un UUID que no
 existe devuelve `404 Not Found`. Una cuenta autenticada sin rol de
 administrador recibe `403 Forbidden`.
+
+### Administrador principal y moderación
+
+Antes de iniciar una instalación nueva, aplicá
+`migrations/004_administracion_moderacion.sql` y configurá
+`ADMIN_INICIAL_EMAIL`, `ADMIN_INICIAL_PASSWORD` y
+`ADMIN_INICIAL_USUARIO`. Si todavía no existe ningún administrador, el arranque
+crea uno con `es_admin_principal=true`; la contraseña se transforma con el mismo
+hash seguro de las cuentas normales y nunca se guarda en texto plano. La
+operación es idempotente: si ya existe un administrador no crea otro ni cambia
+sus credenciales. La contraseña inicial debe tener al menos 12 caracteres.
+
+Solo el administrador principal puede usar `POST /admin/administradores` y
+`DELETE /admin/administradores/{usuario_id}` para crear o quitar el rol a otros
+administradores. No puede quitarse su propio rol, suspenderse ni eliminarse.
+
+Los usuarios normales pueden enviar `POST /reportes` para reportar un
+`comentario` (una reseña o respuesta) o un `usuario`. El motivo pertenece a una
+lista cerrada y la descripción es opcional. Una cuenta no puede reportarse a sí
+misma, reportar su propio comentario ni repetir el reporte sobre el mismo
+objetivo. `LIMITE_REPORTES_DIARIOS` limita el abuso. Crear el reporte no altera
+el contenido reportado.
+
+El panel privado vive en `/admin` y permite filtrar y paginar reportes, revisar
+el snapshot original, administrar usuarios y consultar la auditoría. Ocultar,
+restaurar o eliminar comentarios y suspender, reactivar o eliminar usuarios son
+acciones explícitas. Las suspensiones pueden ser permanentes o tener vencimiento.
+`ocultar_contenido` controla si se ocultan las reseñas anteriores; el perfil de
+toda cuenta suspendida o eliminada deja de ser público.
+
+Cada acción guarda administrador, fecha, motivo, estado anterior/nuevo y nota
+interna en `auditoria_moderacion`. No hay endpoints para modificar o borrar ese
+historial. Cuando una acción resuelve el objetivo, todos sus reportes abiertos se
+cierran. Los administradores pueden navegar y buscar en el catálogo, pero tanto
+la API como la interfaz les impiden publicar reseñas, respuestas o reportes.
 
 ## Deploy en Render
 

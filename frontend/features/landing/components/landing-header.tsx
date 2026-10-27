@@ -1,4 +1,4 @@
-import { CompassIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import { CompassIcon, ShieldCheckIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 import { LogoutButton } from "@/features/auth/components/logout-button";
@@ -41,6 +41,16 @@ export async function LandingHeader() {
 
             {sesion ? (
               <>
+                {sesion.rol === "admin" && (
+                  <Link
+                    href="/admin"
+                    aria-label="Panel de administración"
+                    className="inline-flex items-center gap-2 rounded-full border border-glow-400/30 bg-glow-400/10 px-4 py-2 text-sm font-semibold text-glow-300 transition-colors hover:bg-glow-400/15"
+                  >
+                    <ShieldCheckIcon weight="fill" className="size-4" />
+                    <span className="hidden sm:inline">Administración</span>
+                  </Link>
+                )}
                 <Link
                   href={`/profile/${sesion.nombre_usuario}`}
                   aria-label="Mi perfil"

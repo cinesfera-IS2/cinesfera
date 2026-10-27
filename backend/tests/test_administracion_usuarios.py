@@ -128,7 +128,11 @@ class AdministracionUsuariosTests(unittest.TestCase):
                 self.assertEqual(respuesta.status_code, 403, respuesta.text)
                 self.assertEqual(
                     respuesta.json()["detail"],
-                    "La cuenta no está activa"
+                    (
+                        "Tu cuenta ha sido suspendida"
+                        if estado == EstadoUsuario.SUSPENDIDO
+                        else "La cuenta no está activa"
+                    )
                 )
 
     def test_openapi_declara_autenticacion_en_ambos_endpoints(self):

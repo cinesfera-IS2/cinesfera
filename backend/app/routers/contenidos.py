@@ -7,6 +7,7 @@ from app.core.csrf import verificar_csrf
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.models.usuario import Usuario
+from app.core.enums import RolUsuario
 from app.schemas.contenido import (
     ContenidoDetalleRespuesta,
     ResenaCreacion,
@@ -41,6 +42,11 @@ def publicar_resena(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> ResenaCreadaRespuesta:
+    if usuario_actual.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Los administradores no pueden publicar reseñas ni comentarios",
+        )
     if datos.usuario_id != usuario_actual.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

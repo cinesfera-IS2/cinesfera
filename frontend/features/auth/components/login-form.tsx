@@ -25,7 +25,7 @@ export function LoginForm() {
     const campos = new FormData(evento.currentTarget);
 
     try {
-      await apiFetch("/auth/login", {
+      const sesion = await apiFetch<{ rol?: "usuario" | "admin" }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({
           identificador: campos.get("identificador"),
@@ -33,7 +33,7 @@ export function LoginForm() {
         }),
       });
 
-      recargarEn("/catalogo");
+      recargarEn(sesion?.rol === "admin" ? "/admin" : "/catalogo");
     } catch (problema) {
       setError(
         problema instanceof ApiError

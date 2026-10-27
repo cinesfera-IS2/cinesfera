@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.core.enums import RolUsuario
+
 
 class ResenaPublica(BaseModel):
     id: UUID
@@ -19,6 +21,8 @@ class PerfilPublicoRespuesta(BaseModel):
     apellido: str
     nombre_usuario: str
     foto_url: str | None
+    rol: RolUsuario
+    fecha_registro: datetime
     reputacion: int
     seguidores: int
     siguiendo: int

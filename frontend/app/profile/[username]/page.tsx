@@ -63,6 +63,7 @@ export default async function ProfilePage({
           esPropio={esPropio}
           haySesion={sesion !== null}
           amigos={amigos}
+          puedeReportar={Boolean(sesion && sesion.rol !== "admin" && !esPropio)}
         />
 
         <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 lg:grid-cols-[19rem_1fr] lg:items-start">

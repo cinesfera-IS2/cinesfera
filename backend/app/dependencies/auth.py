@@ -1,4 +1,5 @@
 
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -53,10 +54,29 @@ def obtener_usuario_actual(
             detail="Usuario no encontrado"
         )
 
-    if usuario.estado != EstadoUsuario.ACTIVO:
+    if (
+        usuario.estado == EstadoUsuario.SUSPENDIDO
+        and usuario.suspension_hasta is not None
+        and usuario.suspension_hasta <= datetime.now(timezone.utc)
+    ):
+        usuario.estado = EstadoUsuario.ACTIVO
+        usuario.suspension_hasta = None
+        usuario.motivo_suspension = None
+        usuario.ocultar_contenido = False
+        db.commit()
+
+    if usuario.estado == EstadoUsuario.SUSPENDIDO:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="La cuenta no está activa"
+            detail="Tu cuenta ha sido suspendida",
+            headers={"X-Account-Status": "suspendido"},
+        )
+
+    if usuario.estado == EstadoUsuario.ELIMINADO:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta no está activa",
+            headers={"X-Account-Status": "eliminado"},
         )
 
     return usuario
@@ -71,4 +91,15 @@ def obtener_administrador_actual(
             detail="Se requieren permisos de administrador"
         )
 
+    return usuario_actual
+
+
+def obtener_usuario_reportante(
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
+) -> Usuario:
+    if usuario_actual.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Los administradores no pueden generar reportes",
+        )
     return usuario_actual
