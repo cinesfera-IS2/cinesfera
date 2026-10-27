@@ -63,7 +63,7 @@ class CatalogueRepository:
         url = f"{self.base_url}/discover/movie"
 
         params = {
-                "language": "es-ES",
+                "language": "es-UY",
                 "sort_by": "primary_release_date.desc",
                 "primary_release_date.lte": date.today().isoformat(),
                 "page": page
@@ -97,7 +97,7 @@ class CatalogueRepository:
         url = f"{self.base_url}/discover/tv"
 
         params = {
-            "language": "es-ES",
+            "language": "es-UY",
             "sort_by": "first_air_date.desc",
             "first_air_date.lte": date.today().isoformat(),
             "page": page
@@ -174,7 +174,7 @@ class CatalogueRepository:
 
         params = {
             "query": name,
-            "language": "es-ES"
+            "language": "es-UY"
         }
 
         if year is not None:
@@ -212,7 +212,7 @@ class CatalogueRepository:
     
             params = {
                 "query": name,
-                "language": "es-ES"
+                "language": "es-UY"
             }
 
             if year is not None:
