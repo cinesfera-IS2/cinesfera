@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
@@ -12,6 +12,8 @@ from app.dependencies.auth import (
     obtener_usuario_actual
 )
 from app.models.usuario import Usuario
+from app.schemas.busqueda_usuarios import BusquedaUsuariosRespuesta
+from app.services.busqueda_usuarios import buscar_usuarios
 from app.schemas.usuario import (
     CambioPassword,
     UsuarioActualizacion,
@@ -43,6 +45,17 @@ router = APIRouter(
     prefix="/usuarios",
     tags=["Usuarios"]
 )
+
+
+@router.get("/buscar", response_model=BusquedaUsuariosRespuesta)
+def consultar_usuarios(
+    db: Annotated[Session, Depends(get_db)],
+    _usuario: Annotated[Usuario, Depends(obtener_usuario_actual)],
+    q: Annotated[str, Query(max_length=150)] = "",
+    limite: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> BusquedaUsuariosRespuesta:
+    return buscar_usuarios(db, q, limite, offset)
 
 
 @router.patch(
