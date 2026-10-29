@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -6,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import generar_hash_password, verificar_password
+from app.core.suspension import mensaje_cuenta_suspendida, suspension_vencida
 from app.models.usuario import Usuario
 from app.models.resena import Resena, ValoracionResena
 from app.models.seguimiento import Seguimiento
@@ -265,11 +265,9 @@ def iniciar_sesion(
             "Credenciales inválidas"
         )
 
-    ahora = datetime.now(timezone.utc)
     if (
         usuario.estado == EstadoUsuario.SUSPENDIDO
-        and usuario.suspension_hasta is not None
-        and usuario.suspension_hasta <= ahora
+        and suspension_vencida(usuario.suspension_hasta)
     ):
         usuario.estado = EstadoUsuario.ACTIVO
         usuario.suspension_hasta = None
@@ -279,12 +277,9 @@ def iniciar_sesion(
         db.refresh(usuario)
 
     if usuario.estado == EstadoUsuario.SUSPENDIDO:
-        detalle = "Tu cuenta ha sido suspendida"
-        if usuario.suspension_hasta is not None:
-            detalle += f" hasta {usuario.suspension_hasta.isoformat()}"
-        if usuario.motivo_suspension:
-            detalle += f". Motivo: {usuario.motivo_suspension}"
-        raise CuentaSuspendidaError(detalle)
+        raise CuentaSuspendidaError(
+            mensaje_cuenta_suspendida(usuario.suspension_hasta)
+        )
 
     if usuario.estado != EstadoUsuario.ACTIVO:
         raise CredencialesInvalidasError("Credenciales inválidas")

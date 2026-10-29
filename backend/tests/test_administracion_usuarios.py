@@ -1,4 +1,6 @@
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 from app.core.enums import EstadoUsuario, RolUsuario
@@ -134,6 +136,33 @@ class AdministracionUsuariosTests(unittest.TestCase):
                         else "La cuenta no está activa"
                     )
                 )
+
+    def test_sesion_existente_muestra_reactivacion_en_hora_uruguaya(self):
+        self.usuario.estado = EstadoUsuario.SUSPENDIDO
+        self.usuario.suspension_hasta = datetime(
+            2026, 10, 29, 22, 34, 11, tzinfo=timezone.utc
+        )
+        self.usuario.motivo_suspension = "Motivo administrativo privado"
+        self.db.commit()
+
+        with patch(
+            "app.dependencies.auth.suspension_vencida",
+            return_value=False,
+        ):
+            respuesta = self.client.get(
+                "/auth/me",
+                headers=self._headers(self.usuario),
+            )
+
+        self.assertEqual(respuesta.status_code, 403, respuesta.text)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            (
+                "Tu cuenta ha sido suspendida. Podrás volver a ingresar el "
+                "29/10/2026 a las 19:34 (hora de Uruguay)."
+            ),
+        )
+        self.assertNotIn("Motivo administrativo privado", respuesta.text)
 
     def test_openapi_declara_autenticacion_en_ambos_endpoints(self):
         paths = self.client.get("/openapi.json").json()["paths"]
