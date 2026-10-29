@@ -6,6 +6,8 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 from app.core.enums import (
     AccionModeracion,
     EstadoReporte,
+    EstadoResena,
+    EstadoUsuario,
     MotivoReporte,
     TipoReporte,
 )
@@ -64,6 +66,14 @@ class ReporteAdminRespuesta(BaseModel):
     reportes_descartados_reportante: int
 
 
+class DenuncianteReporteRespuesta(BaseModel):
+    id: UUID
+    usuario: str
+    motivo: MotivoReporte
+    descripcion: str | None
+    fecha: datetime
+
+
 class ReportesPagina(BaseModel):
     items: list[ReporteAdminRespuesta]
     total: int
@@ -92,6 +102,13 @@ class AuditoriaRespuesta(BaseModel):
     motivo: str
     nota_interna: str | None
     fecha: datetime
+
+
+class ReporteDetalleRespuesta(ReporteAdminRespuesta):
+    denunciantes: list[DenuncianteReporteRespuesta]
+    historial: list[AuditoriaRespuesta]
+    estado_objetivo_usuario: EstadoUsuario | None
+    estado_contenido: EstadoResena | None
 
 
 class AuditoriaPagina(BaseModel):

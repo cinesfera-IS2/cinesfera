@@ -17,6 +17,7 @@ from app.models.contenido import Contenido
 from app.models.moderacion import AuditoriaModeracion, Reporte
 from app.models.resena import Resena
 from app.models.usuario import Usuario
+from app.routers.administracion import obtener_detalle_reporte
 from app.schemas.moderacion import AccionReporteEntrada, ReporteCreacion
 from app.services.moderacion_service import (
     ConflictoModeracionError,
@@ -32,6 +33,7 @@ class ModeracionServiceTests(unittest.TestCase):
             self, Usuario, Contenido, Resena, Reporte, AuditoriaModeracion
         )
         self.reportante = crear_usuario(self.db, "reportante")
+        self.otro_reportante = crear_usuario(self.db, "otro.reportante")
         self.autor = crear_usuario(self.db, "autor")
         self.admin = crear_usuario(self.db, "admin", rol=RolUsuario.ADMIN)
         self.contenido = Contenido(
@@ -90,6 +92,35 @@ class ModeracionServiceTests(unittest.TestCase):
         self.assertEqual(auditoria.administrador_id, self.admin.id)
         self.assertEqual(auditoria.estado_anterior, "visible")
         self.assertEqual(auditoria.estado_nuevo, "oculta")
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_detalle_agrupa_denunciantes_estado_e_historial(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_comentario())
+        crear_reporte(self.db, self.otro_reportante, self._datos_comentario())
+        aplicar_accion(
+            self.db,
+            reporte,
+            self.admin,
+            AccionReporteEntrada(
+                accion=AccionModeracion.OCULTAR_COMENTARIO,
+                motivo="Incumple las reglas",
+            ),
+        )
+
+        detalle = obtener_detalle_reporte(reporte.id, self.db, self.admin)
+
+        self.assertEqual(len(detalle.denunciantes), 2)
+        self.assertEqual(
+            {denunciante.usuario for denunciante in detalle.denunciantes},
+            {"reportante", "otro.reportante"},
+        )
+        self.assertEqual(detalle.estado_contenido, EstadoResena.OCULTA)
+        self.assertEqual(detalle.estado_objetivo_usuario.value, "activo")
+        self.assertEqual(len(detalle.historial), 1)
+        self.assertEqual(
+            detalle.historial[0].accion,
+            AccionModeracion.OCULTAR_COMENTARIO,
+        )
 
     @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
     def test_no_permite_autorreporte(self):

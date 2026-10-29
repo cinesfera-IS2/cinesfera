@@ -10,6 +10,7 @@ from app.core.csrf import verificar_csrf
 from app.core.enums import (
     AccionModeracion,
     EstadoReporte,
+    EstadoResena,
     EstadoUsuario,
     MotivoReporte,
     RolUsuario,
@@ -18,14 +19,17 @@ from app.core.enums import (
 from app.database import get_db
 from app.dependencies.auth import obtener_administrador_actual
 from app.models.moderacion import AuditoriaModeracion, Reporte
+from app.models.resena import Resena
 from app.models.usuario import Usuario
 from app.schemas.moderacion import (
     AccionReporteEntrada,
     AdministradorCreacion,
     AuditoriaPagina,
     AuditoriaRespuesta,
+    DenuncianteReporteRespuesta,
     ReporteActualizacion,
     ReporteAdminRespuesta,
+    ReporteDetalleRespuesta,
     ReportesPagina,
     ResumenModeracion,
     UsuarioAdminResumen,
@@ -81,6 +85,28 @@ def _reporte_respuesta(db: Session, reporte: Reporte) -> ReporteAdminRespuesta:
         fecha_actualizacion=reporte.fecha_actualizacion,
         cantidad_reportes_objetivo=int(cantidad),
         reportes_descartados_reportante=int(descartados),
+    )
+
+
+def _auditoria_respuesta(
+    db: Session, registro: AuditoriaModeracion
+) -> AuditoriaRespuesta:
+    admin = db.get(Usuario, registro.administrador_id)
+    return AuditoriaRespuesta(
+        id=registro.id,
+        administrador_id=registro.administrador_id,
+        administrador_usuario=(
+            admin.nombre_usuario if admin else "admin-eliminado"
+        ),
+        accion=registro.accion,
+        tipo_objetivo=registro.tipo_objetivo,
+        objetivo_id=registro.objetivo_id,
+        reporte_id=registro.reporte_id,
+        estado_anterior=registro.estado_anterior,
+        estado_nuevo=registro.estado_nuevo,
+        motivo=registro.motivo,
+        nota_interna=registro.nota_interna,
+        fecha=registro.fecha,
     )
 
 
@@ -185,6 +211,83 @@ def listar_reportes(
     )
 
 
+@router.get(
+    "/reportes/{reporte_id}/detalle",
+    response_model=ReporteDetalleRespuesta,
+)
+def obtener_detalle_reporte(
+    reporte_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    _admin: Annotated[Usuario, Depends(obtener_administrador_actual)],
+) -> ReporteDetalleRespuesta:
+    reporte = db.get(Reporte, reporte_id)
+    if reporte is None:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    relacionados = db.scalars(
+        select(Reporte)
+        .where(Reporte.objetivo_clave == reporte.objetivo_clave)
+        .order_by(Reporte.fecha_creacion.desc())
+    ).all()
+    denunciantes = []
+    for relacionado in relacionados:
+        reportante = db.get(Usuario, relacionado.reportante_id)
+        denunciantes.append(
+            DenuncianteReporteRespuesta(
+                id=relacionado.reportante_id,
+                usuario=(
+                    reportante.nombre_usuario
+                    if reportante
+                    else "usuario-eliminado"
+                ),
+                motivo=relacionado.motivo,
+                descripcion=relacionado.descripcion,
+                fecha=relacionado.fecha_creacion,
+            )
+        )
+
+    objetivo_ids = {
+        identificador
+        for identificador in (
+            reporte.resena_reportada_id,
+            reporte.usuario_reportado_id,
+        )
+        if identificador is not None
+    }
+    ids_reportes = [relacionado.id for relacionado in relacionados]
+    historial = db.scalars(
+        select(AuditoriaModeracion)
+        .where(
+            or_(
+                AuditoriaModeracion.reporte_id.in_(ids_reportes),
+                AuditoriaModeracion.objetivo_id.in_(objetivo_ids),
+            )
+        )
+        .order_by(AuditoriaModeracion.fecha.desc())
+    ).all()
+
+    usuario_objetivo = (
+        db.get(Usuario, reporte.usuario_reportado_id)
+        if reporte.usuario_reportado_id
+        else None
+    )
+    resena_objetivo = (
+        db.get(Resena, reporte.resena_reportada_id)
+        if reporte.resena_reportada_id
+        else None
+    )
+    base = _reporte_respuesta(db, reporte)
+    return ReporteDetalleRespuesta(
+        **base.model_dump(),
+        denunciantes=denunciantes,
+        historial=[_auditoria_respuesta(db, registro) for registro in historial],
+        estado_objetivo_usuario=(
+            usuario_objetivo.estado if usuario_objetivo else None
+        ),
+        estado_contenido=(resena_objetivo.estado if resena_objetivo else None),
+    )
+
+
 @router.patch(
     "/reportes/{reporte_id}",
     response_model=ReporteAdminRespuesta,
@@ -253,23 +356,7 @@ def listar_auditoria(
         .offset((pagina - 1) * por_pagina)
         .limit(por_pagina)
     ).all()
-    items = []
-    for registro in registros:
-        admin = db.get(Usuario, registro.administrador_id)
-        items.append(AuditoriaRespuesta(
-            id=registro.id,
-            administrador_id=registro.administrador_id,
-            administrador_usuario=admin.nombre_usuario if admin else "admin-eliminado",
-            accion=registro.accion,
-            tipo_objetivo=registro.tipo_objetivo,
-            objetivo_id=registro.objetivo_id,
-            reporte_id=registro.reporte_id,
-            estado_anterior=registro.estado_anterior,
-            estado_nuevo=registro.estado_nuevo,
-            motivo=registro.motivo,
-            nota_interna=registro.nota_interna,
-            fecha=registro.fecha,
-        ))
+    items = [_auditoria_respuesta(db, registro) for registro in registros]
     return AuditoriaPagina(items=items, total=int(total), pagina=pagina, por_pagina=por_pagina)
 
 

@@ -21,6 +21,21 @@ export type ReporteAdmin = {
   reportes_descartados_reportante: number;
 };
 
+export type DenuncianteReporte = {
+  id: string;
+  usuario: string;
+  motivo: string;
+  descripcion: string | null;
+  fecha: string;
+};
+
+export type ReporteDetalle = ReporteAdmin & {
+  denunciantes: DenuncianteReporte[];
+  historial: Auditoria[];
+  estado_objetivo_usuario: "activo" | "suspendido" | "eliminado" | null;
+  estado_contenido: "visible" | "oculta" | "eliminada" | null;
+};
+
 export type Pagina<T> = {
   items: T[];
   total: number;
