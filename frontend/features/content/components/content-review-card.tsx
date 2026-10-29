@@ -21,6 +21,7 @@ export function ContentReviewCard({
   acciones,
 }: Readonly<ContentReviewCardProps>) {
   const nombreCompleto = `${resena.autor.nombre} ${resena.autor.apellido}`;
+    const esPadre = resena.resena_padre_id === null;
 
   return (
     <article

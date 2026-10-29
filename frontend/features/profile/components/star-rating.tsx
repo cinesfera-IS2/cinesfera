@@ -1,11 +1,21 @@
 import { StarHalfIcon, StarIcon } from "@phosphor-icons/react/dist/ssr";
 
+/** Celeste para el puntaje de la película y naranja para la valoración de las reseñas */
+export type TonoEstrellas = "celeste" | "naranja";
+
+const RELLENO: Record<TonoEstrellas, string> = {
+  celeste: "text-glow-400",
+  naranja: "text-comunidad-400",
+};
+
 type StarRatingProps = {
   /** De 0 a 5, en pasos de media estrella. */
   puntaje: number;
+  tono?: TonoEstrellas;
 };
 
-export function StarRating({ puntaje }: StarRatingProps) {
+export function StarRating({ puntaje, tono = "celeste" }: StarRatingProps) {
+  const relleno = RELLENO[tono];
   return (
     <span
       role="img"
@@ -18,7 +28,7 @@ export function StarRating({ puntaje }: StarRatingProps) {
             <StarIcon
               key={posicion}
               weight="fill"
-              className="size-4 text-glow-400"
+              className={`size-4 ${relleno}`}
             />
           );
         }
@@ -28,7 +38,7 @@ export function StarRating({ puntaje }: StarRatingProps) {
             <StarHalfIcon
               key={posicion}
               weight="fill"
-              className="size-4 text-glow-400"
+              className={`size-4 ${relleno}`}
             />
           );
         }
