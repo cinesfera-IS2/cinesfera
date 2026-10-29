@@ -34,6 +34,9 @@ export type ReporteDetalle = ReporteAdmin & {
   historial: Auditoria[];
   estado_objetivo_usuario: "activo" | "suspendido" | "eliminado" | null;
   estado_contenido: "visible" | "oculta" | "eliminada" | null;
+  objetivo_nombre?: string | null;
+  objetivo_apellido?: string | null;
+  objetivo_usuario_id?: string | null;
 };
 
 export type Pagina<T> = {
@@ -76,5 +79,7 @@ export type Auditoria = {
   estado_nuevo: string | null;
   motivo: string;
   nota_interna: string | null;
+  suspension_inicio?: string | null;
+  suspension_fin?: string | null;
   fecha: string;
 };

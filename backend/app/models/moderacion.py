@@ -91,6 +91,8 @@ class AuditoriaModeracion(Base):
     estado_nuevo: Mapped[str | None] = mapped_column(Text, nullable=True)
     motivo: Mapped[str] = mapped_column(Text, nullable=False)
     nota_interna: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suspension_inicio: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    suspension_fin: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
     )

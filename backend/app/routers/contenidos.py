@@ -39,6 +39,14 @@ from app.services.contenido_service import (
 router = APIRouter(prefix="/contenidos", tags=["Contenidos"])
 
 
+def _exigir_participacion_social(usuario: Usuario) -> None:
+    if usuario.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Las cuentas administrativas no participan en funciones sociales",
+        )
+
+
 @router.get(
     "/{tipo}/{tmdb_id}/valoraciones/mias",
     response_model=list[CalificacionPropiaRespuesta],
@@ -49,6 +57,7 @@ def consultar_calificaciones_propias(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> list[CalificacionPropiaRespuesta]:
+    _exigir_participacion_social(usuario_actual)
     return obtener_calificaciones_propias(db, tipo, tmdb_id, usuario_actual.id)
 
 
@@ -65,6 +74,7 @@ def editar_calificacion(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> CalificacionActualizadaRespuesta:
+    _exigir_participacion_social(usuario_actual)
     try:
         return actualizar_calificacion(db, tipo, tmdb_id, resena_id, usuario_actual.id, datos)
     except ResenaPadreNoEncontradaError as error:
@@ -97,11 +107,7 @@ def publicar_resena(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> ResenaCreadaRespuesta:
-    if usuario_actual.rol == RolUsuario.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Los administradores no pueden publicar reseñas ni comentarios",
-        )
+    _exigir_participacion_social(usuario_actual)
     if datos.usuario_id != usuario_actual.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -6,6 +6,7 @@ from uuid import uuid4
 from app.core.enums import EstadoUsuario, RolUsuario
 from app.core.security import generar_token_acceso
 from app.models.usuario import Usuario
+from app.models.moderacion import AuditoriaModeracion, Reporte
 from tests.utilidades import (
     conectar_api,
     configurar_jwt,
@@ -17,7 +18,7 @@ from tests.utilidades import (
 class AdministracionUsuariosTests(unittest.TestCase):
     def setUp(self):
         configurar_jwt(self)
-        self.db = crear_base_en_memoria(self, Usuario)
+        self.db = crear_base_en_memoria(self, Usuario, Reporte, AuditoriaModeracion)
         self.admin = crear_usuario(
             self.db,
             "administrador",
@@ -33,10 +34,19 @@ class AdministracionUsuariosTests(unittest.TestCase):
             "Authorization": f"Bearer {generar_token_acceso(usuario.id)}"
         }
 
+    @staticmethod
+    def _datos_suspension() -> dict[str, str]:
+        return {
+            "accion": "suspender_usuario",
+            "motivo": "Incumplimiento de las reglas",
+            "tipo_suspension": "indefinida",
+        }
+
     def test_administrador_puede_suspender_una_cuenta(self):
         respuesta = self.client.patch(
             f"/usuarios/{self.usuario.id}/suspender",
-            headers=self._headers(self.admin)
+            headers=self._headers(self.admin),
+            json=self._datos_suspension(),
         )
 
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
@@ -68,7 +78,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{self.usuario.id}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta, headers=headers)
+                respuesta = metodo(
+                    ruta, headers=headers,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 403, respuesta.text)
                 self.assertEqual(
                     respuesta.json()["detail"],
@@ -87,7 +100,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{self.usuario.id}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta)
+                respuesta = metodo(
+                    ruta,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 401, respuesta.text)
 
     def test_cuenta_inexistente_responde_404(self):
@@ -98,7 +114,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{uuid4()}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta, headers=headers)
+                respuesta = metodo(
+                    ruta, headers=headers,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 404, respuesta.text)
 
     def test_no_se_puede_suspender_una_cuenta_eliminada(self):
@@ -107,7 +126,8 @@ class AdministracionUsuariosTests(unittest.TestCase):
 
         respuesta = self.client.patch(
             f"/usuarios/{self.usuario.id}/suspender",
-            headers=self._headers(self.admin)
+            headers=self._headers(self.admin),
+            json=self._datos_suspension(),
         )
 
         self.assertEqual(respuesta.status_code, 409, respuesta.text)

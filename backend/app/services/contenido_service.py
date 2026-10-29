@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.enums import EstadoResena, EstadoUsuario
+from app.core.enums import EstadoResena, EstadoUsuario, RolUsuario
 from app.core.tmdb import consultar_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
@@ -233,6 +233,7 @@ def obtener_resenas_contenido(
             Contenido.tmdb_id == tmdb_id,
             Contenido.tipo == tipo,
             Resena.estado == EstadoResena.VISIBLE,
+            Usuario.rol == RolUsuario.USUARIO,
             or_(
                 Usuario.estado == EstadoUsuario.ACTIVO,
                 Usuario.ocultar_contenido.is_(False),

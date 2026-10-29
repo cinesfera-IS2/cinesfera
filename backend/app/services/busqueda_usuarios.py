@@ -1,7 +1,7 @@
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.core.enums import EstadoUsuario
+from app.core.enums import EstadoUsuario, RolUsuario
 from app.models.usuario import Usuario
 from app.schemas.busqueda_usuarios import BusquedaUsuariosRespuesta, UsuarioEncontrado
 
@@ -18,6 +18,7 @@ def buscar_usuarios(
         select(Usuario)
         .where(
             Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
             or_(
                 func.lower(nombre_completo).contains(texto, autoescape=True),
                 func.lower(Usuario.nombre_usuario).contains(texto, autoescape=True),

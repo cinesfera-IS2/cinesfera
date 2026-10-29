@@ -7,6 +7,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.core.csrf import verificar_csrf
+from app.core.suspension import suspension_vencida
 from app.core.enums import (
     AccionModeracion,
     EstadoReporte,
@@ -106,7 +107,39 @@ def _auditoria_respuesta(
         estado_nuevo=registro.estado_nuevo,
         motivo=registro.motivo,
         nota_interna=registro.nota_interna,
+        suspension_inicio=registro.suspension_inicio,
+        suspension_fin=registro.suspension_fin,
         fecha=registro.fecha,
+    )
+
+
+def _suspension_vigente(ahora: datetime):
+    return (
+        (Usuario.estado == EstadoUsuario.SUSPENDIDO)
+        & (or_(Usuario.suspension_hasta.is_(None), Usuario.suspension_hasta > ahora))
+    )
+
+
+def _usuario_resumen(db: Session, usuario: Usuario) -> UsuarioAdminResumen:
+    cantidad = db.scalar(select(func.count()).select_from(Reporte).where(
+        Reporte.usuario_reportado_id == usuario.id
+    )) or 0
+    estado = usuario.estado
+    if (
+        estado == EstadoUsuario.SUSPENDIDO
+        and usuario.suspension_hasta is not None
+        and suspension_vencida(usuario.suspension_hasta)
+    ):
+        estado = EstadoUsuario.ACTIVO
+    return UsuarioAdminResumen(
+        id=usuario.id, nombre=usuario.nombre, apellido=usuario.apellido,
+        nombre_usuario=usuario.nombre_usuario, email=usuario.email,
+        rol=usuario.rol.value, estado=estado.value,
+        es_admin_principal=usuario.es_admin_principal,
+        suspension_hasta=usuario.suspension_hasta,
+        motivo_suspension=usuario.motivo_suspension,
+        ocultar_contenido=usuario.ocultar_contenido,
+        cantidad_reportes=int(cantidad),
     )
 
 
@@ -120,9 +153,11 @@ def obtener_resumen(
             select(Reporte.estado, func.count()).group_by(Reporte.estado)
         ).all()
     )
+    ahora = datetime.now(timezone.utc)
     suspendidos = db.scalar(
         select(func.count()).select_from(Usuario).where(
-            Usuario.estado == EstadoUsuario.SUSPENDIDO
+            Usuario.rol == RolUsuario.USUARIO,
+            _suspension_vigente(ahora),
         )
     ) or 0
     return ResumenModeracion(
@@ -285,6 +320,9 @@ def obtener_detalle_reporte(
             usuario_objetivo.estado if usuario_objetivo else None
         ),
         estado_contenido=(resena_objetivo.estado if resena_objetivo else None),
+        objetivo_nombre=(usuario_objetivo.nombre if usuario_objetivo else None),
+        objetivo_apellido=(usuario_objetivo.apellido if usuario_objetivo else None),
+        objetivo_usuario_id=(usuario_objetivo.id if usuario_objetivo else None),
     )
 
 
@@ -365,10 +403,21 @@ def listar_usuarios(
     db: Annotated[Session, Depends(get_db)],
     _admin: Annotated[Usuario, Depends(obtener_administrador_actual)],
     buscar: str | None = Query(default=None, max_length=100),
+    estado: str = Query(default="todos", pattern="^(todos|activos|suspendidos)$"),
     pagina: int = Query(default=1, ge=1),
     por_pagina: int = Query(default=20, ge=1, le=100),
 ) -> UsuariosAdminPagina:
-    consulta = select(Usuario)
+    ahora = datetime.now(timezone.utc)
+    consulta = select(Usuario).where(Usuario.rol == RolUsuario.USUARIO)
+    if estado == "suspendidos":
+        consulta = consulta.where(_suspension_vigente(ahora))
+    elif estado == "activos":
+        consulta = consulta.where(or_(
+            Usuario.estado == EstadoUsuario.ACTIVO,
+            (Usuario.estado == EstadoUsuario.SUSPENDIDO)
+            & Usuario.suspension_hasta.is_not(None)
+            & (Usuario.suspension_hasta <= ahora),
+        ))
     if buscar:
         patron = f"%{buscar.strip().lower()}%"
         consulta = consulta.where(or_(
@@ -382,22 +431,29 @@ def listar_usuarios(
         consulta.order_by(Usuario.fecha_registro.desc())
         .offset((pagina - 1) * por_pagina).limit(por_pagina)
     ).all()
-    items = []
-    for usuario in usuarios:
-        cantidad = db.scalar(select(func.count()).select_from(Reporte).where(
-            Reporte.usuario_reportado_id == usuario.id
-        )) or 0
-        items.append(UsuarioAdminResumen(
-            id=usuario.id, nombre=usuario.nombre, apellido=usuario.apellido,
-            nombre_usuario=usuario.nombre_usuario, email=usuario.email,
-            rol=usuario.rol.value, estado=usuario.estado.value,
-            es_admin_principal=usuario.es_admin_principal,
-            suspension_hasta=usuario.suspension_hasta,
-            motivo_suspension=usuario.motivo_suspension,
-            ocultar_contenido=usuario.ocultar_contenido,
-            cantidad_reportes=int(cantidad),
-        ))
+    items = [_usuario_resumen(db, usuario) for usuario in usuarios]
     return UsuariosAdminPagina(items=items, total=int(total), pagina=pagina, por_pagina=por_pagina)
+
+
+@router.get("/administradores", response_model=UsuariosAdminPagina)
+def listar_administradores(
+    db: Annotated[Session, Depends(get_db)],
+    principal: Annotated[Usuario, Depends(obtener_administrador_actual)],
+    pagina: int = Query(default=1, ge=1),
+    por_pagina: int = Query(default=50, ge=1, le=100),
+) -> UsuariosAdminPagina:
+    if not principal.es_admin_principal:
+        raise HTTPException(status_code=403, detail="Solo el administrador principal puede consultar administradores")
+    consulta = select(Usuario).where(Usuario.rol == RolUsuario.ADMIN)
+    total = db.scalar(select(func.count()).select_from(consulta.subquery())) or 0
+    usuarios = db.scalars(
+        consulta.order_by(Usuario.es_admin_principal.desc(), Usuario.fecha_registro.asc())
+        .offset((pagina - 1) * por_pagina).limit(por_pagina)
+    ).all()
+    return UsuariosAdminPagina(
+        items=[_usuario_resumen(db, usuario) for usuario in usuarios],
+        total=int(total), pagina=pagina, por_pagina=por_pagina,
+    )
 
 
 @router.post(
@@ -473,12 +529,18 @@ def accionar_usuario_directamente(
         raise HTTPException(status_code=409, detail="No se puede moderar otra cuenta administrativa")
 
     anterior = usuario.estado.value
+    suspension_inicio = None
+    suspension_fin = None
     if datos.accion == AccionModeracion.SUSPENDER_USUARIO:
+        if usuario.estado == EstadoUsuario.ELIMINADO:
+            raise HTTPException(status_code=409, detail="No se puede suspender una cuenta eliminada")
+        suspension_inicio = datetime.now(timezone.utc)
+        if datos.tipo_suspension == "temporal":
+            cantidad = datos.duracion_suspension or 0
+            delta = timedelta(hours=cantidad) if datos.unidad_suspension == "horas" else timedelta(days=cantidad)
+            suspension_fin = suspension_inicio + delta
         usuario.estado = EstadoUsuario.SUSPENDIDO
-        usuario.suspension_hasta = (
-            datetime.now(timezone.utc) + timedelta(hours=datos.horas_suspension)
-            if datos.horas_suspension else None
-        )
+        usuario.suspension_hasta = suspension_fin
         usuario.motivo_suspension = datos.motivo
         usuario.ocultar_contenido = datos.ocultar_contenido
     elif datos.accion == AccionModeracion.REACTIVAR_USUARIO:
@@ -494,6 +556,7 @@ def accionar_usuario_directamente(
     registrar_auditoria(
         db, admin, datos.accion, "usuario", usuario.id, datos.motivo,
         anterior, usuario.estado.value, nota=datos.nota_interna,
+        suspension_inicio=suspension_inicio, suspension_fin=suspension_fin,
     )
     if datos.accion in {
         AccionModeracion.SUSPENDER_USUARIO,

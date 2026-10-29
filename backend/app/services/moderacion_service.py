@@ -59,7 +59,7 @@ def crear_reporte(db: Session, reportante: Usuario, datos: ReporteCreacion) -> R
 
     if datos.tipo == TipoReporte.USUARIO:
         usuario = db.get(Usuario, datos.objetivo_id)
-        if usuario is None or usuario.estado != EstadoUsuario.ACTIVO:
+        if usuario is None or usuario.estado != EstadoUsuario.ACTIVO or usuario.rol != RolUsuario.USUARIO:
             raise NoEncontradoError("El usuario no existe o ya no está visible")
         if usuario.id == reportante.id:
             raise ConflictoModeracionError("No podés reportarte a vos mismo")
@@ -127,6 +127,8 @@ def registrar_auditoria(
     nuevo: str | None,
     reporte_id: UUID | None = None,
     nota: str | None = None,
+    suspension_inicio: datetime | None = None,
+    suspension_fin: datetime | None = None,
 ) -> AuditoriaModeracion:
     auditoria = AuditoriaModeracion(
         id=uuid4(),
@@ -139,6 +141,8 @@ def registrar_auditoria(
         estado_nuevo=nuevo,
         motivo=motivo,
         nota_interna=nota,
+        suspension_inicio=suspension_inicio,
+        suspension_fin=suspension_fin,
         fecha=datetime.now(timezone.utc),
     )
     db.add(auditoria)
@@ -183,12 +187,18 @@ def aplicar_accion(
         if usuario.rol == RolUsuario.ADMIN:
             raise ConflictoModeracionError("Un administrador no puede moderar a otro administrador")
         anterior = usuario.estado.value
+        suspension_inicio = None
+        suspension_fin = None
         if datos.accion == AccionModeracion.SUSPENDER_USUARIO:
+            if usuario.estado == EstadoUsuario.ELIMINADO:
+                raise ConflictoModeracionError("No se puede suspender una cuenta eliminada")
+            suspension_inicio = datetime.now(timezone.utc)
+            if datos.tipo_suspension == "temporal":
+                cantidad = datos.duracion_suspension or 0
+                delta = timedelta(hours=cantidad) if datos.unidad_suspension == "horas" else timedelta(days=cantidad)
+                suspension_fin = suspension_inicio + delta
             usuario.estado = EstadoUsuario.SUSPENDIDO
-            usuario.suspension_hasta = (
-                datetime.now(timezone.utc) + timedelta(hours=datos.horas_suspension)
-                if datos.horas_suspension else None
-            )
+            usuario.suspension_hasta = suspension_fin
             usuario.motivo_suspension = datos.motivo
             usuario.ocultar_contenido = datos.ocultar_contenido
         elif datos.accion == AccionModeracion.REACTIVAR_USUARIO:
@@ -204,6 +214,7 @@ def aplicar_accion(
         registrar_auditoria(
             db, admin, datos.accion, "usuario", usuario.id, datos.motivo,
             anterior, usuario.estado.value, reporte.id, datos.nota_interna,
+            suspension_inicio, suspension_fin,
         )
     else:
         raise ConflictoModeracionError("Acción no permitida para un reporte")

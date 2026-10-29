@@ -22,6 +22,7 @@ import type {
   ReporteAdmin,
   ReporteDetalle,
 } from "@/features/admin/types";
+import { SuspensionModal, type DatosSuspension } from "@/features/admin/suspension-modal";
 import { ApiError, apiFetch } from "@/lib/api";
 
 export type FiltrosReportes = {
@@ -169,12 +170,6 @@ export function ReportesSeccion({
           opciones={[["", "Todos los tipos"], ["comentario", "Comentario"], ["usuario", "Usuario"]]}
         />
         <Filtro
-          label="Estado"
-          value={filtros.estado}
-          onChange={(estado) => setFiltros((actuales) => ({ ...actuales, estado }))}
-          opciones={[["", "Todos los estados"], ["pendiente", "Pendiente"], ["en_revision", "En revisión"], ["resuelto", "Resuelto"], ["descartado", "Descartado"]]}
-        />
-        <Filtro
           label="Motivo"
           value={filtros.motivo}
           onChange={(motivo) => setFiltros((actuales) => ({ ...actuales, motivo }))}
@@ -252,10 +247,12 @@ function FiltrosRapidos({
   const opciones = [
     ["pendiente", "Pendientes"],
     ["en_revision", "En revisión"],
+    ["resuelto", "Resueltos"],
+    ["descartado", "Descartados"],
     ["", "Todos"],
   ];
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <div aria-label="Vista de reportes" className="inline-flex rounded-full border border-white/10 bg-night-900 p-1">
         {opciones.map(([valor, etiqueta]) => {
           const activo = filtros.estado === valor;
@@ -276,7 +273,6 @@ function FiltrosRapidos({
           );
         })}
       </div>
-      <p className="text-sm text-ink-500">El filtro se conserva al revisar un caso.</p>
     </div>
   );
 }
@@ -461,6 +457,7 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accionElegida, setAccionElegida] = useState<AccionCaso | null>(null);
+  const [mostrarSuspension, setMostrarSuspension] = useState(false);
 
   async function tomarCaso() {
     setProcesando(true);
@@ -508,9 +505,6 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
             accion: accionElegida.valor,
             motivo,
             nota_interna: campos.get("nota") || null,
-            horas_suspension: campos.get("horas")
-              ? Number(campos.get("horas"))
-              : null,
             ocultar_contenido: campos.get("ocultar") === "on",
           }),
         });
@@ -526,6 +520,24 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
 
   const acciones = accionesDisponibles(detalle, snapshot);
   const casoActivo = detalle.estado === "pendiente" || detalle.estado === "en_revision";
+  const objetivoUsuarioId = snapshot.autor_id ?? detalle.objetivo_usuario_id ?? detalle.objetivo_id;
+
+  async function suspender(datos: DatosSuspension) {
+    setProcesando(true);
+    setError(null);
+    try {
+      const accion = acciones.find((item) => item.valor === "suspender_usuario");
+      const ruta = accion?.rutaUsuario
+        ? `/admin/usuarios/${objetivoUsuarioId}/accion`
+        : `/admin/reportes/${detalle.id}/accion`;
+      await mutar(ruta, { method: "POST", body: JSON.stringify({ accion: "suspender_usuario", ...datos }) });
+      await actualizado();
+    } catch (problema) {
+      throw new Error(mensajeError(problema));
+    } finally {
+      setProcesando(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -589,6 +601,7 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
                   <time className="text-xs text-ink-500" dateTime={registro.fecha}>{fechaBreve(registro.fecha)}</time>
                 </div>
                 <p className="mt-1 text-xs text-ink-400">@{registro.administrador_usuario} · {registro.motivo}</p>
+                {registro.suspension_inicio && <p className="mt-1 text-xs text-ink-500">Suspensión: {fechaCompleta(registro.suspension_inicio)} → {registro.suspension_fin ? fechaCompleta(registro.suspension_fin) : "Indefinida"}</p>}
                 {registro.nota_interna && <p className="mt-1 text-xs text-ink-500">Nota: {registro.nota_interna}</p>}
               </li>
             ))}
@@ -605,7 +618,7 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
               <button type="button" disabled={procesando} onClick={() => void tomarCaso()} className="rounded-full border border-sky-400/30 px-4 py-2 text-sm font-bold text-sky-300 hover:bg-sky-400/10 disabled:opacity-50">Tomar caso</button>
             )}
             {acciones.map((accion) => (
-              <button key={accion.valor} type="button" disabled={procesando} onClick={() => setAccionElegida(accion)} className={claseAccion(accion.tono, accionElegida?.valor === accion.valor)}>
+              <button key={accion.valor} type="button" disabled={procesando} onClick={() => accion.valor === "suspender_usuario" ? setMostrarSuspension(true) : setAccionElegida(accion)} className={claseAccion(accion.tono, accionElegida?.valor === accion.valor)}>
                 {iconoAccion(accion.valor)} {accion.etiqueta}
               </button>
             ))}
@@ -619,12 +632,6 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
               </div>
               <textarea name="motivo" required minLength={3} rows={3} placeholder="Motivo de la decisión" className="resize-none rounded-xl border border-night-600 bg-night-950 px-3 py-2 text-sm" />
               <input name="nota" placeholder="Nota interna (opcional)" className="rounded-xl border border-night-600 bg-night-950 px-3 py-2 text-sm" />
-              {accionElegida.valor === "suspender_usuario" && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1 text-xs font-semibold text-ink-400">Duración en horas<input name="horas" type="number" min="1" max="8760" placeholder="Vacío = permanente" className="rounded-xl border border-night-600 bg-night-950 px-3 py-2 text-sm" /></label>
-                  <label className="flex items-center gap-2 self-end rounded-xl border border-white/5 px-3 py-2 text-xs text-ink-400"><input name="ocultar" type="checkbox" defaultChecked /> Ocultar su contenido</label>
-                </div>
-              )}
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setAccionElegida(null)} className="rounded-full px-4 py-2 text-sm font-bold text-ink-400 hover:text-ink-100">Cancelar</button>
                 <button disabled={procesando} className="rounded-full bg-brand-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{procesando ? "Aplicando…" : "Continuar y confirmar"}</button>
@@ -641,6 +648,15 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
           <p className="mt-2 text-sm text-ink-200">{detalle.resolucion}</p>
         </section>
       )}
+      {mostrarSuspension && <SuspensionModal
+        cuenta={{
+          nombre: detalle.objetivo_nombre ?? snapshot.nombre ?? snapshot.autor_usuario ?? "Usuario",
+          apellido: detalle.objetivo_apellido ?? snapshot.apellido,
+          nombre_usuario: detalle.objetivo_usuario ?? snapshot.nombre_usuario ?? snapshot.autor_usuario ?? "desconocido",
+        }}
+        confirmar={suspender}
+        cerrar={() => setMostrarSuspension(false)}
+      />}
     </div>
   );
 }
@@ -659,7 +675,7 @@ function accionesDisponibles(detalle: ReporteDetalle, snapshot: Record<string, s
     if (snapshot.autor_id && detalle.estado_objetivo_usuario === "activo") {
       acciones.push({ valor: "suspender_usuario", etiqueta: "Suspender usuario", tono: "peligro", rutaUsuario: true });
     } else if (snapshot.autor_id && detalle.estado_objetivo_usuario === "suspendido") {
-      acciones.push({ valor: "reactivar_usuario", etiqueta: "Reactivar usuario", tono: "positivo", rutaUsuario: true });
+      acciones.push({ valor: "reactivar_usuario", etiqueta: "Levantar suspensión", tono: "positivo", rutaUsuario: true });
     }
   } else if (detalle.estado_objetivo_usuario === "activo") {
     acciones.push(
@@ -668,7 +684,7 @@ function accionesDisponibles(detalle: ReporteDetalle, snapshot: Record<string, s
     );
   } else if (detalle.estado_objetivo_usuario === "suspendido") {
     acciones.push(
-      { valor: "reactivar_usuario", etiqueta: "Reactivar usuario", tono: "positivo" },
+      { valor: "reactivar_usuario", etiqueta: "Levantar suspensión", tono: "positivo" },
       { valor: "eliminar_usuario", etiqueta: "Eliminar cuenta", tono: "peligro" }
     );
   }
@@ -734,11 +750,11 @@ function usuarioAsociado(snapshot: Record<string, string>, reporte: ReporteAdmin
 }
 
 function fechaBreve(fecha: string): string {
-  return new Intl.DateTimeFormat("es-UY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(fecha));
+  return new Intl.DateTimeFormat("es-UY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Montevideo" }).format(new Date(fecha));
 }
 
 function fechaCompleta(fecha: string): string {
-  return new Intl.DateTimeFormat("es-UY", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fecha));
+  return new Intl.DateTimeFormat("es-UY", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Montevideo" }).format(new Date(fecha));
 }
 
 function etiquetaAccion(accion: string): string {

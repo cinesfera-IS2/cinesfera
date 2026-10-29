@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { obtenerSesion } from "@/features/auth/session";
 import { LandingFooter, LandingHeader } from "@/features/landing";
@@ -35,13 +35,16 @@ export default async function ProfilePage({
   params,
 }: PageProps<"/profile/[username]">) {
   const { username } = await params;
+  const sesion = await obtenerSesion();
+  if (sesion?.rol === "admin" && sesion.nombre_usuario.toLowerCase() === username.toLowerCase()) {
+    redirect("/admin");
+  }
   const datos = await obtenerPerfilPublico(username);
 
   if (!datos) {
     notFound();
   }
 
-  const sesion = await obtenerSesion();
   // Por id y no por nombre de usuario: el nombre se puede cambiar.
   const esPropio = sesion?.id === datos.perfil.id;
   // El email no es público: solo se conoce cuando el perfil es el de la sesión.

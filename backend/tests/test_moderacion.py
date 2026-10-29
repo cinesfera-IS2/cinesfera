@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
@@ -10,6 +10,7 @@ from app.core.enums import (
     AccionModeracion,
     EstadoReporte,
     EstadoResena,
+    EstadoUsuario,
     RolUsuario,
     TipoReporte,
 )
@@ -17,13 +18,16 @@ from app.models.contenido import Contenido
 from app.models.moderacion import AuditoriaModeracion, Reporte
 from app.models.resena import Resena
 from app.models.usuario import Usuario
-from app.routers.administracion import obtener_detalle_reporte
-from app.schemas.moderacion import AccionReporteEntrada, ReporteCreacion
+from app.routers.administracion import listar_usuarios, obtener_detalle_reporte, obtener_resumen
+from app.schemas.moderacion import AccionReporteEntrada, AdministradorCreacion, ReporteCreacion
 from app.services.moderacion_service import (
     ConflictoModeracionError,
     aplicar_accion,
+    crear_administrador,
     crear_reporte,
 )
+from app.services.busqueda_usuarios import buscar_usuarios
+from app.services.usuario_service import UsuarioNoEncontradoError, obtener_perfil_publico
 from tests.utilidades import crear_base_en_memoria, crear_usuario
 
 
@@ -55,6 +59,13 @@ class ModeracionServiceTests(unittest.TestCase):
             objetivo_id=self.resena.id,
             motivo="acoso",
             descripcion="Descripción opcional",
+        )
+
+    def _datos_usuario(self):
+        return ReporteCreacion(
+            tipo=TipoReporte.USUARIO,
+            objetivo_id=self.autor.id,
+            motivo="acoso",
         )
 
     @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
@@ -128,6 +139,94 @@ class ModeracionServiceTests(unittest.TestCase):
         self.db.commit()
         with self.assertRaisesRegex(ConflictoModeracionError, "propio comentario"):
             crear_reporte(self.db, self.reportante, self._datos_comentario())
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_suspension_temporal_por_horas_calcula_fin_y_audita(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_usuario())
+        antes = datetime.now(timezone.utc)
+        aplicar_accion(self.db, reporte, self.admin, AccionReporteEntrada(
+            accion=AccionModeracion.SUSPENDER_USUARIO,
+            motivo="Incumplimiento reiterado",
+            tipo_suspension="temporal",
+            duracion_suspension=3,
+            unidad_suspension="horas",
+        ))
+        self.db.refresh(self.autor)
+        self.assertGreaterEqual(
+            self.autor.suspension_hasta.replace(tzinfo=timezone.utc),
+            antes + timedelta(hours=3),
+        )
+        auditoria = self.db.scalar(select(AuditoriaModeracion).where(
+            AuditoriaModeracion.accion == AccionModeracion.SUSPENDER_USUARIO
+        ))
+        self.assertIsNotNone(auditoria.suspension_inicio)
+        self.assertEqual(auditoria.suspension_fin, self.autor.suspension_hasta)
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_suspension_temporal_por_dias(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_usuario())
+        antes = datetime.now(timezone.utc)
+        aplicar_accion(self.db, reporte, self.admin, AccionReporteEntrada(
+            accion=AccionModeracion.SUSPENDER_USUARIO,
+            motivo="Incumplimiento reiterado",
+            tipo_suspension="temporal",
+            duracion_suspension=2,
+            unidad_suspension="dias",
+        ))
+        self.db.refresh(self.autor)
+        self.assertGreaterEqual(
+            self.autor.suspension_hasta.replace(tzinfo=timezone.utc),
+            antes + timedelta(days=2),
+        )
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_suspension_indefinida_no_guarda_vencimiento(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_usuario())
+        aplicar_accion(self.db, reporte, self.admin, AccionReporteEntrada(
+            accion=AccionModeracion.SUSPENDER_USUARIO,
+            motivo="Incumplimiento reiterado",
+            tipo_suspension="indefinida",
+        ))
+        self.db.refresh(self.autor)
+        self.assertIsNone(self.autor.suspension_hasta)
+        auditoria = self.db.scalar(select(AuditoriaModeracion).where(
+            AuditoriaModeracion.accion == AccionModeracion.SUSPENDER_USUARIO
+        ))
+        self.assertIsNotNone(auditoria.suspension_inicio)
+        self.assertIsNone(auditoria.suspension_fin)
+
+    def test_contador_y_filtro_comparten_criterio_de_suspension_vigente(self):
+        futuro = crear_usuario(self.db, "futuro")
+        vencido = crear_usuario(self.db, "vencido")
+        self.autor.estado = EstadoUsuario.SUSPENDIDO
+        self.autor.suspension_hasta = None
+        futuro.estado = EstadoUsuario.SUSPENDIDO
+        futuro.suspension_hasta = datetime.now(timezone.utc) + timedelta(hours=1)
+        vencido.estado = EstadoUsuario.SUSPENDIDO
+        vencido.suspension_hasta = datetime.now(timezone.utc) - timedelta(hours=1)
+        self.db.commit()
+
+        resumen = obtener_resumen(self.db, self.admin)
+        pagina = listar_usuarios(
+            self.db, self.admin, buscar=None, estado="suspendidos", pagina=1, por_pagina=20
+        )
+
+        self.assertEqual(resumen.usuarios_suspendidos, 2)
+        self.assertEqual(pagina.total, 2)
+        self.assertEqual({item.nombre_usuario for item in pagina.items}, {"autor", "futuro"})
+
+    def test_solo_principal_puede_crear_administradores(self):
+        with self.assertRaisesRegex(ConflictoModeracionError, "principal"):
+            crear_administrador(self.db, self.admin, AdministradorCreacion(
+                nombre="Nuevo", apellido="Admin", nombre_usuario="nuevo.admin",
+                email="nuevo.admin@example.com", password="Password-segura-123",
+            ))
+
+    def test_administrador_no_tiene_perfil_social_ni_aparece_en_busquedas(self):
+        with self.assertRaises(UsuarioNoEncontradoError):
+            obtener_perfil_publico(self.db, self.admin.id)
+        resultado = buscar_usuarios(self.db, "admin", 20, 0)
+        self.assertNotIn(self.admin.id, {usuario.id for usuario in resultado.usuarios})
 
 
 if __name__ == "__main__":

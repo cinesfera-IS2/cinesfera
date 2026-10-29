@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.core.enums import (
     AccionModeracion,
@@ -42,8 +44,31 @@ class AccionReporteEntrada(BaseModel):
     accion: AccionModeracion
     motivo: str = Field(min_length=3, max_length=1000)
     nota_interna: str | None = Field(default=None, max_length=2000)
-    horas_suspension: int | None = Field(default=None, ge=1, le=24 * 365)
+    tipo_suspension: Literal["temporal", "indefinida"] | None = None
+    duracion_suspension: int | None = Field(default=None, ge=1, le=24 * 365)
+    unidad_suspension: Literal["horas", "dias"] | None = None
     ocultar_contenido: bool = True
+
+    @field_validator("motivo")
+    @classmethod
+    def validar_motivo(cls, valor: str) -> str:
+        valor = valor.strip()
+        if len(valor) < 3:
+            raise ValueError("El motivo debe tener al menos 3 caracteres")
+        return valor
+
+    @model_validator(mode="after")
+    def validar_suspension(self):
+        if self.accion != AccionModeracion.SUSPENDER_USUARIO:
+            return self
+        if self.tipo_suspension is None:
+            raise ValueError("Seleccioná el tipo de suspensión")
+        if self.tipo_suspension == "temporal":
+            if self.duracion_suspension is None or self.unidad_suspension is None:
+                raise ValueError("La suspensión temporal requiere duración y unidad")
+            if self.unidad_suspension == "dias" and self.duracion_suspension > 365:
+                raise ValueError("La suspensión temporal no puede superar 365 días")
+        return self
 
 
 class ReporteAdminRespuesta(BaseModel):
@@ -101,6 +126,8 @@ class AuditoriaRespuesta(BaseModel):
     estado_nuevo: str | None
     motivo: str
     nota_interna: str | None
+    suspension_inicio: datetime | None
+    suspension_fin: datetime | None
     fecha: datetime
 
 
@@ -109,6 +136,9 @@ class ReporteDetalleRespuesta(ReporteAdminRespuesta):
     historial: list[AuditoriaRespuesta]
     estado_objetivo_usuario: EstadoUsuario | None
     estado_contenido: EstadoResena | None
+    objetivo_nombre: str | None
+    objetivo_apellido: str | None
+    objetivo_usuario_id: UUID | None
 
 
 class AuditoriaPagina(BaseModel):

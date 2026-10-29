@@ -6,7 +6,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.csrf import verificar_csrf
-from app.core.enums import AccionModeracion
+from app.core.enums import AccionModeracion, RolUsuario
 
 from app.database import get_db
 from app.dependencies.auth import (
@@ -15,6 +15,7 @@ from app.dependencies.auth import (
 )
 from app.models.usuario import Usuario
 from app.schemas.busqueda_usuarios import BusquedaUsuariosRespuesta
+from app.schemas.moderacion import AccionReporteEntrada
 from app.services.busqueda_usuarios import buscar_usuarios
 from app.schemas.usuario import (
     CambioPassword,
@@ -26,7 +27,6 @@ from app.services.usuario_service import (
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
     PasswordActualInvalidaError,
-    TransicionEstadoInvalidaError,
     UsuarioNoEncontradoError,
     actualizar_perfil,
     cambiar_password,
@@ -34,7 +34,6 @@ from app.services.usuario_service import (
     obtener_perfil,
     obtener_perfil_publico,
     obtener_perfil_publico_por_nombre,
-    suspender_usuario
 )
 from app.services.contenido_service import (
     CatalogoNoDisponibleError,
@@ -74,49 +73,19 @@ def consultar_usuarios(
 )
 def suspender_cuenta(
     usuario_id: UUID,
+    datos: AccionReporteEntrada,
     db: Annotated[Session, Depends(get_db)],
     _administrador: Annotated[
         Usuario,
         Depends(obtener_administrador_actual)
     ]
 ) -> UsuarioRespuesta:
-    if usuario_id == _administrador.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No podés suspender tu propia cuenta",
-        )
-    objetivo = db.get(Usuario, usuario_id)
-    if objetivo is not None and objetivo.rol == _administrador.rol:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Un administrador no puede suspender a otro administrador",
-        )
-    estado_anterior = objetivo.estado.value if objetivo is not None else None
-    try:
-        usuario = suspender_usuario(db, usuario_id)
-        if _auditoria_disponible(db):
-            registrar_auditoria(
-                db,
-                _administrador,
-                AccionModeracion.SUSPENDER_USUARIO,
-                "usuario",
-                usuario.id,
-                "Acción administrativa directa",
-                estado_anterior,
-                usuario.estado.value,
-            )
-            db.commit()
-        return usuario
-    except UsuarioNoEncontradoError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error)
-        ) from error
-    except TransicionEstadoInvalidaError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(error)
-        ) from error
+    if datos.accion != AccionModeracion.SUSPENDER_USUARIO:
+        raise HTTPException(status_code=422, detail="La acción debe ser suspender_usuario")
+    # Conserva la ruta histórica, pero usa exactamente las mismas validaciones,
+    # cálculo UTC, protecciones y auditoría que el panel administrativo.
+    from app.routers.administracion import accionar_usuario_directamente
+    return accionar_usuario_directamente(usuario_id, datos, db, _administrador)
 
 
 @router.delete(
@@ -244,6 +213,14 @@ def modificar_perfil(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permiso para actualizar este perfil"
         )
+
+    if usuario_actual.rol == RolUsuario.ADMIN:
+        campos_sociales = {"nombre", "apellido", "foto_url", "bio", "ubicacion", "generos_favoritos"}
+        if datos.model_fields_set & campos_sociales:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Las cuentas administrativas no tienen perfil social",
+            )
 
     try:
         if "generos_favoritos" in datos.model_fields_set:

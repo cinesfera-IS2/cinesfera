@@ -229,5 +229,12 @@ describe("AdminPanel", () => {
         )
       ).toBe(true)
     );
+
+    await usuario.click(screen.getByRole("button", { name: /Usuarios suspendidos/ }));
+    await waitFor(() => expect(
+      apiFetchMock.mock.calls.some(([ruta]) => String(ruta).includes("/admin/usuarios?por_pagina=50&estado=suspendidos"))
+    ).toBe(true));
+    expect(screen.getByRole("button", { name: "Suspendidos" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("No hay usuarios suspendidos")).toBeTruthy();
   });
 });

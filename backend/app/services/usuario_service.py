@@ -72,7 +72,7 @@ def eliminar_usuario(db: Session, usuario_id: UUID) -> Usuario:
 
 def obtener_perfil_publico(db: Session, usuario_id: UUID) -> PerfilPublicoRespuesta:
     usuario = obtener_perfil(db, usuario_id)
-    if usuario.estado != EstadoUsuario.ACTIVO:
+    if usuario.estado != EstadoUsuario.ACTIVO or usuario.rol != RolUsuario.USUARIO:
         raise UsuarioNoEncontradoError("Usuario no encontrado")
     return _construir_perfil_publico(db, usuario)
 
@@ -85,7 +85,7 @@ def obtener_perfil_publico_por_nombre(
             func.lower(Usuario.nombre_usuario) == nombre_usuario.strip().lower()
         )
     )
-    if usuario is None or usuario.estado != EstadoUsuario.ACTIVO:
+    if usuario is None or usuario.estado != EstadoUsuario.ACTIVO or usuario.rol != RolUsuario.USUARIO:
         raise UsuarioNoEncontradoError("Usuario no encontrado")
     return _construir_perfil_publico(db, usuario)
 
