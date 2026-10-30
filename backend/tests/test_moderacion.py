@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.core.enums import (
@@ -18,10 +19,28 @@ from app.models.contenido import Contenido
 from app.models.moderacion import AuditoriaModeracion, Reporte
 from app.models.resena import Resena
 from app.models.usuario import Usuario
-from app.routers.administracion import listar_usuarios, obtener_detalle_reporte, obtener_resumen
-from app.schemas.moderacion import AccionReporteEntrada, AdministradorCreacion, ReporteCreacion
+from app.routers.administracion import (
+    accionar_usuario_directamente,
+    actualizar_reporte,
+    alta_administrador,
+    ejecutar_accion,
+    listar_administradores,
+    listar_auditoria,
+    listar_reportes,
+    listar_usuarios,
+    obtener_detalle_reporte,
+    obtener_resumen,
+    revocar_administrador,
+)
+from app.schemas.moderacion import (
+    AccionReporteEntrada,
+    AdministradorCreacion,
+    ReporteActualizacion,
+    ReporteCreacion,
+)
 from app.services.moderacion_service import (
     ConflictoModeracionError,
+    NoEncontradoError,
     aplicar_accion,
     crear_administrador,
     crear_reporte,
@@ -227,6 +246,263 @@ class ModeracionServiceTests(unittest.TestCase):
             obtener_perfil_publico(self.db, self.admin.id)
         resultado = buscar_usuarios(self.db, "admin", 20, 0)
         self.assertNotIn(self.admin.id, {usuario.id for usuario in resultado.usuarios})
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_listados_administrativos_filtran_ordenan_y_paginan(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_comentario())
+
+        filtrados = listar_reportes(
+            self.db,
+            self.admin,
+            tipo=TipoReporte.COMENTARIO,
+            estado=EstadoReporte.PENDIENTE,
+            motivo=reporte.motivo,
+            desde=reporte.fecha_creacion.date(),
+            hasta=reporte.fecha_creacion.date(),
+            buscar="autor",
+            cantidad_minima=1,
+            orden="antiguos",
+            pagina=1,
+            por_pagina=10,
+        )
+        mas_reportados = listar_reportes(
+            self.db, self.admin, tipo=None, estado=None, motivo=None,
+            desde=None, hasta=None, buscar=None, cantidad_minima=None,
+            orden="mas_reportados", pagina=1, por_pagina=10
+        )
+        recientes = listar_reportes(
+            self.db, self.admin, tipo=None, estado=None, motivo=None,
+            desde=None, hasta=None, buscar=None, cantidad_minima=None,
+            orden="recientes", pagina=1, por_pagina=10
+        )
+        activos = listar_usuarios(
+            self.db, self.admin, buscar="AUTOR", estado="activos", pagina=1, por_pagina=10
+        )
+
+        self.assertEqual(filtrados.total, 1)
+        self.assertEqual(filtrados.items[0].id, reporte.id)
+        self.assertEqual(mas_reportados.total, 1)
+        self.assertEqual(recientes.total, 1)
+        self.assertEqual([usuario.nombre_usuario for usuario in activos.items], ["autor"])
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_actualiza_reporte_lista_auditoria_y_traduce_errores(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_comentario())
+        actualizado = actualizar_reporte(
+            reporte.id,
+            ReporteActualizacion(
+                estado=EstadoReporte.EN_REVISION,
+                nota_interna="Requiere seguimiento",
+            ),
+            self.db,
+            self.admin,
+        )
+        auditoria = listar_auditoria(self.db, self.admin, pagina=1, por_pagina=10)
+
+        self.assertEqual(actualizado.estado, EstadoReporte.EN_REVISION)
+        self.assertEqual(auditoria.total, 1)
+        self.assertEqual(auditoria.items[0].nota_interna, "Requiere seguimiento")
+
+        with self.assertRaises(HTTPException) as contexto:
+            actualizar_reporte(
+                uuid4(),
+                ReporteActualizacion(estado=EstadoReporte.DESCARTADO),
+                self.db,
+                self.admin,
+            )
+        self.assertEqual(contexto.exception.status_code, 404)
+
+        with self.assertRaises(HTTPException) as contexto:
+            ejecutar_accion(
+                uuid4(),
+                AccionReporteEntrada(
+                    accion=AccionModeracion.OCULTAR_COMENTARIO,
+                    motivo="Contenido ofensivo",
+                ),
+                self.db,
+                self.admin,
+            )
+        self.assertEqual(contexto.exception.status_code, 404)
+
+        with patch(
+            "app.routers.administracion.aplicar_accion",
+            side_effect=NoEncontradoError("Objetivo inexistente"),
+        ):
+            with self.assertRaises(HTTPException) as contexto:
+                ejecutar_accion(
+                    reporte.id,
+                    AccionReporteEntrada(
+                        accion=AccionModeracion.OCULTAR_COMENTARIO,
+                        motivo="Contenido ofensivo",
+                    ),
+                    self.db,
+                    self.admin,
+                )
+            self.assertEqual(contexto.exception.status_code, 404)
+
+        with patch(
+            "app.routers.administracion.aplicar_accion",
+            side_effect=ConflictoModeracionError("Estado incompatible"),
+        ):
+            with self.assertRaises(HTTPException) as contexto:
+                ejecutar_accion(
+                    reporte.id,
+                    AccionReporteEntrada(
+                        accion=AccionModeracion.OCULTAR_COMENTARIO,
+                        motivo="Contenido ofensivo",
+                    ),
+                    self.db,
+                    self.admin,
+                )
+            self.assertEqual(contexto.exception.status_code, 409)
+
+    @patch(
+        "app.services.moderacion_service.generar_hash_password",
+        return_value="hash-administrador",
+    )
+    def test_admin_principal_crea_lista_y_revoca_administradores(self, _hashear):
+        principal = crear_usuario(
+            self.db,
+            "principal",
+            rol=RolUsuario.ADMIN,
+            es_admin_principal=True,
+        )
+        datos = AdministradorCreacion(
+            nombre="Nueva",
+            apellido="Administradora",
+            nombre_usuario="nueva.admin",
+            email="nueva.admin@example.com",
+            password="Password-segura-123",
+        )
+
+        creado = alta_administrador(datos, self.db, principal)
+        pagina = listar_administradores(self.db, principal, pagina=1, por_pagina=20)
+        revocado = revocar_administrador(creado.id, self.db, principal)
+
+        self.assertEqual(pagina.total, 3)
+        self.assertEqual(revocado.rol, RolUsuario.USUARIO)
+
+        with self.assertRaises(HTTPException) as contexto:
+            alta_administrador(datos, self.db, principal)
+        self.assertEqual(contexto.exception.status_code, 409)
+
+        with self.assertRaises(HTTPException) as contexto:
+            alta_administrador(datos, self.db, self.admin)
+        self.assertEqual(contexto.exception.status_code, 403)
+
+        for llamada, estado in (
+            (lambda: listar_administradores(self.db, self.admin, 1, 20), 403),
+            (lambda: revocar_administrador(principal.id, self.db, principal), 409),
+            (lambda: revocar_administrador(uuid4(), self.db, principal), 404),
+            (lambda: revocar_administrador(self.autor.id, self.db, principal), 409),
+            (lambda: revocar_administrador(self.admin.id, self.db, self.admin), 403),
+        ):
+            with self.assertRaises(HTTPException) as contexto:
+                llamada()
+            self.assertEqual(contexto.exception.status_code, estado)
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_acciones_directas_suspenden_reactivan_y_eliminan(self):
+        reporte = crear_reporte(self.db, self.reportante, self._datos_usuario())
+        suspendido = accionar_usuario_directamente(
+            self.autor.id,
+            AccionReporteEntrada(
+                accion=AccionModeracion.SUSPENDER_USUARIO,
+                motivo="Incumplimiento reiterado",
+                tipo_suspension="temporal",
+                duracion_suspension=2,
+                unidad_suspension="dias",
+                nota_interna="Caso confirmado",
+            ),
+            self.db,
+            self.admin,
+        )
+        self.assertEqual(suspendido.estado, EstadoUsuario.SUSPENDIDO)
+        self.assertIsNotNone(suspendido.suspension_hasta)
+        self.db.refresh(reporte)
+        self.assertEqual(reporte.estado, EstadoReporte.RESUELTO)
+
+        reactivado = accionar_usuario_directamente(
+            self.autor.id,
+            AccionReporteEntrada(
+                accion=AccionModeracion.REACTIVAR_USUARIO,
+                motivo="Apelación aceptada",
+            ),
+            self.db,
+            self.admin,
+        )
+        self.assertEqual(reactivado.estado, EstadoUsuario.ACTIVO)
+        self.assertFalse(reactivado.ocultar_contenido)
+
+        eliminado = accionar_usuario_directamente(
+            self.autor.id,
+            AccionReporteEntrada(
+                accion=AccionModeracion.ELIMINAR_USUARIO,
+                motivo="Baja definitiva",
+            ),
+            self.db,
+            self.admin,
+        )
+        self.assertEqual(eliminado.estado, EstadoUsuario.ELIMINADO)
+        self.assertTrue(eliminado.ocultar_contenido)
+
+    def test_accion_directa_rechaza_objetivos_y_acciones_invalidas(self):
+        casos = [
+            (
+                uuid4(),
+                AccionReporteEntrada(
+                    accion=AccionModeracion.REACTIVAR_USUARIO,
+                    motivo="Cuenta inexistente",
+                ),
+                404,
+            ),
+            (
+                self.admin.id,
+                AccionReporteEntrada(
+                    accion=AccionModeracion.REACTIVAR_USUARIO,
+                    motivo="Cuenta propia",
+                ),
+                409,
+            ),
+            (
+                crear_usuario(self.db, "otro.admin", rol=RolUsuario.ADMIN).id,
+                AccionReporteEntrada(
+                    accion=AccionModeracion.REACTIVAR_USUARIO,
+                    motivo="Otro administrador",
+                ),
+                409,
+            ),
+            (
+                self.autor.id,
+                AccionReporteEntrada(
+                    accion=AccionModeracion.OCULTAR_COMENTARIO,
+                    motivo="Acción incorrecta",
+                ),
+                422,
+            ),
+        ]
+
+        for usuario_id, datos, estado in casos:
+            with self.assertRaises(HTTPException) as contexto:
+                accionar_usuario_directamente(
+                    usuario_id, datos, self.db, self.admin
+                )
+            self.assertEqual(contexto.exception.status_code, estado)
+
+        self.autor.estado = EstadoUsuario.ELIMINADO
+        self.db.commit()
+        with self.assertRaises(HTTPException) as contexto:
+            accionar_usuario_directamente(
+                self.autor.id,
+                AccionReporteEntrada(
+                    accion=AccionModeracion.SUSPENDER_USUARIO,
+                    motivo="Nueva suspensión",
+                    tipo_suspension="indefinida",
+                ),
+                self.db,
+                self.admin,
+            )
+        self.assertEqual(contexto.exception.status_code, 409)
 
 
 if __name__ == "__main__":

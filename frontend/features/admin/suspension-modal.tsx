@@ -99,7 +99,7 @@ export function SuspensionModal({ cuenta, confirmar, cerrar }: Readonly<{
         {tipo === "temporal" && finalizacion && <p className="rounded-xl bg-sky-400/10 p-3 text-sm text-sky-200">Finalizará el {finalizacion} (hora de Uruguay).</p>}
         {tipo === "indefinida" && <p className="rounded-xl bg-amber-400/10 p-3 text-sm text-amber-100">Permanecerá suspendido hasta que un administrador levante la suspensión.</p>}
         {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-sm text-rose-200">{error}</p>}
-        <div className="flex justify-end gap-2"><button type="button" disabled={procesando} onClick={cerrar} className="rounded-full px-5 py-2 text-sm font-bold text-ink-400">Cancelar</button><button disabled={procesando} className="rounded-full bg-rose-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{procesando ? "Suspendiendo…" : "Confirmar suspensión"}</button></div>
+        <div className="flex justify-end gap-2"><button type="button" disabled={procesando} onClick={cerrar} className="rounded-full px-5 py-2 text-sm font-bold text-ink-400">Cancelar</button><button type="submit" disabled={procesando} className="rounded-full bg-rose-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{procesando ? "Suspendiendo…" : "Confirmar suspensión"}</button></div>
       </form>
     </section>
   </div>;

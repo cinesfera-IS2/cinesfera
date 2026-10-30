@@ -634,7 +634,7 @@ function ContenidoCaso({ detalle, actualizado }: Readonly<{ detalle: ReporteDeta
               <input name="nota" placeholder="Nota interna (opcional)" className="rounded-xl border border-night-600 bg-night-950 px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setAccionElegida(null)} className="rounded-full px-4 py-2 text-sm font-bold text-ink-400 hover:text-ink-100">Cancelar</button>
-                <button disabled={procesando} className="rounded-full bg-brand-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{procesando ? "Aplicando…" : "Continuar y confirmar"}</button>
+                <button type="submit" disabled={procesando} className="rounded-full bg-brand-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{procesando ? "Aplicando…" : "Continuar y confirmar"}</button>
               </div>
             </form>
           )}

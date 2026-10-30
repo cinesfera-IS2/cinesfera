@@ -4,7 +4,7 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ReporteAdmin, ReporteDetalle } from "@/features/admin/types";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { AdminPanel } from "./admin-panel";
 import {
   ReportesSeccion,
@@ -91,7 +91,7 @@ const FILTROS_INICIALES: FiltrosReportes = {
   cantidad_minima: "",
 };
 
-function Banco({ reportes = [REPORTE], recargar = vi.fn().mockResolvedValue(undefined) }: Readonly<{ reportes?: ReporteAdmin[]; recargar?: () => Promise<void> }>) {
+function Banco({ reportes = [REPORTE], total = reportes.length, recargar = vi.fn().mockResolvedValue(undefined) }: Readonly<{ reportes?: ReporteAdmin[]; total?: number; recargar?: () => Promise<void> }>) {
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
   const [pagina, setPagina] = useState(1);
   return (
@@ -99,7 +99,7 @@ function Banco({ reportes = [REPORTE], recargar = vi.fn().mockResolvedValue(unde
       filtros={filtros}
       setFiltros={setFiltros}
       reportes={reportes}
-      total={reportes.length}
+      total={total}
       pagina={pagina}
       setPagina={setPagina}
       recargar={recargar}
@@ -171,6 +171,99 @@ describe("ReportesSeccion", () => {
     await waitFor(() => expect(recargar).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByRole("dialog").textContent).toContain("En revisión"));
     expect(window.location.href).toBeTruthy();
+  });
+
+  it("actualiza todos los filtros y navega entre páginas", async () => {
+    const usuario = userEvent.setup();
+    render(<Banco total={45} />);
+
+    await usuario.type(screen.getByLabelText("Buscar reportes"), "autor");
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Tipo" }), "comentario");
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Motivo" }), "acoso");
+    await usuario.selectOptions(screen.getByRole("combobox", { name: "Orden" }), "antiguos");
+    await usuario.type(screen.getByLabelText("Desde"), "2026-10-01");
+    await usuario.type(screen.getByLabelText("Hasta"), "2026-10-30");
+    await usuario.type(screen.getByLabelText("Cantidad mínima"), "2");
+    await usuario.click(screen.getByRole("button", { name: "Resueltos" }));
+
+    expect((screen.getByLabelText("Buscar reportes") as HTMLInputElement).value).toBe("autor");
+    expect((screen.getByRole("combobox", { name: "Tipo" }) as HTMLSelectElement).value).toBe("comentario");
+    expect(screen.getByRole("button", { name: "Resueltos" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Página 1 de 3")).toBeTruthy();
+
+    await usuario.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByText("Página 2 de 3")).toBeTruthy();
+    await usuario.click(screen.getByRole("button", { name: "Anterior" }));
+    expect(screen.getByText("Página 1 de 3")).toBeTruthy();
+  });
+
+  it("muestra el error del detalle y permite reintentar", async () => {
+    apiFetchMock
+      .mockRejectedValueOnce(new ApiError(503, "No se pudo consultar el caso"))
+      .mockResolvedValueOnce(DETALLE);
+    const usuario = userEvent.setup();
+    render(<Banco />);
+
+    await usuario.click(screen.getAllByRole("button", { name: /Ver caso/ })[0]);
+    expect((await screen.findByRole("alert")).textContent).toContain("503");
+    await usuario.click(screen.getByRole("button", { name: "Reintentar" }));
+
+    await waitFor(() => expect(screen.getByRole("dialog").textContent).toContain("Este es el contenido denunciado completo"));
+  });
+
+  it("oculta un comentario con motivo, nota y confirmación", async () => {
+    const recargar = vi.fn().mockResolvedValue(undefined);
+    apiFetchMock.mockImplementation(async (ruta) => {
+      if (String(ruta).includes("/detalle")) return DETALLE;
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf" };
+      return {};
+    });
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const usuario = userEvent.setup();
+    render(<Banco recargar={recargar} />);
+
+    await usuario.click(screen.getAllByRole("button", { name: /Ver caso/ })[0]);
+    await screen.findByRole("dialog");
+    await usuario.click(screen.getByRole("button", { name: /Ocultar temporalmente/ }));
+    await usuario.type(screen.getByPlaceholderText("Motivo de la decisión"), "Incumple las reglas");
+    await usuario.type(screen.getByPlaceholderText("Nota interna (opcional)"), "Revisión manual");
+    await usuario.click(screen.getByRole("button", { name: "Continuar y confirmar" }));
+
+    await waitFor(() => expect(recargar).toHaveBeenCalledOnce());
+    expect(confirmar).toHaveBeenCalled();
+    expect(apiFetchMock.mock.calls.some(([ruta, opciones]) =>
+      ruta === "/admin/reportes/reporte-1/accion" &&
+      String(opciones?.body).includes('"accion":"ocultar_comentario"') &&
+      String(opciones?.body).includes("Revisión manual")
+    )).toBe(true);
+  });
+
+  it("descarta un reporte y cancela una acción antes de enviarla", async () => {
+    const recargar = vi.fn().mockResolvedValue(undefined);
+    apiFetchMock.mockImplementation(async (ruta) => {
+      if (String(ruta).includes("/detalle")) return DETALLE;
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf" };
+      return {};
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const usuario = userEvent.setup();
+    render(<Banco recargar={recargar} />);
+
+    await usuario.click(screen.getAllByRole("button", { name: /Ver caso/ })[0]);
+    await screen.findByRole("dialog");
+    await usuario.click(screen.getByRole("button", { name: /Retirar contenido/ }));
+    await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByPlaceholderText("Motivo de la decisión")).toBeNull();
+
+    await usuario.click(screen.getByRole("button", { name: /Descartar reporte/ }));
+    await usuario.type(screen.getByPlaceholderText("Motivo de la decisión"), "No corresponde");
+    await usuario.click(screen.getByRole("button", { name: "Continuar y confirmar" }));
+
+    await waitFor(() => expect(recargar).toHaveBeenCalledOnce());
+    expect(apiFetchMock.mock.calls.some(([ruta, opciones]) =>
+      ruta === "/admin/reportes/reporte-1" &&
+      String(opciones?.body).includes('"estado":"descartado"')
+    )).toBe(true);
   });
 });
 
