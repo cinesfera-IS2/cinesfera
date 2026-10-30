@@ -27,7 +27,10 @@ from app.services.contenido_service import (
     ContenidoNoEncontradoError,
     ResenaPadreInvalidaError,
     ResenaPadreNoEncontradaError,
+    ResenaNoEncontradaError,
+    ResenaSinPermisoError,
     crear_resena,
+    eliminar_resena,
     actualizar_calificacion,
     obtener_calificaciones_propias,
     obtener_detalle_contenido,
@@ -139,6 +142,32 @@ def publicar_resena(
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+
+
+@router.delete(
+    "/{tipo}/{tmdb_id}/resenas/{resena_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verificar_csrf)],
+)
+def borrar_resena(
+    tipo: TipoContenido,
+    tmdb_id: Annotated[int, Path(gt=0)],
+    resena_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
+) -> None:
+    try:
+        eliminar_resena(db, tipo, tmdb_id, resena_id, usuario_actual)
+    except ResenaNoEncontradaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    except ResenaSinPermisoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=str(error),
         ) from error
 

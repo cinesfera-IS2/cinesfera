@@ -86,4 +86,19 @@ describe("ContentFicha", () => {
     expect(screen.getByRole("button", { name: "Escribir una reseña" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Iniciar sesión" })).toBeNull();
   });
+
+  it("no muestra avisos sociales ni el formulario a la cuenta administrativa", () => {
+    render(
+      <ContentFicha
+        contenido={PELICULA}
+        usuario={{ ...USUARIO, rol: "admin" }}
+      />
+    );
+
+    expect(
+      screen.queryByText(/La cuenta administrativa puede consultar reseñas/)
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Escribir una reseña" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Iniciar sesión" })).toBeNull();
+  });
 });

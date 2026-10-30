@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,14 @@ class ResenaPadreInvalidaError(Exception):
 
 
 class CalificacionNoEncontradaError(Exception):
+    pass
+
+
+class ResenaNoEncontradaError(Exception):
+    pass
+
+
+class ResenaSinPermisoError(Exception):
     pass
 
 
@@ -361,6 +369,51 @@ def crear_resena(
         texto=resena.texto,
         fecha=resena.fecha,
     )
+
+
+def eliminar_resena(
+    db: Session,
+    tipo: TipoContenido,
+    tmdb_id: int,
+    resena_id: UUID,
+    usuario: Usuario,
+) -> None:
+    resena = db.scalar(
+        select(Resena)
+        .join(Contenido, Contenido.id == Resena.contenido_id)
+        .where(
+            Resena.id == resena_id,
+            Resena.estado == EstadoResena.VISIBLE,
+            Contenido.tipo == tipo,
+            Contenido.tmdb_id == tmdb_id,
+        )
+    )
+    if resena is None:
+        raise ResenaNoEncontradaError("Reseña no encontrada")
+
+    if usuario.rol != RolUsuario.ADMIN and resena.usuario_id != usuario.id:
+        raise ResenaSinPermisoError("Solo podés eliminar tus propias reseñas")
+
+    try:
+        # Una respuesta con estrellas también representa la valoración de su
+        # autor sobre la reseña padre. Al borrarla, esa valoración deja de
+        # participar en el promedio comunitario.
+        if resena.resena_padre_id is not None and resena.calificacion is not None:
+            db.execute(
+                delete(CalificacionResena).where(
+                    CalificacionResena.usuario_id == resena.usuario_id,
+                    CalificacionResena.resena_id == resena.resena_padre_id,
+                )
+            )
+
+        db.execute(
+            delete(ValoracionResena).where(ValoracionResena.resena_id == resena.id)
+        )
+        resena.estado = EstadoResena.ELIMINADA
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def _consultar_tmdb(ruta: str, tmdb_id: int) -> dict[str, Any]:
