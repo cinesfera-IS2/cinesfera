@@ -1,4 +1,4 @@
-import { CaretDownIcon, UserIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretDownIcon, GearIcon, ShieldCheckIcon, UserIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 import { LogoutButton } from "@/features/auth/components/logout-button";
@@ -56,10 +56,18 @@ export function AccionesCuenta({ usuario }: Readonly<MenuCuentaProps>) {
   return (
     <>
       <div aria-hidden className="mx-1.5 mb-1.5 h-px bg-white/5" />
-      <Link href={`/profile/${usuario.nombre_usuario}`} className={ITEM_DESPLEGABLE}>
-        <UserIcon weight="bold" className="size-4" />
-        Mi perfil
-      </Link>
+      {usuario.rol === "admin" ? <>
+        <Link href="/admin" className={ITEM_DESPLEGABLE}>
+          <ShieldCheckIcon weight="fill" className="size-4" /> Administración
+        </Link>
+        <Link href="/configuracion/cuenta" className={ITEM_DESPLEGABLE}>
+          <GearIcon weight="bold" className="size-4" /> Configuración de cuenta
+        </Link>
+      </> : (
+        <Link href={`/profile/${usuario.nombre_usuario}`} className={ITEM_DESPLEGABLE}>
+          <UserIcon weight="bold" className="size-4" /> Mi perfil
+        </Link>
+      )}
       <LogoutButton className={ITEM_DESPLEGABLE} />
     </>
   );

@@ -1,9 +1,12 @@
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 from app.core.enums import EstadoUsuario, RolUsuario
 from app.core.security import generar_token_acceso
 from app.models.usuario import Usuario
+from app.models.moderacion import AuditoriaModeracion, Reporte
 from tests.utilidades import (
     conectar_api,
     configurar_jwt,
@@ -15,7 +18,7 @@ from tests.utilidades import (
 class AdministracionUsuariosTests(unittest.TestCase):
     def setUp(self):
         configurar_jwt(self)
-        self.db = crear_base_en_memoria(self, Usuario)
+        self.db = crear_base_en_memoria(self, Usuario, Reporte, AuditoriaModeracion)
         self.admin = crear_usuario(
             self.db,
             "administrador",
@@ -31,10 +34,19 @@ class AdministracionUsuariosTests(unittest.TestCase):
             "Authorization": f"Bearer {generar_token_acceso(usuario.id)}"
         }
 
+    @staticmethod
+    def _datos_suspension() -> dict[str, str]:
+        return {
+            "accion": "suspender_usuario",
+            "motivo": "Incumplimiento de las reglas",
+            "tipo_suspension": "indefinida",
+        }
+
     def test_administrador_puede_suspender_una_cuenta(self):
         respuesta = self.client.patch(
             f"/usuarios/{self.usuario.id}/suspender",
-            headers=self._headers(self.admin)
+            headers=self._headers(self.admin),
+            json=self._datos_suspension(),
         )
 
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
@@ -66,7 +78,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{self.usuario.id}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta, headers=headers)
+                respuesta = metodo(
+                    ruta, headers=headers,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 403, respuesta.text)
                 self.assertEqual(
                     respuesta.json()["detail"],
@@ -85,7 +100,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{self.usuario.id}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta)
+                respuesta = metodo(
+                    ruta,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 401, respuesta.text)
 
     def test_cuenta_inexistente_responde_404(self):
@@ -96,7 +114,10 @@ class AdministracionUsuariosTests(unittest.TestCase):
             (self.client.delete, f"/usuarios/{uuid4()}")
         ):
             with self.subTest(ruta=ruta):
-                respuesta = metodo(ruta, headers=headers)
+                respuesta = metodo(
+                    ruta, headers=headers,
+                    **({"json": self._datos_suspension()} if "suspender" in ruta else {}),
+                )
                 self.assertEqual(respuesta.status_code, 404, respuesta.text)
 
     def test_no_se_puede_suspender_una_cuenta_eliminada(self):
@@ -105,7 +126,8 @@ class AdministracionUsuariosTests(unittest.TestCase):
 
         respuesta = self.client.patch(
             f"/usuarios/{self.usuario.id}/suspender",
-            headers=self._headers(self.admin)
+            headers=self._headers(self.admin),
+            json=self._datos_suspension(),
         )
 
         self.assertEqual(respuesta.status_code, 409, respuesta.text)
@@ -128,8 +150,39 @@ class AdministracionUsuariosTests(unittest.TestCase):
                 self.assertEqual(respuesta.status_code, 403, respuesta.text)
                 self.assertEqual(
                     respuesta.json()["detail"],
-                    "La cuenta no está activa"
+                    (
+                        "Tu cuenta ha sido suspendida"
+                        if estado == EstadoUsuario.SUSPENDIDO
+                        else "La cuenta no está activa"
+                    )
                 )
+
+    def test_sesion_existente_muestra_reactivacion_en_hora_uruguaya(self):
+        self.usuario.estado = EstadoUsuario.SUSPENDIDO
+        self.usuario.suspension_hasta = datetime(
+            2026, 10, 29, 22, 34, 11, tzinfo=timezone.utc
+        )
+        self.usuario.motivo_suspension = "Motivo administrativo privado"
+        self.db.commit()
+
+        with patch(
+            "app.dependencies.auth.suspension_vencida",
+            return_value=False,
+        ):
+            respuesta = self.client.get(
+                "/auth/me",
+                headers=self._headers(self.usuario),
+            )
+
+        self.assertEqual(respuesta.status_code, 403, respuesta.text)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            (
+                "Tu cuenta ha sido suspendida. Podrás volver a ingresar el "
+                "29/10/2026 a las 19:34 (hora de Uruguay)."
+            ),
+        )
+        self.assertNotIn("Motivo administrativo privado", respuesta.text)
 
     def test_openapi_declara_autenticacion_en_ambos_endpoints(self):
         paths = self.client.get("/openapi.json").json()["paths"]

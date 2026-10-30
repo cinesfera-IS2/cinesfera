@@ -35,7 +35,7 @@ export function LoginForm({ destino = DESTINO_POR_DEFECTO }: Readonly<LoginFormP
     const campos = new FormData(evento.currentTarget);
 
     try {
-      await apiFetch("/auth/login", {
+      const sesion = await apiFetch<{ rol?: "usuario" | "admin" }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({
           identificador: campos.get("identificador"),
@@ -45,7 +45,7 @@ export function LoginForm({ destino = DESTINO_POR_DEFECTO }: Readonly<LoginFormP
 
       // La recarga también demora: el botón queda confirmando hasta que llega la página.
       setEstado("listo");
-      recargarEn(destino);
+      recargarEn(sesion?.rol === "admin" ? "/admin" : destino);
     } catch (problema) {
       setError(
         problema instanceof ApiError

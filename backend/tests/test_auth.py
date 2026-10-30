@@ -142,11 +142,53 @@ class InicioSesionTests(unittest.TestCase):
                         self.db
                     )
 
-                self.assertEqual(contexto.exception.status_code, 401)
-                self.assertEqual(
-                    contexto.exception.detail,
-                    "Credenciales inválidas"
-                )
+                if estado == EstadoUsuario.SUSPENDIDO:
+                    self.assertEqual(contexto.exception.status_code, 403)
+                    self.assertIn(
+                        "Tu cuenta ha sido suspendida",
+                        contexto.exception.detail,
+                    )
+                else:
+                    self.assertEqual(contexto.exception.status_code, 401)
+                    self.assertEqual(
+                        contexto.exception.detail,
+                        "Credenciales inválidas"
+                    )
+
+    def test_suspension_temporal_muestra_fecha_de_uruguay_sin_motivo(self):
+        self.usuario.estado = EstadoUsuario.SUSPENDIDO
+        self.usuario.suspension_hasta = datetime(
+            2026, 10, 29, 22, 34, 11, tzinfo=timezone.utc
+        )
+        self.usuario.motivo_suspension = "Se decide suspender"
+        self.db.scalar.return_value = self.usuario
+
+        with (
+            patch(
+                "app.services.usuario_service.suspension_vencida",
+                return_value=False,
+            ),
+            self.assertRaises(HTTPException) as contexto,
+        ):
+            login(
+                UsuarioLogin(
+                    identificador="persona",
+                    password=self.password,
+                ),
+                Response(),
+                self.db,
+            )
+
+        self.assertEqual(contexto.exception.status_code, 403)
+        self.assertEqual(
+            contexto.exception.detail,
+            (
+                "Tu cuenta ha sido suspendida. Podrás volver a ingresar el "
+                "29/10/2026 a las 19:34 (hora de Uruguay)."
+            ),
+        )
+        self.assertNotIn("Se decide suspender", contexto.exception.detail)
+        self.assertNotIn("T22:34", contexto.exception.detail)
 
     def test_respuesta_publica_no_expone_password(self):
         self.db.scalar.return_value = self.usuario

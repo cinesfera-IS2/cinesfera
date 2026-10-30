@@ -1,3 +1,6 @@
+import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+
 import { EnlaceAcceder } from "@/features/auth/components/enlace-acceder";
 import { obtenerSesion } from "@/features/auth/session";
 import { BrandLogo } from "@/features/landing/components/brand-logo";
@@ -35,7 +38,19 @@ export async function LandingHeader() {
           </div>
 
           {sesion ? (
-            <MenuCuenta usuario={sesion} />
+            <>
+              {sesion.rol === "admin" && (
+                <Link
+                  href="/admin"
+                  aria-label="Panel de administración"
+                  className="hidden h-10 items-center gap-2 rounded-full border border-glow-400/30 bg-glow-400/10 px-4 text-sm font-semibold text-glow-300 transition-colors hover:bg-glow-400/15 md:inline-flex"
+                >
+                  <ShieldCheckIcon weight="fill" className="size-4" />
+                  Administración
+                </Link>
+              )}
+              <MenuCuenta usuario={sesion} />
+            </>
           ) : (
             <EnlaceAcceder
               className="hidden h-10 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-ink-100 transition-[background-color,border-color,transform] duration-150 ease-out hover:border-white/30 hover:bg-white/5 active:scale-[0.97] md:inline-flex"

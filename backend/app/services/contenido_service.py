@@ -4,11 +4,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.enums import EstadoResena, EstadoUsuario, RolUsuario
 from app.core.tmdb import consultar_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
@@ -228,7 +229,16 @@ def obtener_resenas_contenido(
         .join(Contenido, Contenido.id == Resena.contenido_id)
         .outerjoin(valoraciones, valoraciones.c.resena_id == Resena.id)
         .outerjoin(calificaciones, calificaciones.c.resena_id == Resena.id)
-        .where(Contenido.tmdb_id == tmdb_id, Contenido.tipo == tipo)
+        .where(
+            Contenido.tmdb_id == tmdb_id,
+            Contenido.tipo == tipo,
+            Resena.estado == EstadoResena.VISIBLE,
+            Usuario.rol == RolUsuario.USUARIO,
+            or_(
+                Usuario.estado == EstadoUsuario.ACTIVO,
+                Usuario.ocultar_contenido.is_(False),
+            ),
+        )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
 

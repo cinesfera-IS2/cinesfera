@@ -2,11 +2,12 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Integer, Numeric, SmallInteger, Text
-from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, Integer, Numeric, SmallInteger, Text, text
+from sqlalchemy.dialects.postgresql import ENUM as PostgreSQLEnum, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.core.enums import EstadoResena
 from app.models.contenido import Contenido
 
 
@@ -26,6 +27,18 @@ class Resena(Base):
     calificacion: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     texto: Mapped[str] = mapped_column(Text, nullable=False)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    estado: Mapped[EstadoResena] = mapped_column(
+        PostgreSQLEnum(
+            EstadoResena,
+            name="estado_resena",
+            schema="public",
+            create_type=False,
+            values_callable=lambda enum: [elemento.value for elemento in enum],
+        ),
+        nullable=False,
+        default=EstadoResena.VISIBLE,
+        server_default=text("'visible'::public.estado_resena"),
+    )
 
     # Se trae siempre junto con la reseña (un JOIN, no una consulta por fila):
     # toda respuesta pública identifica el contenido por su id de TMDB.
