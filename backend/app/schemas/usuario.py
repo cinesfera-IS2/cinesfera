@@ -92,6 +92,9 @@ class UsuarioRespuesta(BaseModel):
     generos_favoritos: list[str]
     rol: RolUsuario
     estado: EstadoUsuario
+    es_admin_principal: bool = False
+    suspension_hasta: datetime | None = None
+    motivo_suspension: str | None = None
     fecha_registro: datetime
 
 class TokenRespuesta(BaseModel):
@@ -216,6 +219,7 @@ class CambioPassword(BaseModel):
 class SesionRespuesta(BaseModel):
     mensaje: str
     csrf_token: str | None = None
+    rol: RolUsuario | None = None
 
 
 class CsrfRespuesta(BaseModel):

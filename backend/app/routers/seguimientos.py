@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from app.core.csrf import verificar_csrf
-from app.core.enums import EstadoUsuario
+from app.core.enums import EstadoUsuario, RolUsuario
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.models.seguimiento import Seguimiento
@@ -25,12 +25,20 @@ router = APIRouter(prefix="/usuarios", tags=["Seguimientos"])
 
 def _obtener_usuario_activo(db: Session, usuario_id: UUID) -> Usuario:
     usuario = db.get(Usuario, usuario_id)
-    if usuario is None or usuario.estado != EstadoUsuario.ACTIVO:
+    if usuario is None or usuario.estado != EstadoUsuario.ACTIVO or usuario.rol != RolUsuario.USUARIO:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
         )
     return usuario
+
+
+def _exigir_cuenta_social(usuario: Usuario) -> None:
+    if usuario.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Las cuentas administrativas no participan en funciones sociales",
+        )
 
 
 def _existe_seguimiento(
@@ -70,6 +78,7 @@ def seguir_usuario(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> SeguimientoRespuesta:
+    _exigir_cuenta_social(usuario_actual)
     if usuario_id == usuario_actual.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -118,6 +127,7 @@ def dejar_de_seguir_usuario(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> Response:
+    _exigir_cuenta_social(usuario_actual)
     seguimiento = db.get(
         Seguimiento, (usuario_actual.id, usuario_id)
     )
@@ -141,6 +151,7 @@ def consultar_estado_seguimiento(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)]
 ) -> EstadoSeguimientoRespuesta:
+    _exigir_cuenta_social(usuario_actual)
     _obtener_usuario_activo(db, usuario_id)
     if usuario_id == usuario_actual.id:
         return EstadoSeguimientoRespuesta(
@@ -163,7 +174,8 @@ def _usuarios_seguidos_por(
         )
         .where(
             Seguimiento.seguidor_id == usuario_id,
-            Usuario.estado == EstadoUsuario.ACTIVO
+            Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
         )
         .order_by(Usuario.nombre_usuario)
     ).all())
@@ -186,7 +198,8 @@ def listar_seguidores(
         )
         .where(
             Seguimiento.seguido_id == usuario_id,
-            Usuario.estado == EstadoUsuario.ACTIVO
+            Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
         )
         .order_by(Usuario.nombre_usuario)
     ).all())
@@ -230,6 +243,7 @@ def listar_amigos(
         .where(
             Seguimiento.seguidor_id == usuario_id,
             Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
             exists(
                 select(1).where(
                     seguimiento_inverso.seguidor_id == Usuario.id,

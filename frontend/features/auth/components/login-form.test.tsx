@@ -88,6 +88,17 @@ describe("LoginForm", () => {
     expect(boton.disabled).toBe(true);
   });
 
+  it("envía a los administradores a su panel", async () => {
+    simularRespuesta(200, {
+      mensaje: "Sesion iniciada correctamente",
+      rol: "admin",
+    });
+
+    await completarFormulario();
+
+    expect(recargarEn).toHaveBeenCalledWith("/admin");
+  });
+
   it("muestra el error del backend y no navega", async () => {
     simularRespuesta(401, { detail: "Credenciales inválidas" });
 

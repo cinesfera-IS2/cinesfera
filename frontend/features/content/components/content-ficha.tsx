@@ -58,13 +58,17 @@ export function ContentFicha({ contenido, usuario }: Readonly<ContentFichaProps>
       )}
 
       <div className="mt-6 border-t border-white/5 pt-6">
-        {usuario ? (
+        {usuario && usuario.rol !== "admin" ? (
           <>
             <p className="mb-4 text-sm text-ink-300">
               ¿Ya la viste? Contá qué te pareció.
             </p>
             <EscribirResena usuarioId={usuario.id} tituloContenido={contenido.titulo} />
           </>
+        ) : usuario?.rol === "admin" ? (
+          <p className="text-sm leading-relaxed text-ink-400">
+            La cuenta administrativa puede consultar reseñas, pero no publicar contenido.
+          </p>
         ) : (
           <>
             <p className="mb-4 text-sm text-ink-300">

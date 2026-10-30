@@ -15,6 +15,7 @@ from app.schemas.usuario import (
 
 from app.services.usuario_service import (
     CredencialesInvalidasError,
+    CuentaSuspendidaError,
     EmailDuplicadoError,
     NombreUsuarioDuplicadoError,
     iniciar_sesion,
@@ -70,13 +71,20 @@ def login(
 
         return SesionRespuesta(
             mensaje="Sesion iniciada correctamente",
-            csrf_token=generar_token_csrf(token)
+            csrf_token=generar_token_csrf(token),
+            rol=usuario.rol,
         )
 
     except CredencialesInvalidasError as error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(error)
+        ) from error
+    except CuentaSuspendidaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(error),
+            headers={"X-Account-Status": "suspendido"},
         ) from error
 
 

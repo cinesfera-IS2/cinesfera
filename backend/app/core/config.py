@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     tmdb_api_url: str = "https://api.themoviedb.org/3"
     tmdb_image_url: str = "https://image.tmdb.org/t/p"
 
+    # Solo se usan para crear el primer administrador cuando todavía no existe
+    # ninguno. La contraseña se transforma inmediatamente en un hash.
+    admin_inicial_email: str = ""
+    admin_inicial_password: str = ""
+    admin_inicial_usuario: str = ""
+    admin_inicial_nombre: str = "Administrador"
+    admin_inicial_apellido: str = "Cinesfera"
+
+    limite_reportes_diarios: int = 20
+
     
     # Configuración de las cookies de autenticación
     cookie_secure: bool = True
@@ -66,6 +76,23 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SameSite=None requiere Secure=True"
             )
+
+        credenciales_admin = (
+            self.admin_inicial_email,
+            self.admin_inicial_password,
+            self.admin_inicial_usuario,
+        )
+        if any(credenciales_admin) and not all(credenciales_admin):
+            raise ValueError(
+                "ADMIN_INICIAL_EMAIL, ADMIN_INICIAL_PASSWORD y "
+                "ADMIN_INICIAL_USUARIO deben configurarse juntos"
+            )
+
+        if self.admin_inicial_password and len(self.admin_inicial_password) < 12:
+            raise ValueError("ADMIN_INICIAL_PASSWORD debe tener al menos 12 caracteres")
+
+        if self.limite_reportes_diarios < 1:
+            raise ValueError("LIMITE_REPORTES_DIARIOS debe ser mayor que cero")
 
         return self
 

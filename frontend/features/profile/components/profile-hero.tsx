@@ -13,6 +13,7 @@ import type {
   PerfilPublico,
   UsuarioSeguimiento,
 } from "@/features/profile/types";
+import { ReportButton } from "@/features/reports/report-button";
 
 type ProfileHeroProps = {
   perfil: PerfilPublico;
@@ -20,6 +21,7 @@ type ProfileHeroProps = {
   esPropio: boolean;
   haySesion: boolean;
   amigos?: UsuarioSeguimiento[];
+  puedeReportar?: boolean;
 };
 
 export function ProfileHero({
@@ -27,6 +29,7 @@ export function ProfileHero({
   esPropio,
   haySesion,
   amigos,
+  puedeReportar = false,
 }: ProfileHeroProps) {
   return (
     <section className="border-b border-white/5">
@@ -90,6 +93,9 @@ export function ProfileHero({
               </>
             ) : (
               <FollowButton usuarioId={perfil.id} haySesion={haySesion} />
+            )}
+            {puedeReportar && (
+              <ReportButton tipo="usuario" objetivoId={perfil.id} etiqueta="Reportar perfil" />
             )}
           </div>
         </div>

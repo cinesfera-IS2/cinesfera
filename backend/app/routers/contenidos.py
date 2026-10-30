@@ -8,6 +8,7 @@ from app.core.csrf import verificar_csrf
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.models.usuario import Usuario
+from app.core.enums import RolUsuario
 from app.schemas.contenido import (
     ContenidoDetalleRespuesta,
     CalificacionActualizacion,
@@ -38,6 +39,14 @@ from app.services.contenido_service import (
 router = APIRouter(prefix="/contenidos", tags=["Contenidos"])
 
 
+def _exigir_participacion_social(usuario: Usuario) -> None:
+    if usuario.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Las cuentas administrativas no participan en funciones sociales",
+        )
+
+
 @router.get(
     "/{tipo}/{tmdb_id}/valoraciones/mias",
     response_model=list[CalificacionPropiaRespuesta],
@@ -48,6 +57,7 @@ def consultar_calificaciones_propias(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> list[CalificacionPropiaRespuesta]:
+    _exigir_participacion_social(usuario_actual)
     return obtener_calificaciones_propias(db, tipo, tmdb_id, usuario_actual.id)
 
 
@@ -64,6 +74,7 @@ def editar_calificacion(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> CalificacionActualizadaRespuesta:
+    _exigir_participacion_social(usuario_actual)
     try:
         return actualizar_calificacion(db, tipo, tmdb_id, resena_id, usuario_actual.id, datos)
     except ResenaPadreNoEncontradaError as error:
@@ -96,6 +107,7 @@ def publicar_resena(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
 ) -> ResenaCreadaRespuesta:
+    _exigir_participacion_social(usuario_actual)
     if datos.usuario_id != usuario_actual.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

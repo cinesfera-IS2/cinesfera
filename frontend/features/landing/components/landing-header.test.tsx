@@ -56,4 +56,17 @@ describe("LandingHeader", () => {
     expect(screen.getAllByRole("button", { name: "Cerrar sesión" })).not.toHaveLength(0);
     expect(screen.queryByRole("link", { name: "Acceder" })).toBeNull();
   });
+
+  it("una cuenta administrativa no muestra perfil social", async () => {
+    vi.mocked(obtenerSesion).mockResolvedValue({
+      id: "a1", nombre: "Ada", apellido: "Min", nombre_usuario: "admin",
+      email: "admin@example.com", foto_url: null, rol: "admin",
+    });
+
+    render(await LandingHeader());
+
+    expect(screen.queryByRole("link", { name: "Mi perfil" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Administración" })).not.toHaveLength(0);
+    expect(screen.getAllByRole("link", { name: "Configuración de cuenta" })).not.toHaveLength(0);
+  });
 });

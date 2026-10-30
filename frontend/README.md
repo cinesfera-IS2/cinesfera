@@ -97,6 +97,18 @@ pnpm dev
 
 La app queda disponible en http://localhost:3000, con recarga automática al guardar cambios.
 
+## Panel de administración
+
+Una sesión con rol `admin` se redirige a `/admin` después del login. El panel
+permite filtrar reportes por tipo, estado, motivo, fechas, texto y cantidad de
+denuncias; revisar el snapshot original; aplicar o revertir moderación; consultar
+usuarios y ver el historial de auditoría. El administrador principal también
+puede crear otros administradores o quitarles el rol.
+
+Las acciones mutables obtienen primero el token CSRF de `/auth/csrf`. Ocultar o
+suspender nunca sucede al enviar un reporte: requiere una acción explícita desde
+el panel.
+
 ## Otros comandos disponibles
 
 ```bash

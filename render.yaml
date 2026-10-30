@@ -54,3 +54,17 @@ services:
       # variable el login responde 500.
       - key: JWT_SECRET_KEY
         generateValue: true
+
+      # --- Bootstrap único del administrador principal ---
+      - key: ADMIN_INICIAL_EMAIL
+        sync: false
+      - key: ADMIN_INICIAL_PASSWORD
+        sync: false
+      - key: ADMIN_INICIAL_USUARIO
+        sync: false
+      - key: ADMIN_INICIAL_NOMBRE
+        value: Administrador
+      - key: ADMIN_INICIAL_APELLIDO
+        value: Cinesfera
+      - key: LIMITE_REPORTES_DIARIOS
+        value: "20"
