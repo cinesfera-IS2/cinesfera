@@ -166,7 +166,16 @@ class CatalogueRepository:
 
 
 
-    #para realizar búsquedas 
+    #para realizar búsquedas
+
+    #/search no acepta tope de fecha como /discover, así que lo no estrenado se descarta acá
+    def released_only(self, contents):
+        today = date.today().isoformat()
+
+        return [
+            content for content in contents
+            if content.release_date and content.release_date <= today
+        ]
 
     def search_movie_by_name(self, name, year):
 
@@ -190,6 +199,8 @@ class CatalogueRepository:
 
         for movie in data["results"]:
                 contents.append(self.movie_to_content(movie))
+
+        contents = self.released_only(contents)
 
         if year is not None:
             contents = [
@@ -228,6 +239,8 @@ class CatalogueRepository:
     
             for series in data["results"]:
                     contents.append(self.series_to_content(series))
+
+            contents = self.released_only(contents)
 
             contents.sort(
                 key=lambda content: content.release_date or "",
