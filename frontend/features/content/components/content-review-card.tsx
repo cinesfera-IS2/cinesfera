@@ -72,7 +72,7 @@ export function ContentReviewCard({
               aria-live="polite"
             >
               <span className="text-[0.72rem] text-comunidad-200">
-                Valoración del comentario
+                Valoración de la comunidad
               </span>
               {resena.promedio_comunitario != null &&
               resena.cantidad_valoraciones > 0 ? (
