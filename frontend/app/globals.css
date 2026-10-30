@@ -16,6 +16,12 @@
   --color-glow-400: #22d3ee;
   --color-glow-300: #67e8f9;
 
+  /* Naranjas para valoración de la comunidad en reseñas */
+  --color-comunidad-400: #fb923c;
+  --color-comunidad-300: #fdba74;
+  --color-comunidad-200: #fed7aa;
+  --color-comunidad-100: #ffedd5;
+
   /* Borde azul claro de las fichas del rediseño */
   --color-frame: #3b8fd8;
 

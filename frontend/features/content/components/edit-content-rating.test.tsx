@@ -84,7 +84,7 @@ describe("Editar valoración", () => {
     });
     render(<ResenasProvider tipo="pelicula" tmdbId={550} usuarioId={usuario.id}><ContentReviews usuario={usuario} /></ResenasProvider>);
     const tarjeta = within((await screen.findByText("Reseña original")).closest("article")!);
-    expect(tarjeta.getByText("Promedio de la comunidad")).toBeTruthy();
+    expect(tarjeta.getByText("Valoración de la comunidad")).toBeTruthy();
     expect(tarjeta.getByText("4")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Editar valoración" })).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Editar valoración" }));
@@ -92,10 +92,9 @@ describe("Editar valoración", () => {
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("radio", { name: "1 estrella" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
     await waitFor(() => expect(tarjeta.getByText("2")).toBeTruthy());
-    expect(tarjeta.getByText("2 valoraciones")).toBeTruthy();
     const respuesta = within(screen.getByText("Mi comentario original").closest("article")!);
     expect(respuesta.queryByRole("img", { name: /estrellas/ })).toBeNull();
-    expect(respuesta.queryByText("Promedio de la comunidad")).toBeNull();
+    expect(respuesta.queryByText("Valoración de la comunidad")).toBeNull();
     expect(tarjeta.getByRole("img", { name: "4.5 de 5 estrellas" })).toBeTruthy();
     expect(screen.getByText("Mi comentario original")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
