@@ -375,7 +375,7 @@ class ContenidosTests(unittest.TestCase):
                 "Accept": "application/json",
                 "Authorization": "Bearer token-de-prueba",
             },
-            params={"language": "es-UY"},
+            params={"language": "es-MX"},
         )
         respuesta.raise_for_status.assert_called_once_with()
 
