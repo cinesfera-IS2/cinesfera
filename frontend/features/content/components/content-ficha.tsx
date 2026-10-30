@@ -57,31 +57,29 @@ export function ContentFicha({ contenido, usuario }: Readonly<ContentFichaProps>
         </dl>
       )}
 
-      <div className="mt-6 border-t border-white/5 pt-6">
-        {usuario && usuario.rol !== "admin" ? (
-          <>
-            <p className="mb-4 text-sm text-ink-300">
-              ¿Ya la viste? Contá qué te pareció.
-            </p>
-            <EscribirResena usuarioId={usuario.id} tituloContenido={contenido.titulo} />
-          </>
-        ) : usuario?.rol === "admin" ? (
-          <p className="text-sm leading-relaxed text-ink-400">
-            La cuenta administrativa puede consultar reseñas, pero no publicar contenido.
-          </p>
-        ) : (
-          <>
-            <p className="mb-4 text-sm text-ink-300">
-              Iniciá sesión para escribir tu reseña y responder a la comunidad.
-            </p>
-            <EnlaceAcceder
-              className="flex w-full items-center justify-center rounded-full bg-brand-500 px-5 py-2.5 text-sm font-bold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-brand-600 active:scale-[0.97]"
-            >
-              Iniciar sesión
-            </EnlaceAcceder>
-          </>
-        )}
-      </div>
+      {usuario?.rol !== "admin" && (
+        <div className="mt-6 border-t border-white/5 pt-6">
+          {usuario ? (
+            <>
+              <p className="mb-4 text-sm text-ink-300">
+                ¿Ya la viste? Contá qué te pareció.
+              </p>
+              <EscribirResena usuarioId={usuario.id} tituloContenido={contenido.titulo} />
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-ink-300">
+                Iniciá sesión para escribir tu reseña y responder a la comunidad.
+              </p>
+              <EnlaceAcceder
+                className="flex w-full items-center justify-center rounded-full bg-brand-500 px-5 py-2.5 text-sm font-bold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-brand-600 active:scale-[0.97]"
+              >
+                Iniciar sesión
+              </EnlaceAcceder>
+            </>
+          )}
+        </div>
+      )}
     </aside>
   );
 }
