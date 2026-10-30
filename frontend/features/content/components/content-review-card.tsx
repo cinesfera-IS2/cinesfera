@@ -21,7 +21,7 @@ export function ContentReviewCard({
   acciones,
 }: Readonly<ContentReviewCardProps>) {
   const nombreCompleto = `${resena.autor.nombre} ${resena.autor.apellido}`;
-    const esPadre = resena.resena_padre_id === null;
+  const esPadre = resena.resena_padre_id === null;
 
   return (
     <article
@@ -51,41 +51,68 @@ export function ContentReviewCard({
       </span>
 
       <div className="min-w-0 flex-1">
-        <Link
-          href={`/profile/${encodeURIComponent(resena.autor.nombre_usuario)}`}
-          className="block truncate font-display font-bold text-ink-100 transition-colors hover:text-glow-300"
-        >
-          {nombreCompleto}
-        </Link>
-        <p className="truncate text-xs text-ink-400">
-          @{resena.autor.nombre_usuario}
-          <span aria-hidden> · </span>
-          <time dateTime={resena.fecha}>{fechaLarga(resena.fecha)}</time>
-        </p>
-
-        {resena.resena_padre_id === null && resena.calificacion !== null && (
-          <div className="mt-3">
-            <StarRating puntaje={resena.calificacion} />
+        <div className="flex flex-wrap items-start justify-between gap-x-[18px] gap-y-2.5">
+          <div className="min-w-0">
+            <Link
+              href={`/profile/${encodeURIComponent(resena.autor.nombre_usuario)}`}
+              className="block truncate font-display font-bold text-ink-100 transition-colors hover:text-glow-300"
+            >
+              {nombreCompleto}
+            </Link>
+            <p className="truncate text-xs text-ink-400">
+              @{resena.autor.nombre_usuario}
+              <span aria-hidden> · </span>
+              <time dateTime={resena.fecha}>{fechaLarga(resena.fecha)}</time>
+            </p>
           </div>
-        )}
-        <p className="mt-2 leading-relaxed whitespace-pre-line text-pretty text-ink-300">
+
+          {esPadre && (
+            <div
+              className="flex shrink-0 items-center gap-2 max-sm:w-full"
+              aria-live="polite"
+            >
+              <span className="text-[0.72rem] text-comunidad-200">
+                Valoración del comentario
+              </span>
+              {resena.promedio_comunitario != null &&
+              resena.cantidad_valoraciones > 0 ? (
+                <>
+                  <StarRating
+                    puntaje={resena.promedio_comunitario}
+                    tono="naranja"
+                  />
+                  <span className="font-display text-[0.82rem] font-extrabold text-comunidad-300 tabular-nums">
+                    <span>
+                      {resena.promedio_comunitario.toLocaleString("es", {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                    /5
+                  </span>
+                </>
+              ) : (
+                <span className="text-[0.76rem] font-semibold text-comunidad-100">
+                  Sin valoraciones
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <p className="mt-[14px] leading-relaxed whitespace-pre-line text-pretty text-ink-300">
           {resena.texto}
         </p>
 
-        {resena.resena_padre_id === null && (
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3" aria-live="polite">
-            <span className="text-sm font-bold text-amber-200">Promedio de la comunidad</span>
-            {resena.promedio_comunitario != null && resena.cantidad_valoraciones > 0 ? (
-              <div className="flex items-baseline gap-3">
-                <span className="font-display text-2xl font-extrabold text-amber-300 tabular-nums">
-                  {resena.promedio_comunitario.toLocaleString("es", { maximumFractionDigits: 2 })}
-                  <span className="ml-1 text-sm font-semibold text-amber-200">/ 5</span>
-                </span>
-                <span className="text-sm text-amber-100">
-                  {resena.cantidad_valoraciones} {resena.cantidad_valoraciones === 1 ? "valoración" : "valoraciones"}
-                </span>
-              </div>
-            ) : <span className="text-sm font-semibold text-amber-100">Sin valoraciones</span>}
+        {esPadre && resena.calificacion !== null && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-[0.78rem] text-ink-400">Película</span>
+            <StarRating puntaje={resena.calificacion} />
+            <span className="font-display text-[0.82rem] font-extrabold text-glow-300 tabular-nums">
+              {resena.calificacion.toLocaleString("es", {
+                maximumFractionDigits: 2,
+              })}
+              /5
+            </span>
           </div>
         )}
 
