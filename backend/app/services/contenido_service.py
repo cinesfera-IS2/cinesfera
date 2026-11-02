@@ -26,6 +26,7 @@ from app.schemas.contenido import (
     ResenaContenidoRespuesta,
     TipoContenido,
 )
+from app.services.reputacion_service import recalcular_reputacion
 
 
 class ContenidoNoEncontradoError(Exception):
@@ -111,6 +112,7 @@ def actualizar_calificacion(
         valoracion.calificacion = datos.calificacion
         valoracion.fecha_actualizacion = datetime.now(timezone.utc)
         db.flush()
+        recalcular_reputacion(db, padre.usuario_id)
         promedio, cantidad = db.execute(
             select(func.avg(CalificacionResena.calificacion), func.count())
             .where(CalificacionResena.resena_id == resena_id)
@@ -346,6 +348,7 @@ def crear_resena(
         db.add(calificacion)
         try:
             db.flush([calificacion])
+            recalcular_reputacion(db, padre.usuario_id)
         except IntegrityError as error:
             db.rollback()
             if db.get(CalificacionResena, (usuario_id, padre.id)) is not None:
@@ -400,6 +403,19 @@ def eliminar_resena_y_respuestas(db: Session, resena: Resena) -> None:
 
     ids_arbol = [elemento.id for elemento in arbol]
 
+    autores_afectados = set(db.scalars(
+        select(Resena.usuario_id)
+        .join(CalificacionResena, CalificacionResena.resena_id == Resena.id)
+        .where(Resena.id.in_(ids_arbol))
+        .distinct()
+    ).all())
+    resenas_por_id = {elemento.id: elemento for elemento in resenas_del_contenido}
+    for elemento in arbol:
+        if elemento.resena_padre_id is not None and elemento.calificacion is not None:
+            padre = resenas_por_id.get(elemento.resena_padre_id)
+            if padre is not None:
+                autores_afectados.add(padre.usuario_id)
+
     # Elimina las estrellas recibidas por cualquier reseña del árbol.
     db.execute(
         delete(CalificacionResena).where(
@@ -423,6 +439,9 @@ def eliminar_resena_y_respuestas(db: Session, resena: Resena) -> None:
     )
     for elemento in arbol:
         elemento.estado = EstadoResena.ELIMINADA
+    db.flush()
+    for autor_id in sorted(autores_afectados, key=str):
+        recalcular_reputacion(db, autor_id)
 
 
 def eliminar_resena(

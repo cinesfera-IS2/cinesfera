@@ -9,6 +9,7 @@ from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.services.contenido_service import eliminar_resena
+from app.services.reputacion_service import recalcular_reputacion
 from tests.utilidades import configurar_jwt, conectar_api, crear_base_en_memoria, crear_usuario
 
 
@@ -96,7 +97,10 @@ class EliminarResenaTests(unittest.TestCase):
             fecha_actualizacion=datetime.now(timezone.utc),
         )
         self.db.add_all([comentario, respuesta, calificacion])
+        self.db.flush()
+        recalcular_reputacion(self.db, self.autor.id)
         self.db.commit()
+        self.assertEqual(self.autor.reputacion, Decimal("4.50"))
 
         eliminar_resena(
             self.db, "pelicula", self.contenido.tmdb_id, resena.id, self.autor
@@ -107,6 +111,7 @@ class EliminarResenaTests(unittest.TestCase):
         )
         self.assertEqual(comentario.estado, EstadoResena.ELIMINADA)
         self.assertEqual(respuesta.estado, EstadoResena.ELIMINADA)
+        self.assertEqual(self.autor.reputacion, Decimal("0.00"))
 
     def test_usuario_no_puede_eliminar_una_resena_ajena(self):
         resena = self._crear_resena()

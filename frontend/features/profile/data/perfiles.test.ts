@@ -56,7 +56,7 @@ const PERFIL_API = {
   generos_favoritos: ["Drama", "Comedia"],
   rol: "usuario",
   fecha_registro: "2026-02-14T12:00:00Z",
-  reputacion: 12,
+  reputacion: 4.25,
   seguidores: 8,
   siguiendo: 3,
   resenas: [resenaApi("r1"), resenaApi("r2")],
@@ -93,6 +93,7 @@ describe("obtenerPerfilPublico", () => {
       ubicacion: "Montevideo, Uruguay",
       generosFavoritos: ["Drama", "Comedia"],
       rol: "usuario",
+      reputacion: 4.25,
       fechaRegistro: "2026-02-14",
       estadisticas: { resenas: 2, seguidores: 8, siguiendo: 3 },
     });

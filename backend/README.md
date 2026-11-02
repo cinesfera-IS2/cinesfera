@@ -17,6 +17,17 @@ respuestas anidadas, y quita sus calificaciones asociadas en la misma
 transacción. Para reparar datos creados antes de este comportamiento, aplicar
 una vez `migrations/007_propagar_eliminacion_resenas.sql`.
 
+## Reputación por calificaciones de reseñas (HU5.1)
+
+La reputación se guarda en `usuarios.reputacion` y es el promedio de todas las
+estrellas de 0.5 a 5 recibidas por las reseñas originales del usuario. Se
+recalcula en la misma transacción al crear, editar o eliminar una calificación,
+se redondea a un máximo de dos decimales y vale `0` cuando todavía no hay
+calificaciones. Las reseñas ocultas participan; las eliminadas y los votos
+positivos/negativos de `valoraciones_resena` no participan. Aplicar la migración
+`008_agregar_reputacion_usuario.sql` para crear la columna y calcular los
+valores iniciales.
+
 ## Requisitos
 
 - Python 3.10 o superior (en desarrollo se usa Python 3.14)
@@ -290,11 +301,13 @@ También se puede consultar por nombre de usuario con
 `/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
 minúsculas y exige el nombre completo; si no existe, responde `404`.
 No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
-iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
+iguales, por `id` descendente. El perfil incluye únicamente reseñas originales
+publicadas por el usuario; sus comentarios y respuestas no aparecen. Cada
+reseña incluye `id`, `contenido_tmdb_id`,
 `contenido_tipo`, `contenido_titulo`, `plataforma_id`, `calificacion`, `texto`
-y `fecha`. La reputación es la suma de
-`valoraciones_resena.valor` recibidas por todas las reseñas del usuario; si no
-tiene valoraciones, es `0`. No se devuelve el email ni la contraseña.
+y `fecha`. La reputación es el promedio persistido de las estrellas recibidas,
+con un máximo de dos decimales; si no tiene calificaciones, es `0`. No se
+devuelve el email ni la contraseña.
 
 Para probarlo vos misma en Postman:
 

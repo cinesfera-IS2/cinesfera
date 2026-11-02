@@ -11,6 +11,7 @@ const PERFIL: PerfilPublico = {
   apellido: "Torres",
   email: "ana@example.com",
   rol: "usuario",
+  reputacion: 4.25,
   fechaRegistro: "2026-02-14",
   ubicacion: "Montevideo, Uruguay",
   generosFavoritos: ["Thriller", "Drama"],

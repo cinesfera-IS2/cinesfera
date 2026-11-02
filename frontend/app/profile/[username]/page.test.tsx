@@ -43,6 +43,7 @@ const PERFIL: PerfilPublico = {
   nombre: "Ana",
   apellido: "Torres",
   rol: "usuario",
+  reputacion: 4.25,
   fechaRegistro: "2026-02-14",
   bio: "Fan de los thrillers.",
   generosFavoritos: [],

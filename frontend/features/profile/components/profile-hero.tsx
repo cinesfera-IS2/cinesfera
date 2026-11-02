@@ -1,6 +1,7 @@
 import {
   GearSixIcon,
   ShieldCheckIcon,
+  StarIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
@@ -23,6 +24,10 @@ type ProfileHeroProps = {
   amigos?: UsuarioSeguimiento[];
   puedeReportar?: boolean;
 };
+
+const FORMATO_REPUTACION = new Intl.NumberFormat("es-UY", {
+  maximumFractionDigits: 2,
+});
 
 export function ProfileHero({
   perfil,
@@ -58,9 +63,19 @@ export function ProfileHero({
             />
 
             <div className="min-w-0 pb-1">
-              <h1 className="font-display text-2xl font-extrabold leading-snug tracking-tight text-ink-100 break-words sm:text-3xl">
-                {perfil.nombre} {perfil.apellido}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="font-display text-2xl font-extrabold leading-snug tracking-tight text-ink-100 break-words sm:text-3xl">
+                  {perfil.nombre} {perfil.apellido}
+                </h1>
+                <span
+                  aria-label={`Reputación ${FORMATO_REPUTACION.format(perfil.reputacion)} de 5`}
+                  title="Reputación por las calificaciones recibidas"
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-sm font-bold text-amber-200"
+                >
+                  <StarIcon aria-hidden="true" weight="fill" className="size-4" />
+                  {FORMATO_REPUTACION.format(perfil.reputacion)}
+                </span>
+              </div>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <p className="text-sm font-semibold text-glow-400">
                   @{perfil.nombreUsuario}
