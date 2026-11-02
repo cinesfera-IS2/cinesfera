@@ -164,6 +164,8 @@ class CrearResenaTests(unittest.TestCase):
         self.assertEqual(primera.status_code, 201, primera.text)
         valoracion = self.db.get(CalificacionResena, (self.usuario.id, padre.id))
         self.assertEqual(valoracion.calificacion, Decimal("4.5"))
+        self.db.refresh(self.otro_usuario)
+        self.assertEqual(self.otro_usuario.reputacion, Decimal("4.50"))
         duplicada = self._publicar(padre, calificacion=2)
         self.assertEqual(duplicada.status_code, 409, duplicada.text)
         self.assertEqual(self._cantidad_resenas(), 2)
@@ -172,6 +174,8 @@ class CrearResenaTests(unittest.TestCase):
         self.assertIsNone(comentario.json()["calificacion"])
         self.db.refresh(valoracion)
         self.assertEqual(valoracion.calificacion, Decimal("4.5"))
+        self.db.refresh(self.otro_usuario)
+        self.assertEqual(self.otro_usuario.reputacion, Decimal("4.50"))
         self.assertEqual(self._cantidad_resenas(), 3)
 
     @patch("app.services.contenido_service.obtener_detalle_contenido")

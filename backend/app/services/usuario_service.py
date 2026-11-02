@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.security import generar_hash_password, verificar_password
 from app.core.suspension import mensaje_cuenta_suspendida, suspension_vencida
 from app.models.usuario import Usuario
-from app.models.resena import Resena, ValoracionResena
+from app.models.resena import Resena
 from app.models.seguimiento import Seguimiento
 from app.schemas.perfil_publico import PerfilPublicoRespuesta, ResenaPublica
 from app.schemas.usuario import (
@@ -101,11 +101,6 @@ def _construir_perfil_publico(
         )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
-    reputacion = db.scalar(
-        select(func.coalesce(func.sum(ValoracionResena.valor), 0))
-        .join(Resena, ValoracionResena.resena_id == Resena.id)
-        .where(Resena.usuario_id == usuario_id)
-    )
     seguidores = db.scalar(
         select(func.count()).select_from(Seguimiento).where(
             Seguimiento.seguido_id == usuario_id
@@ -127,7 +122,7 @@ def _construir_perfil_publico(
         generos_favoritos=usuario.generos_favoritos,
         rol=usuario.rol,
         fecha_registro=usuario.fecha_registro,
-        reputacion=int(reputacion or 0),
+        reputacion=float(usuario.reputacion),
         seguidores=int(seguidores or 0),
         siguiendo=int(siguiendo or 0),
         resenas=[ResenaPublica.model_validate(resena, from_attributes=True)

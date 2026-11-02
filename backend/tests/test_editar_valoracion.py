@@ -66,6 +66,8 @@ class EditarValoracionTests(unittest.TestCase):
         })
         self.assertEqual(self.db.scalar(select(func.count()).select_from(CalificacionResena)), 2)
         self.assertEqual(self.db.scalar(select(func.count()).select_from(Resena)), 2)
+        self.db.refresh(self.autor)
+        self.assertEqual(self.autor.reputacion, Decimal("2.00"))
         self.db.refresh(self.comentario)
         self.assertEqual(self.comentario.texto, "Mi comentario original")
         self.assertEqual(self.comentario.fecha, fecha)
@@ -85,6 +87,8 @@ class EditarValoracionTests(unittest.TestCase):
         self.assertEqual(propias.status_code, 200, propias.text)
         self.assertEqual(propias.json(), [{"resena_id": str(self.padre.id), "calificacion": 4.5}])
         self.assertEqual(self.db.scalar(select(func.count()).select_from(CalificacionResena)), 2)
+        self.db.refresh(self.autor)
+        self.assertEqual(self.autor.reputacion, Decimal("3.75"))
 
     def test_no_permite_modificar_valoracion_ajena(self):
         # Este usuario no valoró la reseña: no puede editar las filas de otros.

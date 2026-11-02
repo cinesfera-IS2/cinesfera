@@ -62,6 +62,7 @@ class PerfilPublicoTests(unittest.TestCase):
                 fecha_seguimiento=ahora
             )
         ])
+        self.db.get(Usuario, self.usuario_id).reputacion = Decimal("3.25")
         self.db.commit()
         self.client = conectar_api(self, self.db)
         self.antigua_id, self.reciente_id = antigua_id, reciente_id
@@ -77,7 +78,7 @@ class PerfilPublicoTests(unittest.TestCase):
         self.assertEqual(datos["generos_favoritos"], ["Drama", "Comedia"])
         self.assertEqual(datos["rol"], "usuario")
         self.assertIsNotNone(datos["fecha_registro"])
-        self.assertEqual(datos["reputacion"], 0)
+        self.assertEqual(datos["reputacion"], 3.25)
         self.assertEqual(datos["seguidores"], 1)
         self.assertEqual(datos["siguiendo"], 1)
         self.assertEqual(
