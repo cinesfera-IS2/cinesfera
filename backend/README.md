@@ -301,7 +301,9 @@ También se puede consultar por nombre de usuario con
 `/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
 minúsculas y exige el nombre completo; si no existe, responde `404`.
 No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
-iguales, por `id` descendente. Cada reseña incluye `id`, `contenido_tmdb_id`,
+iguales, por `id` descendente. El perfil incluye únicamente reseñas originales
+publicadas por el usuario; sus comentarios y respuestas no aparecen. Cada
+reseña incluye `id`, `contenido_tmdb_id`,
 `contenido_tipo`, `contenido_titulo`, `plataforma_id`, `calificacion`, `texto`
 y `fecha`. La reputación es el promedio persistido de las estrellas recibidas,
 con un máximo de dos decimales; si no tiene calificaciones, es `0`. No se

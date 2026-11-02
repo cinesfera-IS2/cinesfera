@@ -7,6 +7,7 @@ from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
+from app.services.usuario_service import obtener_perfil_publico
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 
@@ -46,6 +47,17 @@ class PerfilPublicoTests(unittest.TestCase):
                 plataforma_id=None, calificacion=Decimal("4.5"),
                 texto="Una reseña", fecha=fecha
             ))
+        comentario_id = uuid4()
+        self.db.add(Resena(
+            id=comentario_id,
+            usuario_id=self.usuario_id,
+            contenido_id=1,
+            resena_padre_id=ajena_id,
+            plataforma_id=None,
+            calificacion=Decimal("5"),
+            texto="Un comentario que no pertenece al perfil",
+            fecha=ahora + timedelta(hours=1),
+        ))
         self.db.flush()
         self.db.add_all([
             ValoracionResena(usuario_id=otro_id, resena_id=antigua_id, valor=1),
@@ -66,6 +78,7 @@ class PerfilPublicoTests(unittest.TestCase):
         self.db.commit()
         self.client = conectar_api(self, self.db)
         self.antigua_id, self.reciente_id = antigua_id, reciente_id
+        self.comentario_id = comentario_id
 
     def test_datos_publicos_resenas_ordenadas_y_reputacion(self):
         respuesta = self.client.get(f"/usuarios/{self.usuario_id}/perfil-publico")
@@ -85,6 +98,10 @@ class PerfilPublicoTests(unittest.TestCase):
             [resena["id"] for resena in datos["resenas"]],
             [str(self.reciente_id), str(self.antigua_id)]
         )
+        self.assertNotIn(
+            str(self.comentario_id),
+            [resena["id"] for resena in datos["resenas"]],
+        )
         self.assertEqual(datos["resenas"][0]["calificacion"], 4.5)
         self.assertEqual(datos["resenas"][0]["contenido_tmdb_id"], 42)
         self.assertEqual(datos["resenas"][0]["contenido_tipo"], "pelicula")
@@ -94,6 +111,15 @@ class PerfilPublicoTests(unittest.TestCase):
         )
         self.assertNotIn("email", datos)
         self.assertNotIn("password_hash", datos)
+
+    def test_servicio_excluye_comentarios_del_perfil(self):
+        perfil = obtener_perfil_publico(self.db, self.usuario_id)
+
+        self.assertEqual(
+            [resena.id for resena in perfil.resenas],
+            [self.reciente_id, self.antigua_id],
+        )
+        self.assertNotIn(self.comentario_id, [resena.id for resena in perfil.resenas])
 
     def test_usuario_inexistente(self):
         respuesta = self.client.get(f"/usuarios/{uuid4()}/perfil-publico")

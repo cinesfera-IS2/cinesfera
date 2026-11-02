@@ -98,6 +98,7 @@ def _construir_perfil_publico(
         select(Resena).where(
             Resena.usuario_id == usuario_id,
             Resena.estado == EstadoResena.VISIBLE,
+            Resena.resena_padre_id.is_(None),
         )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
