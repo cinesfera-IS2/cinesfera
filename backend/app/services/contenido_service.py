@@ -371,6 +371,60 @@ def crear_resena(
     )
 
 
+def eliminar_resena_y_respuestas(db: Session, resena: Resena) -> None:
+    """Marca como eliminado todo el arbol y limpia sus valoraciones.
+
+    No confirma la transaccion: el flujo que origino la eliminacion decide
+    cuando hacer commit para que contenido y valoraciones cambien juntos.
+    """
+    resenas_del_contenido = db.scalars(
+        select(Resena).where(Resena.contenido_id == resena.contenido_id)
+    ).all()
+    respuestas_por_padre: dict[UUID, list[Resena]] = {}
+    for candidata in resenas_del_contenido:
+        if candidata.resena_padre_id is not None:
+            respuestas_por_padre.setdefault(candidata.resena_padre_id, []).append(
+                candidata
+            )
+
+    arbol: list[Resena] = []
+    pendientes = [resena]
+    visitadas: set[UUID] = set()
+    while pendientes:
+        actual = pendientes.pop()
+        if actual.id in visitadas:
+            continue
+        visitadas.add(actual.id)
+        arbol.append(actual)
+        pendientes.extend(respuestas_por_padre.get(actual.id, []))
+
+    ids_arbol = [elemento.id for elemento in arbol]
+
+    # Elimina las estrellas recibidas por cualquier reseña del árbol.
+    db.execute(
+        delete(CalificacionResena).where(
+            CalificacionResena.resena_id.in_(ids_arbol)
+        )
+    )
+
+    # Una respuesta con estrellas es también la calificación de su autor sobre
+    # la reseña padre. Se elimina aunque esa reseña padre no pertenezca al árbol.
+    for elemento in arbol:
+        if elemento.resena_padre_id is not None and elemento.calificacion is not None:
+            db.execute(
+                delete(CalificacionResena).where(
+                    CalificacionResena.usuario_id == elemento.usuario_id,
+                    CalificacionResena.resena_id == elemento.resena_padre_id,
+                )
+            )
+
+    db.execute(
+        delete(ValoracionResena).where(ValoracionResena.resena_id.in_(ids_arbol))
+    )
+    for elemento in arbol:
+        elemento.estado = EstadoResena.ELIMINADA
+
+
 def eliminar_resena(
     db: Session,
     tipo: TipoContenido,
@@ -395,21 +449,7 @@ def eliminar_resena(
         raise ResenaSinPermisoError("Solo podés eliminar tus propias reseñas")
 
     try:
-        # Una respuesta con estrellas también representa la valoración de su
-        # autor sobre la reseña padre. Al borrarla, esa valoración deja de
-        # participar en el promedio comunitario.
-        if resena.resena_padre_id is not None and resena.calificacion is not None:
-            db.execute(
-                delete(CalificacionResena).where(
-                    CalificacionResena.usuario_id == resena.usuario_id,
-                    CalificacionResena.resena_id == resena.resena_padre_id,
-                )
-            )
-
-        db.execute(
-            delete(ValoracionResena).where(ValoracionResena.resena_id == resena.id)
-        )
-        resena.estado = EstadoResena.ELIMINADA
+        eliminar_resena_y_respuestas(db, resena)
         db.commit()
     except SQLAlchemyError:
         db.rollback()

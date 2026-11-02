@@ -8,6 +8,7 @@ from app.core.enums import EstadoResena, RolUsuario
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
+from app.services.contenido_service import eliminar_resena
 from tests.utilidades import configurar_jwt, conectar_api, crear_base_en_memoria, crear_usuario
 
 
@@ -73,6 +74,39 @@ class EliminarResenaTests(unittest.TestCase):
         self.assertEqual(respuesta.status_code, 204, respuesta.text)
         self.db.refresh(resena)
         self.assertEqual(resena.estado, EstadoResena.ELIMINADA)
+
+    def test_eliminar_resena_padre_elimina_respuestas_y_calificaciones(self):
+        resena = self._crear_resena()
+        comentario = Resena(
+            id=uuid4(), usuario_id=self.otro_usuario.id,
+            contenido_id=self.contenido.id, resena_padre_id=resena.id,
+            plataforma_id=None, calificacion=Decimal("4.5"),
+            texto="Comentario de otra persona", fecha=datetime.now(timezone.utc),
+        )
+        respuesta = Resena(
+            id=uuid4(), usuario_id=self.admin.id,
+            contenido_id=self.contenido.id, resena_padre_id=comentario.id,
+            plataforma_id=None, calificacion=None,
+            texto="Respuesta al comentario", fecha=datetime.now(timezone.utc),
+        )
+        calificacion = CalificacionResena(
+            usuario_id=self.otro_usuario.id,
+            resena_id=resena.id,
+            calificacion=Decimal("4.5"),
+            fecha_actualizacion=datetime.now(timezone.utc),
+        )
+        self.db.add_all([comentario, respuesta, calificacion])
+        self.db.commit()
+
+        eliminar_resena(
+            self.db, "pelicula", self.contenido.tmdb_id, resena.id, self.autor
+        )
+
+        self.assertIsNone(
+            self.db.get(CalificacionResena, (self.otro_usuario.id, resena.id))
+        )
+        self.assertEqual(comentario.estado, EstadoResena.ELIMINADA)
+        self.assertEqual(respuesta.estado, EstadoResena.ELIMINADA)
 
     def test_usuario_no_puede_eliminar_una_resena_ajena(self):
         resena = self._crear_resena()

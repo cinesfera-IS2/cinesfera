@@ -17,7 +17,7 @@ from app.core.enums import (
 )
 from app.models.contenido import Contenido
 from app.models.moderacion import AuditoriaModeracion, Reporte
-from app.models.resena import Resena
+from app.models.resena import CalificacionResena, Resena, ValoracionResena
 from app.models.usuario import Usuario
 from app.routers.administracion import (
     accionar_usuario_directamente,
@@ -53,7 +53,8 @@ from tests.utilidades import crear_base_en_memoria, crear_usuario
 class ModeracionServiceTests(unittest.TestCase):
     def setUp(self):
         self.db = crear_base_en_memoria(
-            self, Usuario, Contenido, Resena, Reporte, AuditoriaModeracion
+            self, Usuario, Contenido, Resena, CalificacionResena, ValoracionResena,
+            Reporte, AuditoriaModeracion,
         )
         self.reportante = crear_usuario(self.db, "reportante")
         self.otro_reportante = crear_usuario(self.db, "otro.reportante")
@@ -122,6 +123,40 @@ class ModeracionServiceTests(unittest.TestCase):
         self.assertEqual(auditoria.administrador_id, self.admin.id)
         self.assertEqual(auditoria.estado_anterior, "visible")
         self.assertEqual(auditoria.estado_nuevo, "oculta")
+
+    @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
+    def test_eliminar_resena_padre_por_moderacion_elimina_respuestas_y_calificaciones(self):
+        comentario = Resena(
+            id=uuid4(), usuario_id=self.otro_reportante.id, contenido_id=1,
+            resena_padre_id=self.resena.id, plataforma_id=None,
+            calificacion=Decimal("3.5"), texto="Comentario a eliminar",
+            fecha=datetime.now(timezone.utc), estado=EstadoResena.VISIBLE,
+        )
+        calificacion = CalificacionResena(
+            usuario_id=self.reportante.id,
+            resena_id=self.resena.id,
+            calificacion=Decimal("3.5"),
+            fecha_actualizacion=datetime.now(timezone.utc),
+        )
+        self.db.add_all([comentario, calificacion])
+        self.db.commit()
+        reporte = crear_reporte(self.db, self.otro_reportante, self._datos_comentario())
+
+        aplicar_accion(
+            self.db,
+            reporte,
+            self.admin,
+            AccionReporteEntrada(
+                accion=AccionModeracion.ELIMINAR_COMENTARIO,
+                motivo="Retiro definitivo",
+            ),
+        )
+
+        self.assertEqual(self.resena.estado, EstadoResena.ELIMINADA)
+        self.assertIsNone(
+            self.db.get(CalificacionResena, (self.reportante.id, self.resena.id))
+        )
+        self.assertEqual(comentario.estado, EstadoResena.ELIMINADA)
 
     @patch("app.services.moderacion_service.settings.limite_reportes_diarios", 20)
     def test_detalle_agrupa_denunciantes_estado_e_historial(self):

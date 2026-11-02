@@ -10,6 +10,13 @@ por reseña, y refleja las altas y ediciones en la siguiente consulta. Los
 comentarios sin estrellas y los votos positivos/negativos (`valoracion`) no
 participan en este promedio. Requiere la migración `004_calificaciones_comunidad.sql`.
 
+## Eliminación de reseñas y respuestas
+
+Eliminar una reseña marca como eliminados también todos sus comentarios y
+respuestas anidadas, y quita sus calificaciones asociadas en la misma
+transacción. Para reparar datos creados antes de este comportamiento, aplicar
+una vez `migrations/007_propagar_eliminacion_resenas.sql`.
+
 ## Requisitos
 
 - Python 3.10 o superior (en desarrollo se usa Python 3.14)
