@@ -19,6 +19,7 @@ class ContentResponse(BaseModel):
     title: str
     content_type: str
     release_date: str | None
+    upcoming: bool
     summary: str | None
     poster_url: str | None
     tmdb_id: int

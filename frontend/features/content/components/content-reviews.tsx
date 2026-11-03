@@ -14,10 +14,11 @@ import { agruparResenas } from "@/features/content/lib/agrupar-resenas";
 
 type ContentReviewsProps = {
   usuario: UsuarioSesion | null;
+  proximamente?: boolean;
 };
 
 
-export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
+export function ContentReviews({ usuario, proximamente = false }: Readonly<ContentReviewsProps>) {
   const resenas = useResenas();
 
   if (!resenas) {
@@ -81,7 +82,9 @@ export function ContentReviews({ usuario }: Readonly<ContentReviewsProps>) {
             Todavía no existen reseñas
           </h3>
           <p className="mt-2 max-w-sm text-sm text-ink-400">
-            Sé la primera persona en compartir qué te pareció este contenido.
+            {proximamente
+              ? "Las reseñas se habilitan cuando se estrene."
+              : "Sé la primera persona en compartir qué te pareció este contenido."}
           </p>
         </div>
       )}

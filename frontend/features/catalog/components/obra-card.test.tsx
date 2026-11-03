@@ -22,6 +22,15 @@ describe("ObraCard", () => {
     expect(screen.getByText("1999")).toBeTruthy();
   });
 
+  it("marca como próximamente lo que todavía no se estrenó", () => {
+    render(<ObraCard obra={{ ...OBRA, proximamente: true }} />);
+    expect(screen.getByText("Próximamente")).toBeTruthy();
+
+    cleanup();
+    render(<ObraCard obra={OBRA} />);
+    expect(screen.queryByText("Próximamente")).toBeNull();
+  });
+
   it("sin fecha de estreno no muestra el año", () => {
     render(<ObraCard obra={{ ...OBRA, fechaEstreno: null }} />);
 

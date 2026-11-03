@@ -19,6 +19,7 @@ const PELICULA: ContenidoDetalle = {
   titulo_original: "Fight Club",
   sinopsis: "Una sinopsis de prueba.",
   fecha_estreno: "1999-10-15",
+  proximamente: false,
   poster_url: "https://image.tmdb.org/t/p/w500/poster.jpg",
   portada_url: "https://image.tmdb.org/t/p/original/portada.jpg",
   generos: [{ id: 18, nombre: "Drama" }],

@@ -97,6 +97,26 @@ class CrearResenaTests(unittest.TestCase):
         self.assertEqual(self._cantidad_resenas(), 0)
 
     @patch("app.services.contenido_service.obtener_detalle_contenido")
+    def test_contenido_no_estrenado_no_admite_resenas(self, detalle):
+        detalle.return_value.proximamente = True
+
+        respuesta = self.client.post(
+            "/contenidos/pelicula/999999/resenas",
+            json=self.datos,
+            headers=self.headers,
+        )
+
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            "Todavía no se puede reseñar un contenido que no se estrenó",
+        )
+        self.assertEqual(self._cantidad_resenas(), 0)
+        self.assertIsNone(
+            self.db.scalar(select(Contenido).where(Contenido.tmdb_id == 999999))
+        )
+
+    @patch("app.services.contenido_service.obtener_detalle_contenido")
     def test_guarda_respuesta_a_una_resena_del_mismo_contenido(self, _detalle):
         padre = Resena(
             id=uuid4(),

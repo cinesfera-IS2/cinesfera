@@ -2,6 +2,7 @@ import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import Image from "next/image";
 import Link from "next/link";
 
+import { EtiquetaProximamente } from "@/features/catalog/components/etiqueta-proximamente";
 import { PosterNoDisponible } from "@/features/catalog/components/poster-no-disponible";
 import { PuntajeComunidad } from "@/features/content/components/puntaje-comunidad";
 import {
@@ -77,6 +78,7 @@ export function ContentHero({ contenido }: ContentHeroProps) {
           </div>
 
           <div className="min-w-0 max-w-3xl pb-1">
+            {contenido.proximamente && <EtiquetaProximamente className="mb-4" />}
             <h1 className="font-display text-4xl leading-[1.05] font-extrabold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">
               {contenido.titulo}
             </h1>

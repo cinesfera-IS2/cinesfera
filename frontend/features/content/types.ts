@@ -12,6 +12,7 @@ export type ContenidoDetalle = {
   titulo_original: string;
   sinopsis: string;
   fecha_estreno: string | null;
+  proximamente: boolean;
   poster_url: string | null;
   portada_url: string | null;
   generos: GeneroContenido[];

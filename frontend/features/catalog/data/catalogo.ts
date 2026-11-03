@@ -22,6 +22,7 @@ type ContenidoApi = {
   title: string;
   content_type: "movie" | "series";
   release_date: string | null;
+  upcoming: boolean;
   summary: string | null;
   poster_url: string | null;
   tmdb_id: number;
@@ -43,6 +44,7 @@ function aObra(contenido: ContenidoApi, indice: number): Obra {
     tipo: contenido.content_type === "series" ? "serie" : "pelicula",
     titulo: contenido.title,
     fechaEstreno: contenido.release_date || null,
+    proximamente: contenido.upcoming,
     poster: contenido.poster_url ?? undefined,
     posterGradient: DEGRADADOS[indice % DEGRADADOS.length],
   };

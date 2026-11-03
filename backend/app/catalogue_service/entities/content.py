@@ -1,4 +1,7 @@
 
+from app.core.estrenos import es_proximo_estreno
+
+
 class Content:
     def __init__(self, title, content_type, release_date, summary, poster_url, tmdb_id):
         self.__title = title
@@ -22,6 +25,10 @@ class Content:
     @property
     def release_date(self):
         return self.__release_date
+
+    @property
+    def upcoming(self):
+        return es_proximo_estreno(self.__release_date)
 
     @property
     def summary(self):

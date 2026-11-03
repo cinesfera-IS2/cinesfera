@@ -44,6 +44,7 @@ export type Obra = {
   titulo: string;
   /** `AAAA-MM-DD`. En las series es la fecha del primer episodio. */
   fechaEstreno: string | null;
+  proximamente?: boolean;
   poster?: string;
   /** Degradado de respaldo para las obras que TMDB no tiene con póster. */
   posterGradient: string;

@@ -75,7 +75,7 @@ export default async function ContentPage({
               <ContentFicha contenido={datos.contenido} usuario={usuario} />
             </div>
             <div className="lg:col-start-1">
-              <ContentReviews usuario={usuario} />
+              <ContentReviews usuario={usuario} proximamente={datos.contenido.proximamente} />
             </div>
           </div>
         </ResenasProvider>

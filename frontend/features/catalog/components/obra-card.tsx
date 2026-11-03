@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { EtiquetaProximamente } from "@/features/catalog/components/etiqueta-proximamente";
 import { PosterNoDisponible } from "@/features/catalog/components/poster-no-disponible";
 import type { Obra } from "@/features/catalog/types";
 
@@ -30,6 +31,9 @@ export function ObraCard({ obra, prioridad = false }: ObraCardProps) {
             />
           ) : (
             <PosterNoDisponible degradado={obra.posterGradient} />
+          )}
+          {obra.proximamente && (
+            <EtiquetaProximamente className="absolute top-2.5 left-2.5" />
           )}
         </div>
 

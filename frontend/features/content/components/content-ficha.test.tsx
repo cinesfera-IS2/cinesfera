@@ -19,6 +19,7 @@ const PELICULA: ContenidoDetalle = {
   titulo_original: "Fight Club",
   sinopsis: "Una sinopsis",
   fecha_estreno: "1999-10-15",
+  proximamente: false,
   poster_url: null,
   portada_url: null,
   generos: [],
@@ -84,6 +85,18 @@ describe("ContentFicha", () => {
     );
 
     expect(screen.getByRole("button", { name: "Escribir una reseña" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Iniciar sesión" })).toBeNull();
+  });
+
+  it("no deja reseñar lo que todavía no se estrenó", () => {
+    render(
+      <ResenasProvider tipo="pelicula" tmdbId={550}>
+        <ContentFicha contenido={{ ...PELICULA, proximamente: true }} usuario={USUARIO} />
+      </ResenasProvider>
+    );
+
+    expect(screen.getByText(/Todavía no se estrenó/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Escribir una reseña" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Iniciar sesión" })).toBeNull();
   });
 });
