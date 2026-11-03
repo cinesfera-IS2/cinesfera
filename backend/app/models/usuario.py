@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, JSON, DateTime, String, Text, func, text
+from sqlalchemy import Boolean, JSON, DateTime, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import (
     ENUM as PostgreSQLEnum,
     UUID as PostgreSQLUUID
@@ -125,6 +126,13 @@ class Usuario(Base):
         nullable=False,
         default=False,
         server_default=text("false")
+    )
+
+    reputacion: Mapped[Decimal] = mapped_column(
+        Numeric(3, 2),
+        nullable=False,
+        default=Decimal("0.00"),
+        server_default=text("0"),
     )
 
     fecha_registro: Mapped[datetime] = mapped_column(

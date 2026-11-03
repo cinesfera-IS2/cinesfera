@@ -24,6 +24,7 @@ from app.schemas.moderacion import (
     ReporteCreacion,
 )
 from app.core.security import generar_hash_password
+from app.services.contenido_service import eliminar_resena_y_respuestas
 
 
 class ModeracionError(Exception):
@@ -167,7 +168,10 @@ def aplicar_accion(
         if resena is None:
             raise NoEncontradoError("Comentario no encontrado")
         anterior = resena.estado.value
-        resena.estado = acciones_comentario[datos.accion]
+        if datos.accion == AccionModeracion.ELIMINAR_COMENTARIO:
+            eliminar_resena_y_respuestas(db, resena)
+        else:
+            resena.estado = acciones_comentario[datos.accion]
         registrar_auditoria(
             db, admin, datos.accion, "comentario", resena.id, datos.motivo,
             anterior, resena.estado.value, reporte.id, datos.nota_interna,

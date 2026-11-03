@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ from app.schemas.contenido import (
     ResenaContenidoRespuesta,
     TipoContenido,
 )
+from app.services.reputacion_service import recalcular_reputacion
 
 
 class ContenidoNoEncontradoError(Exception):
@@ -49,6 +50,14 @@ class ResenaPadreInvalidaError(Exception):
 
 
 class CalificacionNoEncontradaError(Exception):
+    pass
+
+
+class ResenaNoEncontradaError(Exception):
+    pass
+
+
+class ResenaSinPermisoError(Exception):
     pass
 
 
@@ -103,6 +112,7 @@ def actualizar_calificacion(
         valoracion.calificacion = datos.calificacion
         valoracion.fecha_actualizacion = datetime.now(timezone.utc)
         db.flush()
+        recalcular_reputacion(db, padre.usuario_id)
         promedio, cantidad = db.execute(
             select(func.avg(CalificacionResena.calificacion), func.count())
             .where(CalificacionResena.resena_id == resena_id)
@@ -338,6 +348,7 @@ def crear_resena(
         db.add(calificacion)
         try:
             db.flush([calificacion])
+            recalcular_reputacion(db, padre.usuario_id)
         except IntegrityError as error:
             db.rollback()
             if db.get(CalificacionResena, (usuario_id, padre.id)) is not None:
@@ -361,6 +372,107 @@ def crear_resena(
         texto=resena.texto,
         fecha=resena.fecha,
     )
+
+
+def eliminar_resena_y_respuestas(db: Session, resena: Resena) -> None:
+    """Marca como eliminado todo el arbol y limpia sus valoraciones.
+
+    No confirma la transaccion: el flujo que origino la eliminacion decide
+    cuando hacer commit para que contenido y valoraciones cambien juntos.
+    """
+    resenas_del_contenido = db.scalars(
+        select(Resena).where(Resena.contenido_id == resena.contenido_id)
+    ).all()
+    respuestas_por_padre: dict[UUID, list[Resena]] = {}
+    for candidata in resenas_del_contenido:
+        if candidata.resena_padre_id is not None:
+            respuestas_por_padre.setdefault(candidata.resena_padre_id, []).append(
+                candidata
+            )
+
+    arbol: list[Resena] = []
+    pendientes = [resena]
+    visitadas: set[UUID] = set()
+    while pendientes:
+        actual = pendientes.pop()
+        if actual.id in visitadas:
+            continue
+        visitadas.add(actual.id)
+        arbol.append(actual)
+        pendientes.extend(respuestas_por_padre.get(actual.id, []))
+
+    ids_arbol = [elemento.id for elemento in arbol]
+
+    autores_afectados = set(db.scalars(
+        select(Resena.usuario_id)
+        .join(CalificacionResena, CalificacionResena.resena_id == Resena.id)
+        .where(Resena.id.in_(ids_arbol))
+        .distinct()
+    ).all())
+    resenas_por_id = {elemento.id: elemento for elemento in resenas_del_contenido}
+    for elemento in arbol:
+        if elemento.resena_padre_id is not None and elemento.calificacion is not None:
+            padre = resenas_por_id.get(elemento.resena_padre_id)
+            if padre is not None:
+                autores_afectados.add(padre.usuario_id)
+
+    # Elimina las estrellas recibidas por cualquier reseña del árbol.
+    db.execute(
+        delete(CalificacionResena).where(
+            CalificacionResena.resena_id.in_(ids_arbol)
+        )
+    )
+
+    # Una respuesta con estrellas es también la calificación de su autor sobre
+    # la reseña padre. Se elimina aunque esa reseña padre no pertenezca al árbol.
+    for elemento in arbol:
+        if elemento.resena_padre_id is not None and elemento.calificacion is not None:
+            db.execute(
+                delete(CalificacionResena).where(
+                    CalificacionResena.usuario_id == elemento.usuario_id,
+                    CalificacionResena.resena_id == elemento.resena_padre_id,
+                )
+            )
+
+    db.execute(
+        delete(ValoracionResena).where(ValoracionResena.resena_id.in_(ids_arbol))
+    )
+    for elemento in arbol:
+        elemento.estado = EstadoResena.ELIMINADA
+    db.flush()
+    for autor_id in sorted(autores_afectados, key=str):
+        recalcular_reputacion(db, autor_id)
+
+
+def eliminar_resena(
+    db: Session,
+    tipo: TipoContenido,
+    tmdb_id: int,
+    resena_id: UUID,
+    usuario: Usuario,
+) -> None:
+    resena = db.scalar(
+        select(Resena)
+        .join(Contenido, Contenido.id == Resena.contenido_id)
+        .where(
+            Resena.id == resena_id,
+            Resena.estado == EstadoResena.VISIBLE,
+            Contenido.tipo == tipo,
+            Contenido.tmdb_id == tmdb_id,
+        )
+    )
+    if resena is None:
+        raise ResenaNoEncontradaError("Reseña no encontrada")
+
+    if usuario.rol != RolUsuario.ADMIN and resena.usuario_id != usuario.id:
+        raise ResenaSinPermisoError("Solo podés eliminar tus propias reseñas")
+
+    try:
+        eliminar_resena_y_respuestas(db, resena)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def _consultar_tmdb(ruta: str, tmdb_id: int) -> dict[str, Any]:

@@ -34,11 +34,13 @@ vi.mock("@/features/content", () => ({
   ContentFicha: () => <div>Ficha</div>,
   ResenasProvider: ({
     tmdbId,
+    usuarioId,
     children,
   }: {
     tmdbId: number;
+    usuarioId?: string;
     children: React.ReactNode;
-  }) => <div data-tmdb-id={tmdbId}>{children}</div>,
+  }) => <div data-tmdb-id={tmdbId} data-usuario-id={usuarioId}>{children}</div>,
 }));
 
 vi.mock("@/features/landing", () => ({
@@ -171,5 +173,28 @@ describe("página de contenido", () => {
   expect(
     screen.getByText(/Reseñas — Usuario: usuario-1/)
   ).toBeTruthy();
+  expect(document.querySelector("[data-usuario-id='usuario-1']")).not.toBeNull();
+});
+
+  it("no consulta valoraciones propias para una cuenta administrativa", async () => {
+    obtenerContenidoMock.mockResolvedValue(CONTENIDO);
+    obtenerSesionMock.mockResolvedValue({
+      id: "admin-1",
+      nombre: "Ada",
+      apellido: "Admin",
+      nombre_usuario: "admin",
+      email: "admin@example.com",
+      foto_url: null,
+      rol: "admin",
+    });
+
+    render(
+      await ContentPage({
+        params: Promise.resolve({ type: "pelicula", id: "550" }),
+      } as PageProps<"/content/[type]/[id]">)
+    );
+
+    expect(screen.getByText(/Reseñas — Usuario: admin-1/)).toBeTruthy();
+    expect(document.querySelector("[data-usuario-id]")).toBeNull();
 });
 });

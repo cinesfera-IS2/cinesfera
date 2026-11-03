@@ -2,13 +2,18 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { ContentReviews } from "./content-reviews";
 import { ResenasProvider } from "./resenas-provider";
 import type { ResenaContenido } from "../types";
 
 
 vi.mock("@/lib/api", () => ({
+  ApiError: class extends Error {
+    constructor(_status: number, message: string) {
+      super(message);
+    }
+  },
   apiFetch: vi.fn(),
 }));
 
@@ -39,16 +44,29 @@ const USUARIO = {
   nombre_usuario: "ana",
   email: "ana@example.com",
   foto_url: null,
+  rol: "usuario" as const,
+};
+
+const ADMIN = {
+  ...USUARIO,
+  id: "admin-1",
+  nombre_usuario: "admin",
+  email: "admin@example.com",
+  rol: "admin" as const,
 };
 
 
 function renderizar(
-  usuario: typeof USUARIO | null,
+  usuario: typeof USUARIO | typeof ADMIN | null,
   tipo: "pelicula" | "serie" = "pelicula",
   tmdbId = 550
 ) {
   return render(
-    <ResenasProvider tipo={tipo} tmdbId={tmdbId} usuarioId={usuario?.id}>
+    <ResenasProvider
+      tipo={tipo}
+      tmdbId={tmdbId}
+      usuarioId={usuario?.rol === "admin" ? undefined : usuario?.id}
+    >
       <ContentReviews usuario={usuario} />
     </ResenasProvider>
   );
@@ -57,6 +75,7 @@ function renderizar(
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   window.history.replaceState(null, "", window.location.pathname);
 });
@@ -179,6 +198,104 @@ describe("ContentReviews", () => {
     expect(
       screen.getByRole("button", { name: "Responder" })
     ).toBeTruthy();
+  });
+
+  it("permite al administrador leer y eliminar cualquier reseña sin pedir valoraciones propias", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    apiFetchMock.mockImplementation(async (ruta, opciones) => {
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf-prueba" };
+      if (opciones?.method === "DELETE") return undefined;
+      return [{
+        ...BASE,
+        id: "resena-1",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Reseña moderable",
+      }];
+    });
+
+    renderizar(ADMIN);
+
+    expect(await screen.findByText("Reseña moderable")).toBeTruthy();
+    expect(apiFetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("/valoraciones/mias"),
+      expect.anything()
+    );
+    expect(screen.queryByRole("button", { name: "Responder" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Eliminar reseña" }));
+
+    await waitFor(() => expect(apiFetchMock).toHaveBeenCalledWith(
+      "/contenidos/pelicula/550/resenas/resena-1",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: { "X-CSRF-Token": "csrf-prueba" },
+      })
+    ));
+  });
+
+  it("solo ofrece eliminar al usuario cuando la reseña es propia", async () => {
+    apiFetchMock.mockResolvedValue([
+      {
+        ...BASE,
+        id: "propia",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Reseña propia",
+      },
+      {
+        ...BASE,
+        id: "ajena",
+        fecha: "2026-10-17T12:00:00Z",
+        texto: "Reseña ajena",
+        autor: { ...BASE.autor, id: "usuario-2", nombre_usuario: "otra" },
+      },
+    ]);
+
+    renderizar(USUARIO);
+
+    const propia = (await screen.findByText("Reseña propia")).closest("article")!;
+    const ajena = screen.getByText("Reseña ajena").closest("article")!;
+    expect(within(propia).getByRole("button", { name: "Eliminar reseña" })).toBeTruthy();
+    expect(within(ajena).queryByRole("button", { name: "Eliminar reseña" })).toBeNull();
+  });
+
+  it("no elimina la reseña si se cancela la confirmación", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    apiFetchMock.mockResolvedValue([{
+      ...BASE,
+      id: "resena-1",
+      fecha: "2026-10-16T12:00:00Z",
+      texto: "Reseña moderable",
+    }]);
+
+    renderizar(ADMIN);
+    await user.click(await screen.findByRole("button", { name: "Eliminar reseña" }));
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    expect(apiFetchMock).not.toHaveBeenCalledWith("/auth/csrf", expect.anything());
+  });
+
+  it("informa el error si el servidor rechaza el borrado", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    apiFetchMock.mockImplementation(async (ruta) => {
+      if (ruta === "/auth/csrf") throw new ApiError(403, "No autorizado");
+      return [{
+        ...BASE,
+        id: "resena-1",
+        fecha: "2026-10-16T12:00:00Z",
+        texto: "Reseña moderable",
+      }];
+    });
+
+    renderizar(ADMIN);
+    await user.click(await screen.findByRole("button", { name: "Eliminar reseña" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("No autorizado");
+    expect(
+      screen.getByRole("button", { name: "Eliminar reseña" }).hasAttribute("disabled")
+    ).toBe(false);
   });
 
   it("muestra sin estrellas una reseña guardada sin calificación", async () => {

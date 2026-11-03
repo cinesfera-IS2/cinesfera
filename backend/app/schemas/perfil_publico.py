@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.enums import RolUsuario
 
@@ -28,7 +28,7 @@ class PerfilPublicoRespuesta(BaseModel):
     generos_favoritos: list[str]
     rol: RolUsuario
     fecha_registro: datetime
-    reputacion: int
+    reputacion: float = Field(ge=0, le=5)
     seguidores: int
     siguiendo: int
     resenas: list[ResenaPublica]

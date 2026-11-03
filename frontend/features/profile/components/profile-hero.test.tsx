@@ -18,6 +18,7 @@ const PERFIL: PerfilPublico = {
   nombre: "ana",
   apellido: "torres",
   rol: "usuario",
+  reputacion: 4.25,
   fechaRegistro: "2026-02-14",
   bio: "Fan de los thrillers.",
   generosFavoritos: [],
@@ -32,6 +33,7 @@ describe("ProfileHero", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "ana torres" })).toBeTruthy();
     expect(screen.getByText("@anatorres")).toBeTruthy();
+    expect(screen.getByLabelText("Reputación 4,25 de 5")).toBeTruthy();
     expect(screen.getByText("Miembro desde febrero de 2026")).toBeTruthy();
     expect(screen.getByText("Fan de los thrillers.")).toBeTruthy();
   });

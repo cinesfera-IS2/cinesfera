@@ -2,6 +2,7 @@
 
 import { ContentReviewCard } from "@/features/content/components/content-review-card";
 import { CreateContentReview } from "@/features/content/components/create-content-review";
+import { DeleteContentReview } from "@/features/content/components/delete-content-review";
 import { EditContentRating } from "@/features/content/components/edit-content-rating";
 import type { UsuarioSesion } from "@/features/auth/session";
 import type { HiloResena } from "@/features/content/lib/agrupar-resenas";
@@ -34,6 +35,9 @@ export function ContentReviewThread({
   const propia = usuarioId && esPadre
     ? calificacionesPropias.find((valoracion) => valoracion.resena_id === hilo.resena.id)
     : undefined;
+  const puedeEliminar = Boolean(
+    usuario && (usuario.rol === "admin" || usuario.id === hilo.resena.autor.id)
+  );
 
   return (
     <div>
@@ -41,28 +45,40 @@ export function ContentReviewThread({
         resena={hilo.resena}
         esRespuesta={profundidad > 0}
         acciones={
-          usuario && usuario.rol !== "admin" && (
+          usuario && (
             <>
-              <CreateContentReview
-                tipo={tipo}
-                tmdbId={tmdbId}
-                usuarioId={usuario.id}
-                resenaPadreId={hilo.resena.id}
-                permiteCalificacion={esPadre && hilo.resena.autor.id !== usuario.id && !propia}
-                subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
-                onPublicada={onPublicada}
-              />
-              {propia && (
-                <EditContentRating
+              {usuario.rol !== "admin" && (
+                <>
+                  <CreateContentReview
+                    tipo={tipo}
+                    tmdbId={tmdbId}
+                    usuarioId={usuario.id}
+                    resenaPadreId={hilo.resena.id}
+                    permiteCalificacion={esPadre && hilo.resena.autor.id !== usuario.id && !propia}
+                    subtitulo={`Respondiendo a ${hilo.resena.autor.nombre} ${hilo.resena.autor.apellido}`}
+                    onPublicada={onPublicada}
+                  />
+                  {propia && (
+                    <EditContentRating
+                      tipo={tipo}
+                      tmdbId={tmdbId}
+                      resenaId={hilo.resena.id}
+                      calificacion={propia.calificacion}
+                      onActualizada={onValoracionActualizada}
+                    />
+                  )}
+                  {usuario.id !== hilo.resena.autor.id && (
+                    <ReportButton tipo="comentario" objetivoId={hilo.resena.id} />
+                  )}
+                </>
+              )}
+              {puedeEliminar && (
+                <DeleteContentReview
                   tipo={tipo}
                   tmdbId={tmdbId}
                   resenaId={hilo.resena.id}
-                  calificacion={propia.calificacion}
-                  onActualizada={onValoracionActualizada}
+                  onEliminada={onPublicada}
                 />
-              )}
-              {usuario.id !== hilo.resena.autor.id && (
-                <ReportButton tipo="comentario" objetivoId={hilo.resena.id} />
               )}
             </>
           )

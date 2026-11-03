@@ -12,6 +12,8 @@ export type PerfilPublico = {
   email?: string;
   fotoUrl?: string;
   rol: "usuario" | "admin";
+  /** Promedio de estrellas recibidas por sus reseñas, de 0 a 5. */
+  reputacion: number;
   /** ISO `YYYY-MM-DD`. */
   fechaRegistro: string;
   bio?: string;

@@ -28,7 +28,7 @@ type PerfilPublicoApi = {
   generos_favoritos: string[];
   rol: "usuario" | "admin";
   fecha_registro: string;
-  /** Suma de los votos recibidos por todas sus reseñas. */
+  /** Promedio de estrellas recibidas por sus reseñas, de 0 a 5. */
   reputacion: number;
   seguidores: number;
   siguiendo: number;
@@ -140,6 +140,7 @@ function aPerfil(api: PerfilPublicoApi): PerfilPublico {
     apellido: api.apellido,
     fotoUrl: api.foto_url ?? undefined,
     rol: api.rol,
+    reputacion: api.reputacion,
     fechaRegistro: api.fecha_registro.slice(0, 10),
     bio: api.bio ?? undefined,
     ubicacion: api.ubicacion ?? undefined,
