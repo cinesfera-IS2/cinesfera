@@ -139,7 +139,11 @@ export function FollowButton({ usuarioId, haySesion }: FollowButtonProps) {
         aria-haspopup={estado.son_amigos ? "dialog" : undefined}
         aria-controls={estado.son_amigos ? "confirmar-dejar-amigo" : undefined}
         onClick={manejarClick}
-        className="inline-flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60"
+        className={`inline-flex items-center gap-2 rounded-full px-5 py-2 font-display text-sm font-bold text-white transition-colors disabled:cursor-wait disabled:opacity-60 ${
+          estado.son_amigos
+            ? "bg-pink-600 hover:bg-pink-700"
+            : "bg-brand-500 hover:bg-brand-600"
+        }`}
       >
         <Icono weight="bold" className="size-4" />
         {cargando ? "Cargando…" : etiqueta}
