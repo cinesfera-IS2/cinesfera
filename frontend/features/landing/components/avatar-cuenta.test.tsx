@@ -4,7 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AvatarCuenta } from "./avatar-cuenta";
 
 vi.mock("next/image", () => ({
-  default: ({ src }: { src: string }) => <span data-testid="foto" data-src={src} />,
+  default: ({ src, unoptimized }: { src: string; unoptimized?: boolean }) => (
+    <span
+      data-testid="foto"
+      data-src={src}
+      data-unoptimized={String(unoptimized)}
+    />
+  ),
 }));
 
 const USUARIO = {
@@ -31,6 +37,7 @@ describe("AvatarCuenta", () => {
     );
 
     expect(screen.getByTestId("foto").dataset.src).toBe("https://fotos.example/ana.jpg");
+    expect(screen.getByTestId("foto").dataset.unoptimized).toBe("true");
     expect(screen.queryByText("AT")).toBeNull();
   });
 });

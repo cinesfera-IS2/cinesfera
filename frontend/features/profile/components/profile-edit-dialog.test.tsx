@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   afterEach,
@@ -12,6 +12,7 @@ import {
 
 import { ProfileEditDialog } from "./profile-edit-dialog";
 import type { PerfilPublico } from "@/features/profile/types";
+import { recortarFotoPerfil } from "@/features/profile/lib/recortar-foto";
 import { apiFetch } from "@/lib/api";
 
 const { replaceMock, refreshMock } = vi.hoisted(() => ({
@@ -26,6 +27,10 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   apiFetch: vi.fn(),
+}));
+
+vi.mock("@/features/profile/lib/recortar-foto", () => ({
+  recortarFotoPerfil: vi.fn(async (archivo: File) => archivo),
 }));
 
 const PERFIL: PerfilPublico = {
@@ -53,7 +58,9 @@ const GENEROS = [
 ];
 
 function dialogo() {
-  return screen.getByRole("dialog", { hidden: true }) as HTMLDialogElement;
+  return document.querySelector(
+    'dialog[aria-labelledby="titulo-editar-perfil"]'
+  ) as HTMLDialogElement;
 }
 
 describe("ProfileEditDialog", () => {
@@ -65,6 +72,8 @@ describe("ProfileEditDialog", () => {
     HTMLDialogElement.prototype.close = function () {
       this.open = false;
     };
+    URL.createObjectURL = vi.fn(() => "blob:foto-prueba");
+    URL.revokeObjectURL = vi.fn();
   });
 
   beforeEach(() => {
@@ -77,6 +86,7 @@ describe("ProfileEditDialog", () => {
   afterEach(() => {
     cleanup();
     vi.mocked(apiFetch).mockReset();
+    vi.mocked(recortarFotoPerfil).mockClear();
     replaceMock.mockReset();
     refreshMock.mockReset();
   });
@@ -105,7 +115,7 @@ describe("ProfileEditDialog", () => {
     expect(valor("Nombre")).toBe("Ana");
     expect(valor("Apellido")).toBe("Torres");
     expect(valor("Nombre de usuario")).toBe("anatorres");
-    expect(valor("Foto de perfil (URL)")).toBe("");
+    expect(screen.getByLabelText("Subir foto")).toBeTruthy();
     expect(valor("Ubicación")).toBe("Montevideo, Uruguay");
     expect(valor("Sobre vos")).toBe("Fan de los thrillers.");
     expect(
@@ -176,6 +186,64 @@ describe("ProfileEditDialog", () => {
         generos_favoritos: ["Drama", "Comedia"],
       }),
     });
+  });
+
+  it("sube una foto válida como formulario multipart", async () => {
+    vi.mocked(apiFetch).mockImplementation(async (ruta) => {
+      if (ruta === "/contenidos/generos") return GENEROS as never;
+      if (ruta === "/auth/csrf") return { csrf_token: "csrf-prueba" } as never;
+      if (ruta === "/usuarios/u1/foto-perfil") {
+        return { nombre_usuario: "anatorres" } as never;
+      }
+      throw new Error(`Pedido inesperado: ${ruta}`);
+    });
+    await abrir();
+    const archivo = new File(["imagen"], "ana.png", { type: "image/png" });
+
+    await userEvent.upload(screen.getByLabelText("Subir foto"), archivo);
+    const recorte = screen.getByRole("dialog", {
+      name: "Ajustar foto",
+    }) as HTMLDialogElement;
+    expect(recorte).toBeTruthy();
+    expect(screen.queryByRole("slider")).toBeNull();
+    const area = screen.getByRole("img", { name: "Área de recorte de la foto" });
+    area.setPointerCapture = vi.fn();
+    area.getBoundingClientRect = () =>
+      ({ width: 400, height: 400 } as DOMRect);
+    fireEvent.pointerDown(area, { pointerId: 1, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(area, { pointerId: 1, clientX: 100, clientY: 300 });
+    await userEvent.click(screen.getByRole("button", { name: "Usar este recorte" }));
+    await waitFor(() => expect(recorte.open).toBe(false));
+    expect(screen.getByAltText("Vista previa de la foto de perfil")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled());
+    const opciones = vi.mocked(apiFetch).mock.calls[2][1];
+    expect(apiFetch).toHaveBeenNthCalledWith(
+      3,
+      "/usuarios/u1/foto-perfil",
+      expect.objectContaining({
+        method: "PUT",
+        headers: { "X-CSRF-Token": "csrf-prueba" },
+      })
+    );
+    expect(opciones?.body).toBeInstanceOf(FormData);
+    expect((opciones?.body as FormData).get("archivo")).toBe(archivo);
+    expect(recortarFotoPerfil).toHaveBeenCalledWith(archivo, { x: 75, y: 25 });
+  });
+
+  it("rechaza una foto mayor a 5 MB antes de llamar al backend", async () => {
+    await abrir();
+    const archivo = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "grande.png", {
+      type: "image/png",
+    });
+
+    await userEvent.upload(screen.getByLabelText("Subir foto"), archivo);
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "La imagen no puede superar los 5 MB"
+    );
+    expect(apiFetch).toHaveBeenCalledTimes(1);
   });
 
   it("mantiene el diálogo abierto si el backend rechaza los cambios", async () => {

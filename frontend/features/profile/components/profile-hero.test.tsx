@@ -63,7 +63,9 @@ describe("ProfileHero", () => {
       />
     );
 
-    expect(screen.getByRole("img", { name: "Foto de ana torres" })).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: "Foto de ana torres" }).getAttribute("src")
+    ).toBe("/fotos/ana.jpg");
     expect(screen.queryByText("AT")).toBeNull();
   });
 

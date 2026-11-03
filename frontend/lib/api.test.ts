@@ -54,6 +54,18 @@ describe("apiFetch", () => {
     });
   });
 
+  it("deja que el navegador defina el Content-Type de FormData", async () => {
+    const fetchFalso = simularRespuesta(200, { ok: true });
+    const formulario = new FormData();
+    formulario.append("archivo", new File(["x"], "foto.png"));
+
+    await apiFetch("/foto", { method: "PUT", body: formulario });
+
+    const [, opciones] = fetchFalso.mock.calls[0];
+    expect(opciones.body).toBe(formulario);
+    expect(opciones.headers).toBeUndefined();
+  });
+
   it("usa el detail del backend como mensaje de error", async () => {
     simularRespuesta(409, { detail: "El email ya está registrado" });
 

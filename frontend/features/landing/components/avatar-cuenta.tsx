@@ -25,6 +25,7 @@ export function AvatarCuenta({ usuario, tamano = "sm" }: Readonly<AvatarCuentaPr
           src={usuario.foto_url}
           alt=""
           fill
+          unoptimized
           sizes={esChico ? "32px" : "40px"}
           className="object-cover"
         />

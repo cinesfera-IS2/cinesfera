@@ -6,11 +6,7 @@ type ProfileAvatarProps = {
   fotoUrl?: string;
 };
 
-/**
- * Foto de perfil con las iniciales de respaldo. Cuando se habilite subir
- * fotos hay que declarar el host de `foto_url` en `images.remotePatterns`
- * (next.config.ts) o `next/image` las va a rechazar.
- */
+/** Foto de perfil con las iniciales de respaldo. */
 export function ProfileAvatar({
   nombre,
   apellido,
@@ -25,6 +21,7 @@ export function ProfileAvatar({
           src={fotoUrl}
           alt={`Foto de ${nombre} ${apellido}`}
           fill
+          unoptimized
           sizes="128px"
           className="object-cover"
         />

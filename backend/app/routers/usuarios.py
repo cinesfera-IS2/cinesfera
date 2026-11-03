@@ -1,7 +1,16 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -14,6 +23,7 @@ from app.dependencies.auth import (
     obtener_usuario_actual
 )
 from app.models.usuario import Usuario
+from app.models.foto_perfil import FotoPerfil
 from app.schemas.busqueda_usuarios import BusquedaUsuariosRespuesta
 from app.schemas.moderacion import AccionReporteEntrada
 from app.services.busqueda_usuarios import buscar_usuarios
@@ -41,6 +51,13 @@ from app.services.contenido_service import (
     normalizar_generos_favoritos,
 )
 from app.services.moderacion_service import registrar_auditoria
+from app.services.foto_perfil_service import (
+    TAMANO_MAXIMO_FOTO,
+    FotoPerfilInvalidaError,
+    eliminar_foto,
+    guardar_foto,
+    validar_foto,
+)
 
 
 router = APIRouter(
@@ -159,6 +176,73 @@ def consultar_perfil_publico(
         return obtener_perfil_publico(db, usuario_id)
     except UsuarioNoEncontradoError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/{usuario_id}/foto-perfil", response_class=Response)
+def consultar_foto_perfil(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    foto = db.get(FotoPerfil, usuario_id)
+    if foto is None:
+        raise HTTPException(status_code=404, detail="Foto de perfil no encontrada")
+
+    return Response(
+        content=foto.contenido,
+        media_type=foto.tipo_mime,
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.put(
+    "/{usuario_id}/foto-perfil",
+    response_model=UsuarioRespuesta,
+    dependencies=[Depends(verificar_csrf)],
+)
+async def subir_foto_perfil(
+    usuario_id: UUID,
+    archivo: Annotated[UploadFile, File(description="Imagen JPEG, PNG o WebP")],
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
+) -> UsuarioRespuesta:
+    _validar_dueno_perfil(usuario_id, usuario_actual)
+    contenido = await archivo.read(TAMANO_MAXIMO_FOTO + 1)
+    await archivo.close()
+    try:
+        tipo_mime = validar_foto(contenido, archivo.content_type)
+    except FotoPerfilInvalidaError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return guardar_foto(db, usuario_actual, contenido, tipo_mime)
+
+
+@router.delete(
+    "/{usuario_id}/foto-perfil",
+    response_model=UsuarioRespuesta,
+    dependencies=[Depends(verificar_csrf)],
+)
+def quitar_foto_perfil(
+    usuario_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[Usuario, Depends(obtener_usuario_actual)],
+) -> UsuarioRespuesta:
+    _validar_dueno_perfil(usuario_id, usuario_actual)
+    return eliminar_foto(db, usuario_actual)
+
+
+def _validar_dueno_perfil(usuario_id: UUID, usuario_actual: Usuario) -> None:
+    if usuario_id != usuario_actual.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permiso para actualizar este perfil",
+        )
+    if usuario_actual.rol == RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Las cuentas administrativas no tienen perfil social",
+        )
 
 
 @router.get(
