@@ -207,7 +207,7 @@ describe("CreateContentReview", () => {
     );
     await userEvent.type(screen.getByLabelText("Tu reseña"), "Genial");
 
-    expect(screen.getByText("6 / 5000")).toBeTruthy();
+    expect(screen.getByText("6 / 650")).toBeTruthy();
   });
 
   it("permite cancelar sin publicar", async () => {
