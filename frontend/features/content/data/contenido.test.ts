@@ -20,6 +20,7 @@ const CONTENIDO: ContenidoDetalle = {
   titulo_original: "Fight Club",
   sinopsis: "Una sinopsis",
   fecha_estreno: "1999-10-15",
+  proximamente: false,
   poster_url: null,
   portada_url: null,
   generos: [],

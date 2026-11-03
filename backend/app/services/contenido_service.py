@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.enums import EstadoResena, EstadoUsuario, RolUsuario
+from app.core.estrenos import es_proximo_estreno
 from app.core.tmdb import consultar_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
@@ -34,6 +35,10 @@ class ContenidoNoEncontradoError(Exception):
 
 
 class CatalogoNoDisponibleError(Exception):
+    pass
+
+
+class ContenidoNoEstrenadoError(Exception):
     pass
 
 
@@ -171,6 +176,7 @@ def obtener_detalle_contenido(
 ) -> ContenidoDetalleRespuesta:
     datos = _consultar_tmdb(RUTA_TMDB[tipo], tmdb_id)
     es_pelicula = tipo == "pelicula"
+    fecha_estreno = datos.get("release_date" if es_pelicula else "first_air_date") or None
 
     return ContenidoDetalleRespuesta(
         tmdb_id=datos["id"],
@@ -182,9 +188,8 @@ def obtener_detalle_contenido(
             or "Sin título"
         ),
         sinopsis=datos.get("overview") or "",
-        fecha_estreno=datos.get(
-            "release_date" if es_pelicula else "first_air_date"
-        ) or None,
+        fecha_estreno=fecha_estreno,
+        proximamente=es_proximo_estreno(fecha_estreno),
         poster_url=_url_imagen(datos.get("poster_path"), "w500"),
         portada_url=_url_imagen(datos.get("backdrop_path"), "original"),
         generos=[
@@ -285,10 +290,16 @@ def crear_resena(
             Contenido.tipo == tipo,
         )
     )
-    if contenido is None:
-        # Solo la primera reseña necesita incorporar el contenido desde TMDB.
-        # Responder o valorar contenido existente no depende de la red externa.
+    if contenido is None or datos.resena_padre_id is None:
+        # Una reseña nueva consulta TMDB para confirmar que ya se estrenó, aunque
+        # el contenido esté guardado. Responder o valorar no depende de la red externa.
         detalle = obtener_detalle_contenido(tipo, tmdb_id)
+        if detalle.proximamente:
+            raise ContenidoNoEstrenadoError(
+                "Todavía no se puede reseñar un contenido que no se estrenó"
+            )
+
+    if contenido is None:
         contenido = Contenido(
             tmdb_id=tmdb_id,
             tipo=tipo,

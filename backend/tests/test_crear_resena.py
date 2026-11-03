@@ -50,6 +50,8 @@ class CrearResenaTests(unittest.TestCase):
 
     @patch("app.services.contenido_service.obtener_detalle_contenido")
     def test_publica_resena_y_la_asocia_al_usuario_autenticado(self, detalle):
+        detalle.return_value.proximamente = False
+
         respuesta = self.client.post(
             "/contenidos/pelicula/550/resenas",
             json=self.datos,
@@ -68,7 +70,7 @@ class CrearResenaTests(unittest.TestCase):
         self.assertEqual(guardada.contenido_id, self.contenido.id)
         self.assertEqual(guardada.texto, self.datos["texto"])
         self.assertEqual(guardada.calificacion, Decimal("4.5000000000"))
-        detalle.assert_not_called()
+        detalle.assert_called_once_with("pelicula", 550)
 
     def test_rechaza_publicacion_sin_sesion(self):
         respuesta = self.client.post(
@@ -94,6 +96,39 @@ class CrearResenaTests(unittest.TestCase):
 
         self.assertEqual(respuesta.status_code, 404)
         self.assertEqual(respuesta.json()["detail"], "Contenido no encontrado")
+        self.assertEqual(self._cantidad_resenas(), 0)
+
+    @patch("app.services.contenido_service.obtener_detalle_contenido")
+    def test_contenido_no_estrenado_no_admite_resenas(self, detalle):
+        detalle.return_value.proximamente = True
+
+        respuesta = self.client.post(
+            "/contenidos/pelicula/999999/resenas",
+            json=self.datos,
+            headers=self.headers,
+        )
+
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertEqual(
+            respuesta.json()["detail"],
+            "Todavía no se puede reseñar un contenido que no se estrenó",
+        )
+        self.assertEqual(self._cantidad_resenas(), 0)
+        self.assertIsNone(
+            self.db.scalar(select(Contenido).where(Contenido.tmdb_id == 999999))
+        )
+
+    @patch("app.services.contenido_service.obtener_detalle_contenido")
+    def test_contenido_guardado_que_no_se_estreno_no_admite_resenas_nuevas(self, detalle):
+        detalle.return_value.proximamente = True
+
+        respuesta = self.client.post(
+            "/contenidos/pelicula/550/resenas",
+            json=self.datos,
+            headers=self.headers,
+        )
+
+        self.assertEqual(respuesta.status_code, 409)
         self.assertEqual(self._cantidad_resenas(), 0)
 
     @patch("app.services.contenido_service.obtener_detalle_contenido")

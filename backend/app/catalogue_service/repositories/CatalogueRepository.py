@@ -2,6 +2,7 @@ from datetime import date
 
 from app.catalogue_service.entities.content import Content
 from app.core.config import settings
+from app.core.estrenos import es_proximo_estreno
 from app.core.tmdb import consultar_tmdb
 
 
@@ -170,11 +171,9 @@ class CatalogueRepository:
 
     #/search no acepta tope de fecha como /discover, así que lo no estrenado se descarta acá
     def released_only(self, contents):
-        today = date.today().isoformat()
-
         return [
             content for content in contents
-            if content.release_date and content.release_date <= today
+            if content.release_date and not es_proximo_estreno(content.release_date)
         ]
 
     def search_movie_by_name(self, name, year):

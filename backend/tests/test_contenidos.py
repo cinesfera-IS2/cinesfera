@@ -238,6 +238,7 @@ class ContenidosTests(unittest.TestCase):
             titulo_original="Fight Club",
             sinopsis="Un oficinista conoce a Tyler Durden.",
             fecha_estreno="1999-10-15",
+            proximamente=False,
             poster_url="https://image.tmdb.org/t/p/w500/poster.jpg",
             portada_url=None,
             generos=[GeneroContenido(id=18, nombre="Drama")],
@@ -347,10 +348,23 @@ class ContenidosTests(unittest.TestCase):
         self.assertEqual(contenido.titulo, "Juego de tronos")
         self.assertEqual(contenido.duracion_minutos, 60)
         self.assertEqual(contenido.cantidad_temporadas, 8)
+        self.assertFalse(contenido.proximamente)
         self.assertEqual(
             contenido.poster_url,
             "https://image.tmdb.org/t/p/w500/poster.jpg",
         )
+
+    @patch("app.services.contenido_service._consultar_tmdb")
+    def test_marca_como_proximamente_lo_que_se_estrena_despues_de_hoy(self, consultar_tmdb):
+        consultar_tmdb.return_value = {"id": 9, "title": "Secuela", "release_date": "2999-01-01"}
+
+        self.assertTrue(obtener_detalle_contenido("pelicula", 9).proximamente)
+
+    @patch("app.services.contenido_service._consultar_tmdb")
+    def test_sin_fecha_de_estreno_no_se_marca_como_proximamente(self, consultar_tmdb):
+        consultar_tmdb.return_value = {"id": 9, "title": "Sin fecha", "release_date": ""}
+
+        self.assertFalse(obtener_detalle_contenido("pelicula", 9).proximamente)
 
     def test_catalogo_sin_token_informa_que_no_esta_configurado(self):
         with patch.object(settings, "tmdb_access_token", ""):

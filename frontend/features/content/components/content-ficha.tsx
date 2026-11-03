@@ -59,7 +59,11 @@ export function ContentFicha({ contenido, usuario }: Readonly<ContentFichaProps>
 
       {usuario?.rol !== "admin" && (
         <div className="mt-6 border-t border-white/5 pt-6">
-          {usuario ? (
+          {contenido.proximamente ? (
+            <p className="text-sm leading-relaxed text-ink-300">
+              Todavía no se estrenó. Vas a poder reseñarla a partir del estreno.
+            </p>
+          ) : usuario ? (
             <>
               <p className="mb-4 text-sm text-ink-300">
                 ¿Ya la viste? Contá qué te pareció.

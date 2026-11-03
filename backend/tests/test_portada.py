@@ -105,6 +105,25 @@ class PortadaTests(unittest.TestCase):
         tipos = [contenido["content_type"] for contenido in respuesta_api.json()["contents"]]
         self.assertEqual(tipos, ["series", "movie"])
 
+    def test_tendencias_y_joyas_descartan_lo_que_no_se_estreno(self, get):
+        sin_estrenar = [
+            {"id": 9, "media_type": "movie", "title": "Secuela", "release_date": "2999-01-01"},
+            {"id": 10, "media_type": "tv", "name": "Serie anunciada", "first_air_date": ""},
+        ]
+        get.side_effect = lambda url, **_: respuesta(url, TENDENCIAS + sin_estrenar)
+
+        self.assertEqual(
+            self.titulos(self.client.get("/catalogue/trending")),
+            ["Juego de tronos", "Matrix"],
+        )
+
+        get.side_effect = lambda url, **_: respuesta(url, PELICULAS_CONOCIDAS + sin_estrenar[:1])
+
+        self.assertEqual(
+            self.titulos(self.client.get("/catalogue/highlights")),
+            ["El origen", "Interstellar"],
+        )
+
     def test_tendencias_filtra_por_tipo(self, get):
         get.side_effect = lambda url, **_: respuesta(
             url, [item for item in TENDENCIAS if item["media_type"] == "tv"]
