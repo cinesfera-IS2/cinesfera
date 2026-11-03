@@ -169,6 +169,31 @@ class CatalogoTests(unittest.TestCase):
             ["Serie", "Película nueva", "Película vieja"],
         )
 
+    def test_busqueda_descarta_lo_que_todavia_no_se_estreno(self, get):
+        sin_estrenar = [
+            {"id": 4, "title": "Secuela futura", "release_date": "2999-01-01"},
+            {"id": 5, "title": "Anunciada sin fecha", "release_date": ""},
+            {"id": 6, "name": "Serie futura", "first_air_date": "2999-01-01"},
+        ]
+
+        def consultar(url, **kwargs):
+            respuesta = respuesta_tmdb(url, **kwargs)
+            datos = respuesta.json()
+            datos["results"] += [
+                contenido for contenido in sin_estrenar
+                if ("title" in contenido) == url.endswith("/movie")
+            ]
+            return httpx.Response(200, json=datos, request=respuesta.request)
+
+        get.side_effect = consultar
+
+        respuesta = self.client.get("/catalogue/?search=algo")
+
+        self.assertEqual(
+            self.titulos(respuesta),
+            ["Serie", "Película nueva", "Película vieja"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
