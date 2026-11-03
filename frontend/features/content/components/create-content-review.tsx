@@ -11,7 +11,7 @@ import { SelectorCalificacion } from "@/features/content/components/selector-cal
 import type { TipoContenido } from "@/features/content/types";
 import { ApiError, apiFetch } from "@/lib/api";
 
-const LARGO_MAXIMO = 5000;
+const LARGO_MAXIMO = 650;
 
 type CreateContentReviewProps = {
   tipo: TipoContenido;
