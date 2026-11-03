@@ -62,12 +62,16 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const esFormulario =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
   const response = await fetch(apiUrl(path), {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers: esFormulario
+      ? options.headers
+      : {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
   });
 
   const cuerpo = await response.json().catch(() => null);

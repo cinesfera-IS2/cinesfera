@@ -386,13 +386,13 @@ Los endpoints de perfil trabajan con el UUID que devuelve el registro o
   modifica solamente los campos enviados del usuario autenticado. El UUID de
   la ruta debe coincidir con el usuario del token.
 
-El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `foto_url`,
-`bio`, `ubicacion` y `generos_favoritos` (hasta cinco valores distintos que
+El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `bio`,
+`ubicacion` y `generos_favoritos` (hasta cinco valores distintos que
 deben pertenecer a la lista oficial devuelta por `GET /contenidos/generos`).
-El email y el nombre de usuario siguen siendo únicos. `foto_url` debe ser una
-URL HTTP/HTTPS pública, normalmente la obtenida después de subir la imagen a
-Supabase Storage. Para quitar la foto, biografía o ubicación se envía el campo
-correspondiente con `null`.
+El email y el nombre de usuario siguen siendo únicos. Para quitar la biografía
+o ubicación se envía el campo correspondiente con `null`. `foto_url` continúa
+aceptándose por compatibilidad con clientes anteriores, pero la interfaz usa
+los endpoints de archivo descriptos abajo.
 
 Para probar el flujo en Postman:
 
@@ -413,7 +413,6 @@ Authorization: Bearer TOKEN-DEL-LOGIN
   "nombre": "Persona",
   "apellido": "Actualizada",
   "nombre_usuario": "persona.actualizada",
-  "foto_url": "https://ejemplo.com/fotos/perfil.jpg",
   "bio": "Fan del cine independiente",
   "ubicacion": "Montevideo, Uruguay",
   "generos_favoritos": ["Drama", "Comedia"]
@@ -428,8 +427,18 @@ Respuestas relevantes:
 - `409 Conflict`: el email o el nombre de usuario ya pertenece a otra cuenta.
 - `422 Unprocessable Entity`: el cuerpo está vacío o algún dato no es válido.
 
-El cambio de foto guarda la URL de una imagen ya subida. Este endpoint no
-recibe archivos ni realiza la subida a Storage.
+La foto de perfil tiene endpoints propios:
+
+- `PUT /usuarios/{usuario_id}/foto-perfil`: recibe un multipart con el campo
+  `archivo` y reemplaza la foto actual. Admite JPEG, PNG o WebP de hasta 5 MB.
+- `DELETE /usuarios/{usuario_id}/foto-perfil`: quita la foto actual.
+- `GET /usuarios/{usuario_id}/foto-perfil`: sirve públicamente la imagen.
+
+El `PUT` y el `DELETE` requieren la sesión del dueño y el encabezado CSRF. El
+binario queda persistido en PostgreSQL y `foto_url` se actualiza con una URL
+versionada para evitar que el navegador muestre una versión anterior. La tabla
+tiene Row Level Security habilitado y no define políticas para clientes de
+Supabase: las imágenes se acceden únicamente mediante estos endpoints.
 
 `PATCH /usuarios/{usuario_id}/password` cambia la contraseña de la propia
 cuenta. Requiere `password_actual`, `password_nueva`, sesión y protección CSRF.
@@ -439,6 +448,8 @@ otra cuenta responde `403`.
 
 Las columnas de perfil se agregan a instalaciones existentes mediante
 `migrations/003_agregar_datos_perfil.sql`.
+La tabla que persiste las imágenes se crea aplicando
+`migrations/009_agregar_fotos_perfil.sql`.
 
 ## Administración de cuentas
 

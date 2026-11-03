@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 import { API_URL } from "./lib/api";
 
+const api = new URL(API_URL);
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -9,6 +11,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "image.tmdb.org",
         pathname: "/t/p/**",
+      },
+      {
+        protocol: api.protocol.replace(":", "") as "http" | "https",
+        hostname: api.hostname,
+        port: api.port,
+        pathname: "/usuarios/*/foto-perfil",
       },
     ],
   },
