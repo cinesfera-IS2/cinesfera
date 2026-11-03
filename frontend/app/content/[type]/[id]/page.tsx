@@ -78,9 +78,11 @@ export default async function ContentPage({
             <div className="lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
               <ContentFicha contenido={datos.contenido} usuario={usuario} />
             </div>
-            <div className="lg:col-start-1">
-              <ContentReviews usuario={usuario} />
-            </div>
+            {!datos.contenido.proximamente && (
+              <div className="lg:col-start-1">
+                <ContentReviews usuario={usuario} />
+              </div>
+            )}
           </div>
         </ResenasProvider>
       </main>

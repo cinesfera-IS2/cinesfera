@@ -57,6 +57,7 @@ const CONTENIDO: ContenidoDetalle = {
   titulo_original: "Fight Club",
   sinopsis: "Una sinopsis",
   fecha_estreno: "1999-10-15",
+  proximamente: false,
   poster_url: null,
   portada_url: null,
   generos: [],
@@ -139,6 +140,20 @@ describe("página de contenido", () => {
     document.querySelector("[data-tmdb-id='550']")
   ).not.toBeNull();
   expect(obtenerSesionMock).toHaveBeenCalledOnce();
+  });
+
+  it("no muestra reseñas de lo que todavía no se estrenó", async () => {
+    obtenerContenidoMock.mockResolvedValue({ ...CONTENIDO, proximamente: true });
+    obtenerSesionMock.mockResolvedValue(null);
+
+    render(
+      await ContentPage({
+        params: Promise.resolve({ type: "pelicula", id: "550" }),
+      } as PageProps<"/content/[type]/[id]">)
+    );
+
+    expect(screen.getByText("Hero: El club de la pelea")).toBeTruthy();
+    expect(screen.queryByText(/Reseñas — Usuario/)).toBeNull();
   });
 
   it("activa notFound para una ficha inexistente", async () => {

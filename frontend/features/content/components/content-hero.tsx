@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { PosterNoDisponible } from "@/features/catalog/components/poster-no-disponible";
+import { EtiquetaProximamente } from "@/features/content/components/etiqueta-proximamente";
 import { PuntajeComunidad } from "@/features/content/components/puntaje-comunidad";
 import {
   duracionLegible,
@@ -77,6 +78,7 @@ export function ContentHero({ contenido }: ContentHeroProps) {
           </div>
 
           <div className="min-w-0 max-w-3xl pb-1">
+            {contenido.proximamente && <EtiquetaProximamente className="mb-4" />}
             <h1 className="font-display text-4xl leading-[1.05] font-extrabold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">
               {contenido.titulo}
             </h1>
@@ -106,9 +108,11 @@ export function ContentHero({ contenido }: ContentHeroProps) {
               </ul>
             )}
 
-            <dl className="mt-7">
-              <PuntajeComunidad />
-            </dl>
+            {!contenido.proximamente && (
+              <dl className="mt-7">
+                <PuntajeComunidad />
+              </dl>
+            )}
           </div>
         </div>
       </div>

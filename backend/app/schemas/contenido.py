@@ -21,6 +21,7 @@ class ContenidoDetalleRespuesta(BaseModel):
     titulo_original: str
     sinopsis: str
     fecha_estreno: date | None
+    proximamente: bool
     poster_url: str | None
     portada_url: str | None
     generos: list[GeneroContenido]

@@ -19,6 +19,7 @@ const PELICULA: ContenidoDetalle = {
   titulo_original: "Fight Club",
   sinopsis: "Una sinopsis de prueba.",
   fecha_estreno: "1999-10-15",
+  proximamente: false,
   poster_url: "https://image.tmdb.org/t/p/w500/poster.jpg",
   portada_url: "https://image.tmdb.org/t/p/original/portada.jpg",
   generos: [{ id: 18, nombre: "Drama" }],
@@ -53,6 +54,17 @@ describe("ContentHero", () => {
 
     expect(screen.queryByText("TMDB")).toBeNull();
     expect(screen.queryByText("8.4")).toBeNull();
+  });
+
+  it("marca como próximamente lo que no se estrenó y no muestra puntaje", () => {
+    const { container } = render(<ContentHero contenido={PELICULA} />);
+    expect(screen.queryByText("Próximamente")).toBeNull();
+    expect(container.querySelector("dl")).not.toBeNull();
+
+    cleanup();
+    const proxima = render(<ContentHero contenido={{ ...PELICULA, proximamente: true }} />);
+    expect(screen.getByText("Próximamente")).toBeTruthy();
+    expect(proxima.container.querySelector("dl")).toBeNull();
   });
 
   it("lleva de vuelta al catálogo", () => {

@@ -22,7 +22,7 @@ class LandingRepository(CatalogueRepository):
 
         contents = [self.movie_to_content(movie) for movie in data["results"]]
 
-        return contents, min(data["total_pages"], PAGINA_MAXIMA_TMDB)
+        return self.released_only(contents), min(data["total_pages"], PAGINA_MAXIMA_TMDB)
 
     def get_trending(self, content_type, page):
         media_type = {"movie": "movie", "series": "tv"}.get(content_type, "all")
@@ -37,7 +37,7 @@ class LandingRepository(CatalogueRepository):
             elif tipo == "tv":
                 contents.append(self.series_to_content(item))
 
-        return contents, min(data["total_pages"], PAGINA_MAXIMA_TMDB)
+        return self.released_only(contents), min(data["total_pages"], PAGINA_MAXIMA_TMDB)
 
     def _get_tmdb(self, path, params):
         response = httpx.get(
