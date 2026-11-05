@@ -64,13 +64,16 @@ describe("agruparResenas", () => {
     expect(resultado[0].respuestas[0].respuestas[0].resena.id).toBe("C");
   });
 
-  it("mantiene visibles las respuestas con padres inexistentes", () => {
+  it("oculta las respuestas cuyo padre no está en el listado", () => {
     const resultado = agruparResenas([
+      crearResena("A"),
       crearResena("B", "inexistente"),
+      crearResena("C", "B"),
     ]);
 
     expect(resultado).toHaveLength(1);
-    expect(resultado[0].resena.id).toBe("B");
+    expect(resultado[0].resena.id).toBe("A");
+    expect(resultado[0].respuestas).toHaveLength(0);
   });
 
   it("evita ciclos entre reseñas", () => {

@@ -25,6 +25,12 @@ export function agruparResenas(
     const padreId = resena.resena_padre_id;
     const padre = padreId ? hilos.get(padreId) : undefined;
 
+    // Si el padre no llegó (está oculto o eliminado), la respuesta se oculta
+    // con él en vez de subir a reseña principal.
+    if (padreId && !padre) {
+      continue;
+    }
+
     if (!padre || padre === hilo) {
       principales.push(hilo);
       continue;
