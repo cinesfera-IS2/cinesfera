@@ -9,6 +9,7 @@ import { EnlaceExplorar } from "@/features/landing/components/enlace-explorar";
 import { MenuCuenta } from "@/features/landing/components/menu-cuenta";
 import { MenuMovil } from "@/features/landing/components/menu-movil";
 import { NAV_LINKS } from "@/features/landing/data/landing-content";
+import { NotificationsMenu } from "@/features/notifications/components/notifications-menu";
 
 export async function LandingHeader() {
   const sesion = await obtenerSesion();
@@ -39,6 +40,7 @@ export async function LandingHeader() {
 
           {sesion ? (
             <>
+              {sesion.rol !== "admin" && <NotificationsMenu />}
               {sesion.rol === "admin" && (
                 <Link
                   href="/admin"

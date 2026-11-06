@@ -10,6 +10,7 @@ from app.routers.seguimientos import router as seguimientos_router
 from app.routers.usuarios import router as usuarios_router
 from app.routers.reportes import router as reportes_router
 from app.routers.administracion import router as administracion_router
+from app.routers.notificaciones import router as notificaciones_router
 from app.catalogue_service.controllers.CatalogueController import router
 from app.catalogue_service.controllers.LandingController import router as landing_router
 from app.database import SessionLocal, get_db
@@ -52,6 +53,7 @@ app.include_router(seguimientos_router)
 app.include_router(usuarios_router)
 app.include_router(reportes_router)
 app.include_router(administracion_router)
+app.include_router(notificaciones_router)
 
 
 @app.get("/")

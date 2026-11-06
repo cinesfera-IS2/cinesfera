@@ -6,6 +6,9 @@ import { obtenerSesion } from "@/features/auth/session";
 import { LandingHeader } from "./landing-header";
 
 vi.mock("@/features/auth/session", () => ({ obtenerSesion: vi.fn() }));
+vi.mock("@/features/notifications/components/notifications-menu", () => ({
+  NotificationsMenu: () => <button type="button">Notificaciones</button>,
+}));
 
 describe("LandingHeader", () => {
   afterEach(() => {
@@ -54,6 +57,7 @@ describe("LandingHeader", () => {
       expect(perfil.getAttribute("href")).toBe("/profile/anatorres");
     }
     expect(screen.getAllByRole("button", { name: "Cerrar sesión" })).not.toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Notificaciones" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Acceder" })).toBeNull();
   });
 
@@ -68,5 +72,6 @@ describe("LandingHeader", () => {
     expect(screen.queryByRole("link", { name: "Mi perfil" })).toBeNull();
     expect(screen.getAllByRole("link", { name: "Administración" })).not.toHaveLength(0);
     expect(screen.getAllByRole("link", { name: "Configuración de cuenta" })).not.toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Notificaciones" })).toBeNull();
   });
 });
