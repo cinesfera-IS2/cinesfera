@@ -1,3 +1,4 @@
+import unicodedata
 from datetime import datetime
 from uuid import UUID
 
@@ -45,7 +46,13 @@ class UsuarioRegistro(BaseModel):
     @classmethod
     def limpiar_nombre_apellido(cls, valor: str) -> str:
         if isinstance(valor, str):
-            return valor.strip()
+            valor = unicodedata.normalize("NFC", valor.strip())
+            if any(
+                caracter != " "
+                and not unicodedata.category(caracter).startswith(("L", "M"))
+                for caracter in valor
+            ):
+                raise ValueError("Solo se permiten letras y espacios")
 
         return valor
 

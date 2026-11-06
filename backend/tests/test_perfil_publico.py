@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
+from app.core.enums import EstadoUsuario
 from app.models.contenido import Contenido
 from app.models.resena import Resena, ValoracionResena
 from app.models.seguimiento import Seguimiento
@@ -36,6 +37,7 @@ class PerfilPublicoTests(unittest.TestCase):
             self.db, "bea", nombre="Bea", password_hash="secreto",
             foto_url="https://example.com/foto.jpg"
         ).id
+        self.otro_id = otro_id
         antigua_id, reciente_id, ajena_id = uuid4(), uuid4(), uuid4()
         for id_, autor, fecha in (
             (antigua_id, self.usuario_id, ahora - timedelta(days=2)),
@@ -120,6 +122,19 @@ class PerfilPublicoTests(unittest.TestCase):
             [self.reciente_id, self.antigua_id],
         )
         self.assertNotIn(self.comentario_id, [resena.id for resena in perfil.resenas])
+
+    def test_contadores_excluyen_usuarios_inactivos(self):
+        otro = self.db.get(Usuario, self.otro_id)
+
+        for estado in (EstadoUsuario.SUSPENDIDO, EstadoUsuario.ELIMINADO):
+            with self.subTest(estado=estado):
+                otro.estado = estado
+                self.db.commit()
+
+                perfil = obtener_perfil_publico(self.db, self.usuario_id)
+
+                self.assertEqual(perfil.seguidores, 0)
+                self.assertEqual(perfil.siguiendo, 0)
 
     def test_usuario_inexistente(self):
         respuesta = self.client.get(f"/usuarios/{uuid4()}/perfil-publico")

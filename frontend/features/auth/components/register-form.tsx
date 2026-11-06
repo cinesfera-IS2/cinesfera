@@ -95,6 +95,8 @@ export function RegisterForm({ destino = DESTINO_POR_DEFECTO }: Readonly<Registe
             autoComplete="given-name"
             minLength={2}
             maxLength={50}
+            pattern="[\p{L}\p{M} ]+"
+            title="Solo se permiten letras y espacios."
             {...propsCampo("nombre")}
           />
 
@@ -105,6 +107,8 @@ export function RegisterForm({ destino = DESTINO_POR_DEFECTO }: Readonly<Registe
             autoComplete="family-name"
             minLength={2}
             maxLength={50}
+            pattern="[\p{L}\p{M} ]+"
+            title="Solo se permiten letras y espacios."
             {...propsCampo("apellido")}
           />
         </div>
