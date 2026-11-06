@@ -7,6 +7,7 @@ from uuid import uuid4
 import httpx
 
 from app.core.config import settings
+from app.core.enums import EstadoResena, EstadoUsuario
 from app.core.tmdb import limpiar_cache_tmdb
 from app.models.contenido import Contenido
 from app.models.resena import CalificacionResena, Resena, ValoracionResena
@@ -42,6 +43,7 @@ class ContenidosTests(unittest.TestCase):
             Contenido(id=3, tmdb_id=550, tipo="serie"),
         ])
         ana = crear_usuario(self.db, "ana", nombre="Ana", apellido="Pérez")
+        self.ana = ana
         bea = crear_usuario(self.db, "bea", nombre="Bea", apellido="Silva")
         self.reciente_id = uuid4()
         self.antigua_id = uuid4()
@@ -212,6 +214,72 @@ class ContenidosTests(unittest.TestCase):
 
         self.assertEqual(respuesta.status_code, 200, respuesta.text)
         self.assertIsNone(respuesta.json()[0]["calificacion"])
+
+    def _responder_resena_de_ana(self):
+        carla = crear_usuario(self.db, "carla")
+        respuesta_id = uuid4()
+        self.db.add(
+            Resena(
+                id=respuesta_id,
+                usuario_id=carla.id,
+                contenido_id=1,
+                resena_padre_id=self.antigua_id,
+                plataforma_id=None,
+                calificacion=None,
+                texto="Respuesta a la reseña de Ana",
+                fecha=datetime.now(timezone.utc),
+            )
+        )
+        self.db.commit()
+        return respuesta_id
+
+    def _ids_listados(self):
+        respuesta = self.client.get("/contenidos/pelicula/550/resenas")
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        return {fila["id"] for fila in respuesta.json()}
+
+    def test_respuesta_a_resena_visible_se_lista(self):
+        respuesta_id = self._responder_resena_de_ana()
+
+        self.assertIn(str(respuesta_id), self._ids_listados())
+
+    def test_usuario_eliminado_oculta_sus_resenas_y_las_respuestas(self):
+        respuesta_id = self._responder_resena_de_ana()
+        self.ana.estado = EstadoUsuario.ELIMINADO
+        self.ana.ocultar_contenido = True
+        self.db.commit()
+
+        ids = self._ids_listados()
+
+        self.assertNotIn(str(self.antigua_id), ids)
+        self.assertNotIn(str(respuesta_id), ids)
+        self.assertIn(str(self.reciente_id), ids)
+
+    def test_suspension_que_oculta_contenido_oculta_las_respuestas(self):
+        respuesta_id = self._responder_resena_de_ana()
+        self.ana.estado = EstadoUsuario.SUSPENDIDO
+        self.ana.ocultar_contenido = True
+        self.db.commit()
+
+        self.assertNotIn(str(respuesta_id), self._ids_listados())
+
+    def test_suspension_sin_ocultar_contenido_mantiene_las_respuestas(self):
+        respuesta_id = self._responder_resena_de_ana()
+        self.ana.estado = EstadoUsuario.SUSPENDIDO
+        self.ana.ocultar_contenido = False
+        self.db.commit()
+
+        ids = self._ids_listados()
+
+        self.assertIn(str(self.antigua_id), ids)
+        self.assertIn(str(respuesta_id), ids)
+
+    def test_resena_oculta_por_moderacion_oculta_sus_respuestas(self):
+        respuesta_id = self._responder_resena_de_ana()
+        self.db.get(Resena, self.antigua_id).estado = EstadoResena.OCULTA
+        self.db.commit()
+
+        self.assertNotIn(str(respuesta_id), self._ids_listados())
 
     def test_contenido_sin_resenas_devuelve_lista_vacia(self):
         respuesta = self.client.get("/contenidos/serie/404/resenas")

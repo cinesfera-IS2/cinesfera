@@ -4,9 +4,9 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import settings
 from app.core.enums import EstadoResena, EstadoUsuario, RolUsuario
@@ -206,6 +206,17 @@ def obtener_detalle_contenido(
     )
 
 
+def _resena_publica(resena, autor):
+    return and_(
+        resena.estado == EstadoResena.VISIBLE,
+        autor.rol == RolUsuario.USUARIO,
+        or_(
+            autor.estado == EstadoUsuario.ACTIVO,
+            autor.ocultar_contenido.is_(False),
+        ),
+    )
+
+
 def obtener_resenas_contenido(
     db: Session,
     tipo: TipoContenido,
@@ -232,6 +243,11 @@ def obtener_resenas_contenido(
         .subquery()
     )
 
+    # Una respuesta cuyo padre no se muestra se oculta con él; si no, el
+    # frontend la mostraría como reseña principal.
+    padre = aliased(Resena)
+    autor_padre = aliased(Usuario)
+
     filas = db.execute(
         select(
             Resena,
@@ -242,16 +258,17 @@ def obtener_resenas_contenido(
         )
         .join(Usuario, Usuario.id == Resena.usuario_id)
         .join(Contenido, Contenido.id == Resena.contenido_id)
+        .outerjoin(padre, padre.id == Resena.resena_padre_id)
+        .outerjoin(autor_padre, autor_padre.id == padre.usuario_id)
         .outerjoin(valoraciones, valoraciones.c.resena_id == Resena.id)
         .outerjoin(calificaciones, calificaciones.c.resena_id == Resena.id)
         .where(
             Contenido.tmdb_id == tmdb_id,
             Contenido.tipo == tipo,
-            Resena.estado == EstadoResena.VISIBLE,
-            Usuario.rol == RolUsuario.USUARIO,
+            _resena_publica(Resena, Usuario),
             or_(
-                Usuario.estado == EstadoUsuario.ACTIVO,
-                Usuario.ocultar_contenido.is_(False),
+                Resena.resena_padre_id.is_(None),
+                _resena_publica(padre, autor_padre),
             ),
         )
         .order_by(Resena.fecha.desc(), Resena.id.desc())
