@@ -290,6 +290,22 @@ La migración `002_reemplazar_amistades_por_seguimientos.sql` convierte cada
 amistad aceptada existente en dos seguimientos y descarta solicitudes pendientes
 o rechazadas.
 
+### Notificaciones de nuevos seguidores
+
+Cada seguimiento nuevo crea, en la misma transacción, una notificación para la
+cuenta seguida. Dejar de seguir no elimina este aviso histórico. La bandeja
+requiere una sesión activa y ofrece estos endpoints:
+
+- `GET /notificaciones`: devuelve hasta 20 avisos recientes y el total no leído;
+  el parámetro `limite` permite pedir entre 1 y 50.
+- `PATCH /notificaciones/{notificacion_id}/leer`: marca un aviso propio.
+- `PATCH /notificaciones/leer-todas`: marca toda la bandeja como leída.
+
+Los `PATCH` requieren protección CSRF cuando se autentican con cookie. Los
+avisos originados por cuentas suspendidas o eliminadas no se muestran ni se
+incluyen en el contador. Para crear la tabla en una base existente, se debe
+aplicar `migrations/010_agregar_notificaciones.sql`.
+
 ### Perfil público con reseñas
 
 `GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,

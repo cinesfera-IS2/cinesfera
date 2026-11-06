@@ -4,6 +4,7 @@ from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
 from app.models.moderacion import AuditoriaModeracion, Reporte
 from app.models.foto_perfil import FotoPerfil
+from app.models.notificacion import Notificacion
 
 __all__ = [
     "CalificacionResena",
@@ -15,4 +16,5 @@ __all__ = [
     "AuditoriaModeracion",
     "Reporte",
     "FotoPerfil",
+    "Notificacion",
 ]

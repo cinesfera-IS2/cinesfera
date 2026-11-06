@@ -5,6 +5,7 @@ from uuid import uuid4
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
 from app.main import app
+from app.models.notificacion import Notificacion
 from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
 from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
@@ -12,7 +13,7 @@ from tests.utilidades import conectar_api, crear_base_en_memoria, crear_usuario
 
 class SeguimientosTests(unittest.TestCase):
     def setUp(self):
-        self.db = crear_base_en_memoria(self, Usuario, Seguimiento)
+        self.db = crear_base_en_memoria(self, Usuario, Seguimiento, Notificacion)
         self.ana = crear_usuario(self.db, "ana", nombre="Ana")
         self.bea = crear_usuario(self.db, "bea", nombre="Bea")
         self.carla = crear_usuario(self.db, "carla", nombre="Carla")
