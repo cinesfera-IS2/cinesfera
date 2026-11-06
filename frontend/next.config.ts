@@ -5,6 +5,9 @@ import { API_URL } from "./lib/api";
 const api = new URL(API_URL);
 
 const nextConfig: NextConfig = {
+  // Los tests e2e levantan su propio `next dev` (ver playwright.config.ts) y
+  // necesitan otra carpeta para no chocar con el que ya esté corriendo.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
     remotePatterns: [
       {
