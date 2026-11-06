@@ -1,39 +1,18 @@
 # Backend (FastAPI)
 
-## Valoración comunitaria de reseñas (Scrum 123)
+API de Cinesfera: FastAPI + SQLAlchemy sobre PostgreSQL (Supabase), con los
+datos de películas y series de TMDB.
 
-`GET /contenidos/{tipo}/{tmdb_id}/resenas` incluye `promedio_comunitario`
-y `cantidad_valoraciones` en cada reseña. Por ejemplo, dos puntuaciones de
-3 y 5 devuelven `4.0` y `2`. Sin puntuaciones devuelve `null` y `0`.
-El cálculo usa las puntuaciones vigentes de `calificaciones_resenas`, agrupadas
-por reseña, y refleja las altas y ediciones en la siguiente consulta. Los
-comentarios sin estrellas y los votos positivos/negativos (`valoracion`) no
-participan en este promedio. Requiere la migración `004_calificaciones_comunidad.sql`.
+## Cómo levantar el servidor
 
-## Eliminación de reseñas y respuestas
+### Requisitos
 
-Eliminar una reseña marca como eliminados también todos sus comentarios y
-respuestas anidadas, y quita sus calificaciones asociadas en la misma
-transacción. Para reparar datos creados antes de este comportamiento, aplicar
-una vez `migrations/007_propagar_eliminacion_resenas.sql`.
+| | Obligatorio | Notas |
+| --- | --- | --- |
+| [Python](https://www.python.org/downloads/) 3.10 o superior | Sí | En desarrollo se usa 3.14 |
+| `backend/.env` con las credenciales | Sí | No está en el repo: pedíselo al equipo (ver [Variables de entorno](#variables-de-entorno)) |
 
-## Reputación por calificaciones de reseñas (HU5.1)
-
-La reputación se guarda en `usuarios.reputacion` y es el promedio de todas las
-estrellas de 0.5 a 5 recibidas por las reseñas originales del usuario. Se
-recalcula en la misma transacción al crear, editar o eliminar una calificación,
-se redondea a un máximo de dos decimales y vale `0` cuando todavía no hay
-calificaciones. Las reseñas ocultas participan; las eliminadas y los votos
-positivos/negativos de `valoraciones_resena` no participan. Aplicar la migración
-`008_agregar_reputacion_usuario.sql` para crear la columna y calcular los
-valores iniciales.
-
-## Requisitos
-
-- Python 3.10 o superior (en desarrollo se usa Python 3.14)
-- `pip`
-
-## Puesta en marcha (primera vez)
+### Primera vez
 
 1. Parate en la carpeta `backend`:
 
@@ -41,11 +20,18 @@ valores iniciales.
    cd backend
    ```
 
-2. Creá un entorno virtual (solo la primera vez):
+2. Creá el entorno virtual:
 
    ```bash
+   # macOS / Linux
    python3 -m venv .venv
+
+   # Windows
+   py -m venv .venv
    ```
+
+   Crea la carpeta `.venv` con un Python solo para este proyecto. No se sube al
+   repo: cada uno crea la suya.
 
 3. Activá el entorno virtual:
 
@@ -55,359 +41,249 @@ valores iniciales.
 
    # Windows (PowerShell)
    .venv\Scripts\Activate.ps1
+
+   # Windows (CMD)
+   .venv\Scripts\activate.bat
    ```
 
-   Vas a ver `(.venv)` al principio de la línea de tu terminal cuando esté activo. El `.venv` no se sube al repo (está en `.gitignore`), así que cada persona del equipo crea el suyo localmente.
+   Cuando está activo vas a ver `(.venv)` al principio de la línea de la
+   terminal. Desde acá, `python` y `pip` son los del entorno, en cualquier
+   sistema.
 
-4. Instalá las dependencias del proyecto:
+   > Si PowerShell dice que la ejecución de scripts está deshabilitada, corré
+   > una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y volvé a
+   > activar.
+
+4. Instalá las dependencias:
 
    ```bash
-   pip install -r requirements.txt
+   python -m pip install -r requirements.txt
    ```
 
-   Esto instala FastAPI junto con `fastapi-cli` y `uvicorn`, que son los que permiten levantar el servidor.
+   Incluye FastAPI, `fastapi-cli` y `uvicorn`, que son los que levantan el
+   servidor.
+
+5. Creá el archivo de variables y completalo:
+
+   ```bash
+   cp .env.example .env        # Windows: copy .env.example .env
+   ```
+
+   Las que tenés que completar sí o sí son las de la base, el token de TMDB y
+   `JWT_SECRET_KEY` (ver [Variables de entorno](#variables-de-entorno)). Si
+   alguien del equipo ya te pasó su `.env`, copialo en `backend/` y salteá este
+   paso.
+
+6. Levantá el servidor:
+
+   ```bash
+   fastapi dev app/main.py
+   ```
+
+   Queda corriendo con recarga automática al guardar cambios:
+
+   - API: http://localhost:8000
+   - Documentación interactiva (Swagger): http://localhost:8000/docs
+   - Documentación alternativa (ReDoc): http://localhost:8000/redoc
+
+   Alternativa equivalente: `uvicorn app.main:app --reload`.
+
+### Día a día
+
+```bash
+cd backend
+source .venv/bin/activate      # Windows: .venv\Scripts\Activate.ps1
+fastapi dev app/main.py
+```
+
+Volvé a correr `python -m pip install -r requirements.txt` solo si alguien
+cambió `requirements.txt`.
+
+### Problemas comunes
+
+| Síntoma | Causa | Solución |
+| --- | --- | --- |
+| `command not found: fastapi` | El entorno virtual no está activado | Activalo (paso 3) |
+| `ModuleNotFoundError` al arrancar | Faltan dependencias | `python -m pip install -r requirements.txt` |
+| `Falta configurar JWT_SECRET_KEY` al hacer login | Falta la variable en `.env` | Completala (ver abajo) |
+| El catálogo o las fichas responden `502` | Falta `TMDB_ACCESS_TOKEN` o TMDB no responde | Revisá el token en `.env` |
+| El navegador bloquea las llamadas por CORS | El origen del frontend no está en `CORS_ORIGINS` | Agregalo, separado por coma |
 
 ## Variables de entorno
 
-La configuración vive en `app/core/config.py` y se lee de dos lugares, en este
-orden de prioridad:
+La configuración se lee de dos lugares, en este orden de prioridad:
 
 1. **Variables de entorno del sistema** (es lo que inyecta Render en el deploy).
 2. **El archivo `backend/.env`** (es lo que usás en tu máquina).
 
 Por eso *no hay que tocar ninguna URL a mano al cambiar de entorno*: en local
-manda `.env`, y en Render mandan las variables del servicio.
+manda `.env`, y en Render mandan las variables del servicio. Ningún `.env` se
+versiona; en el repo solo están las plantillas `.env.example` (local) y
+`.env.production.example` (referencia de qué cargar en Render).
 
-Ningún archivo `.env` se versiona. Lo único que está en el repo son las
-plantillas `.env.example` y `.env.production.example`, sin valores reales.
+| Variable | Obligatoria | Local | Deploy (Render) |
+| --- | --- | --- | --- |
+| `DB_HOST` / `DB_USER` / `DB_PASSWORD` | **Sí** | Datos de Supabase | Datos de Supabase |
+| `DB_PORT` / `DB_NAME` | No | `5432` / `postgres` | Igual |
+| `DB_SSLMODE` | No | `require` para Supabase; `disable` solo para un PostgreSQL local sin SSL | `require` |
+| `DATABASE_URL` | No | Cadena de conexión completa; si está, gana sobre las `DB_*` | Igual |
+| `TMDB_ACCESS_TOKEN` | **Sí** | Token de lectura de TMDB ("API Read Access Token") | Igual |
+| `JWT_SECRET_KEY` | **Sí** | Cualquier texto largo y secreto | Uno distinto al local |
+| `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES` | No | `HS256` / `30` | Igual |
+| `ENVIRONMENT` | No | `local` | `production` |
+| `API_URL` | No | `http://localhost:8000` | `https://cinesfera.onrender.com` |
+| `CORS_ORIGINS` | No | `http://localhost:3000` (varios, separados por coma) | URL del frontend publicado |
+| `COOKIE_SECURE` / `COOKIE_SAMESITE` | No | `false` / `lax` | `true` / `lax` |
+| `TMDB_FORCE_IPV4` | No | `true` (ver [Conexión con TMDB](#conexión-con-tmdb)) | Igual |
+| `ADMIN_INICIAL_EMAIL` / `ADMIN_INICIAL_PASSWORD` / `ADMIN_INICIAL_USUARIO` | No | Van las tres juntas o ninguna (ver [Administrador principal](#administrador-principal-y-moderación)) | Igual |
+| `ADMIN_INICIAL_NOMBRE` / `ADMIN_INICIAL_APELLIDO` | No | `Administrador` / `Cinesfera` | Igual |
+| `LIMITE_REPORTES_DIARIOS` | No | `20` | Igual |
 
-| Variable | Local | Deploy (Render) |
-| --- | --- | --- |
-| `ENVIRONMENT` | `local` | `production` |
-| `API_URL` | `http://localhost:8000` | `https://cinesfera.onrender.com` |
-| `CORS_ORIGINS` | `http://localhost:3000` | URL del frontend publicado |
-| `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Supabase | Supabase |
-| `DB_SSLMODE` | `require` para Supabase; `disable` solo para PostgreSQL local sin SSL | `require` |
-| `DATABASE_URL` | *(opcional)* | *(opcional)* |
-| `TMDB_ACCESS_TOKEN` | Token de lectura de TMDB | Token de lectura de TMDB |
-
-`CORS_ORIGINS` acepta varios orígenes separados por coma. `DATABASE_URL`, si
-está definida, gana sobre las piezas `DB_*`; sirve para pegar directo la cadena
-de conexión que da Supabase.
-
-### Primera vez
-
-```bash
-cp .env.example .env
-```
-
-Después completá los datos de la base. El `.env` **no se versiona**.
-`.env.production.example` es solo la referencia de qué cargar en Render.
-
-## Levantar el servidor
-
-Con el entorno virtual activado:
-
-```bash
-fastapi dev app/main.py
-```
-
-Esto levanta el servidor en modo desarrollo (con recarga automática al guardar cambios) en:
-
-- API: http://localhost:8000
-- Documentación interactiva (Swagger): http://localhost:8000/docs
-- Documentación alternativa (ReDoc): http://localhost:8000/redoc
-
-Alternativa equivalente usando `uvicorn` directamente:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-## Resumen rápido (para el día a día, una vez configurado)
-
-```bash
-cd backend
-source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
-fastapi dev app/main.py
-```
-
-## Inicio de sesión
-
-`POST /auth/login` valida las credenciales y devuelve `access_token` y
-`token_type: "bearer"`. Configurá `JWT_SECRET_KEY` en el entorno del backend.
-Enviá el token como `Authorization: Bearer <access_token>` para consultar
-`GET /auth/me` o actualizar el perfil.
-
-El cuerpo JSON requiere dos campos de texto:
-
-- `identificador`: email o nombre de usuario registrado. Se eliminan los espacios
-  externos y se convierte a minúsculas. Si contiene `@`, se busca por email;
-  en caso contrario, por nombre de usuario.
-- `password`: contraseña exacta, respetando mayúsculas y espacios.
-
-### Pruebas manuales en Postman
-
-Iniciá el servidor y verificá que `backend/.env` tenga la configuración de la
-base de datos indicada en `.env.example`. La base debe tener la tabla de usuarios
-disponible; estas pruebas usan la base configurada.
-
-Para cada solicitud elegí el método `POST`, ingresá la URL completa y seleccioná
-`Body > raw > JSON`. Usá `Content-Type: application/json` y `No Auth`.
-Copiá únicamente el objeto JSON en el cuerpo de Postman.
-
-#### 1. Registrar una cuenta de prueba
-
-Esta solicitud crea un usuario en la base configurada. Podés omitirla si ya tenés
-una cuenta y reemplazar los datos de los ejemplos por sus credenciales.
-
-```http
-POST http://localhost:8000/auth/register
-Content-Type: application/json
-
-{
-  "nombre": "Persona",
-  "apellido": "Prueba",
-  "nombre_usuario": "persona.prueba",
-  "email": "persona.prueba@example.com",
-  "password": "ClaveSegura123"
-}
-```
-
-Esperado: `201 Created` con los datos del usuario. Si el email o nombre de usuario
-ya está registrado, responde `409 Conflict`; usá una cuenta cuyas credenciales
-conozcas o registrá otra con ambos identificadores diferentes.
-
-#### 2. Inicio correcto por email
-
-```http
-POST http://localhost:8000/auth/login
-Content-Type: application/json
-
-{
-  "identificador": "persona.prueba@example.com",
-  "password": "ClaveSegura123"
-}
-```
-
-Esperado: `200 OK` con `access_token` y `token_type: "bearer"`.
-Usá ese token en `GET /auth/me` para obtener `id`, `nombre`, `apellido`,
-`nombre_usuario`, `email`, `foto_url`, `rol`, `estado` y `fecha_registro`.
-No incluye contraseña ni hash.
-
-#### 3. Inicio correcto por nombre de usuario
-
-```http
-POST http://localhost:8000/auth/login
-Content-Type: application/json
-
-{
-  "identificador": "persona.prueba",
-  "password": "ClaveSegura123"
-}
-```
-
-Esperado: `200 OK` con un token para la misma cuenta del caso anterior.
-También podés probar `" PERSONA.PRUEBA "` como identificador: debe funcionar.
-
-#### 4. Contraseña incorrecta
-
-```http
-POST http://localhost:8000/auth/login
-Content-Type: application/json
-
-{
-  "identificador": "persona.prueba@example.com",
-  "password": "OtraClaveIncorrecta"
-}
-```
-
-Esperado: `401 Unauthorized` con el siguiente cuerpo. Repetí la prueba usando
-`persona.prueba` como identificador; debe devolver el mismo error.
-
-```json
-{
-  "detail": "Credenciales inválidas"
-}
-```
-
-#### 5. Email o nombre de usuario inexistente
-
-Elegí identificadores que no estén registrados en tu base.
-
-```http
-POST http://localhost:8000/auth/login
-Content-Type: application/json
-
-{
-  "identificador": "cuenta.inexistente@example.com",
-  "password": "ClaveSegura123"
-}
-```
-
-Esperado: `401 Unauthorized` con `{"detail": "Credenciales inválidas"}`.
-Repetí con `cuenta.inexistente` para verificar un nombre de usuario inexistente.
-
-Si falta `identificador` o `password`, o alguno no es texto, la validación del
-cuerpo responde `422 Unprocessable Entity`.
-
-## Pruebas automatizadas
+## Tests
 
 Desde `backend`, con el entorno virtual activado:
 
 ```bash
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -v          # todos
+python -m unittest tests.test_registro -v        # un archivo
 ```
 
-Las pruebas no conectan a Supabase ni al despliegue: cada una arma una base
-SQLite en memoria con usuarios inventados. Cubren registro, inicio de sesión,
-modificación de perfil y perfil público. Para saber cómo funcionan y cómo
-agregar una nueva, leé [`tests/README.md`](tests/README.md).
+No necesitan el servidor levantado ni el `.env`, y no se conectan a Supabase:
+cada test arma una base SQLite en memoria con usuarios inventados. Para saber
+cómo funcionan y cómo agregar uno nuevo, leé [`tests/README.md`](tests/README.md).
 
-## Perfil de usuario
+Los tests end-to-end (navegador + frontend + este backend) se corren desde
+`frontend` con `pnpm test:e2e`; ver [`frontend/README.md`](../frontend/README.md).
 
-## Seguimientos y amigos
+## Base de datos y migraciones
 
-Los seguimientos son unidireccionales y no requieren aceptación. Cuando dos
-personas se siguen mutuamente se consideran amigas; la amistad se calcula desde
-esos dos seguimientos y no se guarda por separado.
+Las tablas viven en Supabase. Los cambios de esquema están en `migrations/`, y
+cada archivo se aplica **una sola vez**, en orden, sobre una base existente
+(desde el editor SQL de Supabase, por ejemplo).
 
-- `POST /usuarios/{usuario_id}/seguir` sigue al usuario y responde `201`.
-- `DELETE /usuarios/{usuario_id}/seguir` deja de seguirlo y responde `204`.
-- `GET /usuarios/{usuario_id}/seguimiento` indica `siguiendo`, `te_sigue` y
-  `son_amigos` respecto de la sesión actual.
-- `GET /usuarios/{usuario_id}/seguidores` lista quiénes siguen al usuario.
-- `GET /usuarios/{usuario_id}/seguidos` lista a quiénes sigue.
-- `GET /usuarios/{usuario_id}/amigos` lista únicamente los seguimientos mutuos;
-  requiere sesión y solo permite consultar los amigos de la propia cuenta.
+| Migración | Qué hace |
+| --- | --- |
+| `001_agregar_resena_padre.sql` | Agrega `resena_padre_id` para poder responder reseñas |
+| `002_reemplazar_amistades_por_seguimientos.sql` | Crea `seguimientos`; convierte cada amistad aceptada en dos seguimientos y descarta las solicitudes pendientes o rechazadas |
+| `003_agregar_datos_perfil.sql` | Agrega biografía, ubicación y géneros favoritos a `usuarios` |
+| `004_calificaciones_comunidad.sql` | Crea `calificaciones_resenas` (estrellas de la comunidad) y permite comentarios sin calificación |
+| `005_administracion_moderacion.sql` | Reportes, auditoría y administrador principal |
+| `006_auditoria_suspensiones.sql` | Guarda inicio y fin de cada suspensión en la auditoría |
+| `007_propagar_eliminacion_resenas.sql` | Repara reseñas eliminadas antes de que la eliminación se propagara a sus respuestas |
+| `008_agregar_reputacion_usuario.sql` | Agrega `usuarios.reputacion` y calcula los valores iniciales |
+| `009_agregar_fotos_perfil.sql` | Crea `fotos_perfil`, donde se guardan las imágenes de perfil |
 
-Seguirse a uno mismo responde `400`, repetir un seguimiento responde `409` y
-dejar de seguir una relación inexistente responde `404`. Los cambios requieren
-autenticación y CSRF cuando se usa la cookie de sesión. Dejar de seguir rompe la
-amistad, pero conserva el seguimiento que todavía exista en la otra dirección.
+## API
 
-La migración `002_reemplazar_amistades_por_seguimientos.sql` convierte cada
-amistad aceptada existente en dos seguimientos y descarta solicitudes pendientes
-o rechazadas.
+La lista completa de endpoints, con sus cuerpos y respuestas, está en
+http://localhost:8000/docs con el servidor levantado. Acá está lo que no se ve
+ahí: reglas de negocio y cómo probar a mano.
 
-### Perfil público con reseñas
+### Autenticación
 
-`GET /usuarios/{usuario_id}/perfil-publico` devuelve el nombre, apellido,
-nombre de usuario, foto, biografía, ubicación, géneros favoritos, rol, fecha
-de registro, reputación, cantidad de seguidores, cantidad de seguidos y
-reseñas de cualquier usuario existente.
-También se puede consultar por nombre de usuario con
-`GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (por ejemplo,
-`/usuarios/por-nombre/ana/perfil-publico`). La búsqueda ignora mayúsculas y
-minúsculas y exige el nombre completo; si no existe, responde `404`.
-No requiere token. Las reseñas se ordenan por `fecha` descendente; ante fechas
-iguales, por `id` descendente. El perfil incluye únicamente reseñas originales
-publicadas por el usuario; sus comentarios y respuestas no aparecen. Cada
-reseña incluye `id`, `contenido_tmdb_id`,
-`contenido_tipo`, `contenido_titulo`, `plataforma_id`, `calificacion`, `texto`
-y `fecha`. La reputación es el promedio persistido de las estrellas recibidas,
-con un máximo de dos decimales; si no tiene calificaciones, es `0`. No se
-devuelve el email ni la contraseña.
+| Endpoint | Qué hace |
+| --- | --- |
+| `POST /auth/register` | Crea una cuenta. Email y nombre de usuario son únicos (`409` si se repiten) |
+| `POST /auth/login` | Valida las credenciales y deja la sesión en la cookie `access_token` |
+| `GET /auth/me` | Devuelve el usuario de la sesión |
+| `POST /auth/logout` | Borra la cookie de sesión |
+| `GET /auth/csrf` | Devuelve el token CSRF de la sesión actual |
 
-Para probarlo vos misma en Postman:
+El login recibe dos campos de texto:
 
-1. Conseguí el UUID de otra cuenta desde una respuesta de registro o desde la
-   tabla `usuarios` de Supabase.
-2. Creá una petición `GET` a
-   `http://localhost:8000/usuarios/UUID-DE-OTRA-CUENTA/perfil-publico`, con
-   `Authorization > No Auth` y sin body.
-3. Esperá `200 OK`. Verificá `nombre`, `foto_url`, `reputacion` y que las fechas
-   del arreglo `resenas` vayan de la más nueva a la más vieja. Si la cuenta no
-   tiene reseñas, `resenas` será `[]` y `reputacion` será `0`.
-4. Repetí con un UUID inexistente: debe responder `404 Not Found` con
-   `{"detail":"Usuario no encontrado"}`.
+- `identificador`: email o nombre de usuario. Se le quitan los espacios
+  externos y se pasa a minúsculas. Si contiene `@` se busca por email; si no,
+  por nombre de usuario.
+- `password`: la contraseña exacta, respetando mayúsculas y espacios.
 
-La respuesta identifica cada contenido con su tipo e ID de TMDB. El frontend
-usa esos datos para consultar la ficha actual y mostrar título, año y póster;
-`contenido_titulo` queda como respaldo si TMDB no está disponible.
+Responde `{"mensaje": ..., "csrf_token": ..., "rol": ...}`. Las peticiones que
+modifican datos con la sesión de la cookie tienen que mandar ese `csrf_token`
+en el encabezado `X-CSRF-Token`. La API también acepta el token de sesión como
+`Authorization: Bearer <token>`; en ese caso no hace falta el CSRF.
 
-## Ficha de película o serie
+Una cuenta suspendida o eliminada no puede iniciar sesión ni seguir usando una
+sesión ya abierta.
 
-La ficha consume dos endpoints públicos e independientes:
+#### Probar a mano en Postman
 
-- `GET /contenidos/generos` combina las listas oficiales de géneros de
-  películas y series de TMDB. La respuesta se conserva en memoria durante la
-  vida del proceso para evitar consultas repetidas.
-- `GET /contenidos/{tipo}/{tmdb_id}` obtiene el detalle desde TMDB. `tipo`
-  admite `pelicula` o `serie`.
-- `GET /contenidos/{tipo}/{tmdb_id}/resenas` obtiene las reseñas locales,
-  incluyendo su autor y la suma de valoraciones. La lista se ordena por
-  `fecha` descendente y, para fechas iguales, por `id` descendente. Si no hay
-  reseñas devuelve `[]`.
+Con el servidor levantado, elegí `POST`, `Body > raw > JSON` y `No Auth`.
+Postman guarda solo la cookie del login, así que las peticiones siguientes a
+`localhost:8000` ya van con la sesión.
 
-La consulta a TMDB necesita `TMDB_ACCESS_TOKEN`. Un ID inexistente devuelve
-`404`; si TMDB no está configurado o no responde, la ficha devuelve `502`. El
-endpoint de reseñas sigue disponible aunque TMDB tenga una incidencia.
+1. **Registrar una cuenta de prueba** (se crea en la base configurada en tu
+   `.env`). Podés saltearlo si ya tenés una cuenta.
 
-Ejemplos:
+   ```http
+   POST http://localhost:8000/auth/register
 
-```http
-GET http://localhost:8000/contenidos/pelicula/550
-GET http://localhost:8000/contenidos/generos
-GET http://localhost:8000/contenidos/pelicula/550/resenas
-GET http://localhost:8000/contenidos/serie/1399
-GET http://localhost:8000/contenidos/serie/1399/resenas
-```
+   {
+     "nombre": "Persona",
+     "apellido": "Prueba",
+     "nombre_usuario": "persona.prueba",
+     "email": "persona.prueba@example.com",
+     "password": "ClaveSegura123"
+   }
+   ```
 
-### Publicar una reseña
+   Esperado: `201 Created` con los datos del usuario. Si el email o el nombre de
+   usuario ya existen: `409 Conflict`.
 
-`POST /contenidos/{tipo}/{tmdb_id}/resenas` publica una reseña o una respuesta.
-Requiere una sesión válida y, si la autenticación proviene de una cookie, el
-encabezado `X-CSRF-Token`. El `usuario_id` del cuerpo debe coincidir con el de
-la sesión; la API nunca permite publicar en nombre de otra cuenta.
+2. **Login por email**: `{"identificador": "persona.prueba@example.com", "password": "ClaveSegura123"}`
+   a `POST /auth/login`. Esperado: `200 OK` con `mensaje`, `csrf_token` y `rol`.
+   Después, `GET /auth/me` devuelve `id`, `nombre`, `apellido`,
+   `nombre_usuario`, `email`, `foto_url`, `rol`, `estado` y `fecha_registro`
+   (nunca la contraseña ni su hash).
 
-```json
-{
-  "usuario_id": "d25f6b52-b42a-4a22-98a5-92559be9815b",
-  "texto": "Una película inolvidable",
-  "calificacion": 4.5,
-  "plataforma_id": 2,
-  "resena_padre_id": null
-}
-```
+3. **Login por nombre de usuario**: igual, con `"identificador": "persona.prueba"`.
+   También tiene que funcionar con `" PERSONA.PRUEBA "`.
 
-Antes de guardar, la API comprueba que la película o serie exista en TMDB. Si
-`resena_padre_id` tiene valor, también comprueba que esa reseña exista y
-pertenezca al mismo contenido. La respuesta exitosa usa estado `201`.
+4. **Contraseña incorrecta**: `401 Unauthorized` con
+   `{"detail": "Credenciales inválidas"}`, tanto por email como por nombre de
+   usuario.
 
-Para habilitar respuestas en una base ya creada, se debe aplicar
-`migrations/001_agregar_resena_padre.sql`.
+5. **Cuenta inexistente** (`cuenta.inexistente@example.com` o
+   `cuenta.inexistente`): el mismo `401` con `Credenciales inválidas`.
 
-Los endpoints de perfil trabajan con el UUID que devuelve el registro o
-`GET /auth/me`:
+Si falta `identificador` o `password`, o alguno no es texto, responde
+`422 Unprocessable Entity`.
 
-- `GET /usuarios/{usuario_id}/perfil`: obtiene los datos públicos del usuario.
-- `PATCH /usuarios/{usuario_id}/perfil`: requiere el token Bearer del login y
-  modifica solamente los campos enviados del usuario autenticado. El UUID de
-  la ruta debe coincidir con el usuario del token.
+### Perfil de usuario
 
-El `PATCH` acepta `nombre`, `apellido`, `nombre_usuario`, `email`, `bio`,
-`ubicacion` y `generos_favoritos` (hasta cinco valores distintos que
-deben pertenecer a la lista oficial devuelta por `GET /contenidos/generos`).
-El email y el nombre de usuario siguen siendo únicos. Para quitar la biografía
-o ubicación se envía el campo correspondiente con `null`. `foto_url` continúa
-aceptándose por compatibilidad con clientes anteriores, pero la interfaz usa
-los endpoints de archivo descriptos abajo.
+Trabajan con el UUID que devuelven el registro o `GET /auth/me`.
 
-Para probar el flujo en Postman:
+| Endpoint | Qué hace |
+| --- | --- |
+| `GET /usuarios/{usuario_id}/perfil` | Datos públicos del usuario |
+| `PATCH /usuarios/{usuario_id}/perfil` | Modifica solo los campos enviados de la propia cuenta |
+| `PATCH /usuarios/{usuario_id}/password` | Cambia la contraseña de la propia cuenta |
+| `PUT /usuarios/{usuario_id}/foto-perfil` | Reemplaza la foto (multipart, campo `archivo`) |
+| `DELETE /usuarios/{usuario_id}/foto-perfil` | Quita la foto |
+| `GET /usuarios/{usuario_id}/foto-perfil` | Sirve la imagen, sin sesión |
 
-1. Ejecutá `POST /auth/login` y copiá `access_token`.
-2. Seleccioná `Authorization > Bearer Token`, pegá el token y ejecutá
-   `GET /auth/me` para obtener el UUID de tu cuenta.
-3. Ejecutá el siguiente `PATCH` con ese UUID y el mismo Bearer Token.
-4. Consultá nuevamente `GET /auth/me` para verificar los cambios.
+Todos los que modifican requieren la sesión del dueño y el encabezado CSRF.
 
-Ejemplo:
+**Modificar el perfil.** Acepta `nombre`, `apellido`, `nombre_usuario`,
+`email`, `bio`, `ubicacion` y `generos_favoritos` (hasta cinco distintos, de la
+lista oficial de `GET /contenidos/generos`). Email y nombre de usuario siguen
+siendo únicos. Para quitar la biografía o la ubicación se envía el campo con
+`null`. `foto_url` se sigue aceptando por compatibilidad con clientes
+anteriores, pero la interfaz usa los endpoints de foto.
+
+| Respuesta | Cuándo |
+| --- | --- |
+| `200 OK` | Devuelve el perfil actualizado |
+| `401 Unauthorized` | No hay sesión, expiró o el usuario ya no existe |
+| `403 Forbidden` | El UUID corresponde a otro perfil |
+| `409 Conflict` | El email o el nombre de usuario ya pertenecen a otra cuenta |
+| `422 Unprocessable Entity` | El cuerpo está vacío o algún dato no es válido |
+
+Para probarlo en Postman: hacé login, copiá el `csrf_token`, sacá tu UUID con
+`GET /auth/me` y mandá el `PATCH` con el encabezado `X-CSRF-Token`:
 
 ```http
 PATCH http://localhost:8000/usuarios/UUID-DEL-USUARIO/perfil
 Content-Type: application/json
-Authorization: Bearer TOKEN-DEL-LOGIN
+X-CSRF-Token: CSRF-TOKEN-DEL-LOGIN
 
 {
   "nombre": "Persona",
@@ -419,92 +295,191 @@ Authorization: Bearer TOKEN-DEL-LOGIN
 }
 ```
 
-Respuestas relevantes:
+Después, `GET /auth/me` tiene que mostrar los cambios.
 
-- `200 OK`: devuelve el perfil actualizado.
-- `401 Unauthorized`: falta el token, es inválido o expiró, o su usuario ya no existe.
-- `403 Forbidden`: el UUID solicitado corresponde a otro perfil.
-- `409 Conflict`: el email o el nombre de usuario ya pertenece a otra cuenta.
-- `422 Unprocessable Entity`: el cuerpo está vacío o algún dato no es válido.
+**Contraseña.** Requiere `password_actual` y `password_nueva`. La nueva debe
+tener entre 8 y 128 caracteres y ser distinta de la actual. Una contraseña
+actual incorrecta responde `400`; intentar cambiar la de otra cuenta, `403`.
 
-La foto de perfil tiene endpoints propios:
+**Foto.** Admite JPEG, PNG o WebP de hasta 5 MB. El binario se guarda en
+PostgreSQL y `foto_url` se actualiza con una URL versionada, para que el
+navegador no muestre una versión vieja. La tabla tiene Row Level Security sin
+políticas para clientes de Supabase: las imágenes solo se acceden por estos
+endpoints.
 
-- `PUT /usuarios/{usuario_id}/foto-perfil`: recibe un multipart con el campo
-  `archivo` y reemplaza la foto actual. Admite JPEG, PNG o WebP de hasta 5 MB.
-- `DELETE /usuarios/{usuario_id}/foto-perfil`: quita la foto actual.
-- `GET /usuarios/{usuario_id}/foto-perfil`: sirve públicamente la imagen.
+### Perfil público con reseñas
 
-El `PUT` y el `DELETE` requieren la sesión del dueño y el encabezado CSRF. El
-binario queda persistido en PostgreSQL y `foto_url` se actualiza con una URL
-versionada para evitar que el navegador muestre una versión anterior. La tabla
-tiene Row Level Security habilitado y no define políticas para clientes de
-Supabase: las imágenes se acceden únicamente mediante estos endpoints.
+`GET /usuarios/{usuario_id}/perfil-publico`, o por nombre de usuario con
+`GET /usuarios/por-nombre/{nombre_usuario}/perfil-publico` (no distingue
+mayúsculas y exige el nombre completo). No requiere sesión. Un usuario
+inexistente responde `404` con `{"detail": "Usuario no encontrado"}`.
 
-`PATCH /usuarios/{usuario_id}/password` cambia la contraseña de la propia
-cuenta. Requiere `password_actual`, `password_nueva`, sesión y protección CSRF.
-La contraseña nueva debe tener entre 8 y 128 caracteres y ser distinta de la
-actual. Una contraseña actual incorrecta responde `400`; intentar modificar
-otra cuenta responde `403`.
+Devuelve nombre, apellido, nombre de usuario, foto, biografía, ubicación,
+géneros favoritos, rol, fecha de registro, reputación, cantidad de seguidores y
+de seguidos, y las reseñas. Nunca el email ni la contraseña.
 
-Las columnas de perfil se agregan a instalaciones existentes mediante
-`migrations/003_agregar_datos_perfil.sql`.
-La tabla que persiste las imágenes se crea aplicando
-`migrations/009_agregar_fotos_perfil.sql`.
+- Solo incluye las reseñas originales del usuario, no sus comentarios ni
+  respuestas, ordenadas por `fecha` descendente (y por `id` descendente si
+  coinciden).
+- Cada reseña trae `id`, `contenido_tmdb_id`, `contenido_tipo`,
+  `contenido_titulo`, `plataforma_id`, `calificacion`, `texto` y `fecha`. El
+  frontend usa el tipo y el ID de TMDB para mostrar título, año y póster;
+  `contenido_titulo` queda de respaldo si TMDB no responde.
+- El perfil de una cuenta suspendida o eliminada deja de ser público.
 
-## Administración de cuentas
+### Seguimientos y amigos
 
-Las acciones de moderación requieren una sesión con rol `admin`. Si la sesión
-usa una cookie, también requieren el encabezado `X-CSRF-Token`; con Bearer no
-es necesario el token CSRF.
+Seguir es unidireccional y no requiere aceptación. Cuando dos personas se siguen
+mutuamente son amigas; la amistad se calcula a partir de esos dos seguimientos y
+no se guarda aparte.
 
-- `PATCH /usuarios/{usuario_id}/suspender` cambia la cuenta a `suspendido`.
-- `DELETE /usuarios/{usuario_id}` realiza una eliminación lógica y cambia la
-  cuenta a `eliminado`, conservando sus datos relacionados.
+| Endpoint | Qué hace |
+| --- | --- |
+| `POST /usuarios/{usuario_id}/seguir` | Sigue al usuario (`201`) |
+| `DELETE /usuarios/{usuario_id}/seguir` | Deja de seguirlo (`204`) |
+| `GET /usuarios/{usuario_id}/seguimiento` | `siguiendo`, `te_sigue` y `son_amigos` respecto de la sesión |
+| `GET /usuarios/{usuario_id}/seguidores` | Quiénes lo siguen |
+| `GET /usuarios/{usuario_id}/seguidos` | A quiénes sigue |
+| `GET /usuarios/{usuario_id}/amigos` | Solo los mutuos; requiere sesión y solo para la propia cuenta |
 
-Ambos endpoints devuelven el usuario actualizado con estado `200`. Una cuenta
-suspendida o eliminada no puede iniciar sesión ni seguir usando un token ya
-emitido. Suspender una cuenta eliminada devuelve `409 Conflict`; un UUID que no
-existe devuelve `404 Not Found`. Una cuenta autenticada sin rol de
-administrador recibe `403 Forbidden`.
+Seguirse a uno mismo responde `400`, repetir un seguimiento `409` y dejar de
+seguir una relación inexistente `404`. Los cambios requieren sesión y CSRF.
+Dejar de seguir rompe la amistad, pero conserva el seguimiento que exista en la
+otra dirección.
 
-### Administrador principal y moderación
+### Películas, series y reseñas
 
-Antes de iniciar una instalación nueva, aplicá
-`migrations/005_administracion_moderacion.sql` y configurá
-`ADMIN_INICIAL_EMAIL`, `ADMIN_INICIAL_PASSWORD` y
-`ADMIN_INICIAL_USUARIO`. Si todavía no existe ningún administrador, el arranque
-crea uno con `es_admin_principal=true`; la contraseña se transforma con el mismo
-hash seguro de las cuentas normales y nunca se guarda en texto plano. La
-operación es idempotente: si ya existe un administrador no crea otro ni cambia
-sus credenciales. La contraseña inicial debe tener al menos 12 caracteres.
+| Endpoint | Qué hace |
+| --- | --- |
+| `GET /contenidos/generos` | Géneros oficiales de películas y series de TMDB, combinados. Se guardan en memoria mientras el proceso vive |
+| `GET /contenidos/{tipo}/{tmdb_id}` | Ficha desde TMDB. `tipo` es `pelicula` o `serie` |
+| `GET /contenidos/{tipo}/{tmdb_id}/resenas` | Reseñas locales con autor, valoraciones y promedio comunitario |
+| `POST /contenidos/{tipo}/{tmdb_id}/resenas` | Publica una reseña, un comentario o una respuesta |
+| `GET /contenidos/{tipo}/{tmdb_id}/valoraciones/mias` | Estrellas vigentes de la sesión en ese contenido (`resena_id` y `calificacion`) |
+| `PATCH /contenidos/{tipo}/{tmdb_id}/resenas/{resena_id}/valoracion` | Edita una valoración propia |
 
-Solo el administrador principal puede usar `POST /admin/administradores` y
-`DELETE /admin/administradores/{usuario_id}` para crear o quitar el rol a otros
-administradores. No puede quitarse su propio rol, suspenderse ni eliminarse.
+```http
+GET http://localhost:8000/contenidos/pelicula/550
+GET http://localhost:8000/contenidos/pelicula/550/resenas
+GET http://localhost:8000/contenidos/serie/1399
+```
 
-Los usuarios normales pueden enviar `POST /reportes` para reportar un
-`comentario` (una reseña o respuesta) o un `usuario`. El motivo pertenece a una
-lista cerrada y la descripción es opcional. Una cuenta no puede reportarse a sí
-misma, reportar su propio comentario ni repetir el reporte sobre el mismo
-objetivo. `LIMITE_REPORTES_DIARIOS` limita el abuso. Crear el reporte no altera
-el contenido reportado.
+**Ficha.** Necesita `TMDB_ACCESS_TOKEN`. Un ID inexistente responde `404`; si
+TMDB no está configurado o no responde, `502`. El listado de reseñas sigue
+funcionando aunque TMDB falle.
 
-El panel privado vive en `/admin` y permite filtrar y paginar reportes, revisar
-el snapshot original, administrar usuarios y consultar la auditoría. Ocultar,
-restaurar o eliminar comentarios y suspender, reactivar o eliminar usuarios son
-acciones explícitas. Las suspensiones pueden ser permanentes o tener vencimiento.
-`ocultar_contenido` controla si se ocultan las reseñas anteriores; el perfil de
-toda cuenta suspendida o eliminada deja de ser público.
+**Listado de reseñas.** Ordenadas por `fecha` descendente (y por `id`
+descendente si coinciden); sin reseñas devuelve `[]`. Cada una incluye
+`promedio_comunitario` y `cantidad_valoraciones`: por ejemplo, puntuaciones de
+3 y 5 dan `4.0` y `2`, y sin puntuaciones `null` y `0`. El promedio usa solo las
+estrellas vigentes de `calificaciones_resenas`; los comentarios sin estrellas y
+los votos positivos/negativos (`valoraciones_resena`, una tabla independiente)
+no participan.
 
-Cada acción guarda administrador, fecha, motivo, estado anterior/nuevo y nota
-interna en `auditoria_moderacion`. No hay endpoints para modificar o borrar ese
-historial. Cuando una acción resuelve el objetivo, todos sus reportes abiertos se
-cierran. Los administradores pueden navegar y buscar en el catálogo, pero tanto
-la API como la interfaz les impiden publicar reseñas, respuestas o reportes.
+**Publicar.** Requiere sesión y, con cookie, `X-CSRF-Token`. El `usuario_id`
+del cuerpo tiene que ser el de la sesión: nunca se publica en nombre de otro.
+
+```json
+{
+  "usuario_id": "d25f6b52-b42a-4a22-98a5-92559be9815b",
+  "texto": "Una película inolvidable",
+  "calificacion": 4.5,
+  "plataforma_id": 2,
+  "resena_padre_id": null
+}
+```
+
+- **Sin `resena_padre_id`**: es una reseña original y la calificación es
+  obligatoria. Antes de guardar se comprueba que el contenido exista en TMDB
+  (si ya está en la base local, no se consulta).
+- **Con el ID de una reseña original**: es un comentario y admite una valoración
+  de 0.5 a 5 en pasos de 0.5. Comentario y valoración se guardan en una sola
+  transacción; valorar dos veces la misma reseña responde `409` sin guardar el
+  comentario. Para comentar sin valorar, omití `calificacion` o mandá `null`.
+- Se pueden responder comentarios, pero sin estrellas. Valorar una respuesta o
+  la reseña propia responde `422`.
+- La reseña padre tiene que existir y ser del mismo contenido. La respuesta
+  exitosa es `201`.
+
+**Editar una valoración.** Recibe solo `{"calificacion": 4.5}` (0.5 a 5, en
+pasos de 0.5); la identidad sale de la sesión. Modifica la fila existente y
+devuelve la puntuación, el promedio comunitario y la cantidad de valoraciones;
+el comentario, su fecha y la calificación original de la película no cambian.
+Sin sesión `401`, sin valoración propia `403`, reseña de otro contenido `404`,
+datos inválidos `422`. El frontend precarga las estrellas, permite cancelar o
+reintentar, y muestra el promedio que confirma el backend.
+
+**Eliminar.** Eliminar una reseña marca como eliminados también todos sus
+comentarios y respuestas, y quita sus calificaciones, en la misma transacción.
+
+**Reputación.** `usuarios.reputacion` es el promedio de todas las estrellas
+(0.5 a 5) que recibieron las reseñas originales del usuario, con hasta dos
+decimales, y vale `0` si no tiene. Se recalcula en la misma transacción al
+crear, editar o eliminar una calificación. Las reseñas ocultas cuentan; las
+eliminadas y los votos positivos/negativos, no.
+
+### Administración y moderación
+
+Las acciones de moderación requieren una sesión con rol `admin` y, con cookie,
+el encabezado `X-CSRF-Token`. Una cuenta sin rol de administrador recibe `403`.
+
+| Endpoint | Qué hace |
+| --- | --- |
+| `PATCH /usuarios/{usuario_id}/suspender` | Pasa la cuenta a `suspendido` |
+| `DELETE /usuarios/{usuario_id}` | Eliminación lógica: pasa la cuenta a `eliminado` y conserva sus datos |
+| `POST /admin/administradores` | Da el rol de administrador (solo el principal) |
+| `DELETE /admin/administradores/{usuario_id}` | Quita el rol de administrador (solo el principal) |
+| `POST /reportes` | Un usuario reporta un comentario o a otro usuario |
+
+Suspender y eliminar devuelven el usuario actualizado con `200`. Suspender una
+cuenta eliminada responde `409`; un UUID inexistente, `404`.
+
+#### Administrador principal y moderación
+
+Si están configuradas `ADMIN_INICIAL_EMAIL`, `ADMIN_INICIAL_PASSWORD` (12
+caracteres o más) y `ADMIN_INICIAL_USUARIO`, y todavía no hay ningún
+administrador, al arrancar se crea uno con `es_admin_principal=true` (requiere
+la migración 005). La contraseña se guarda con el mismo hash que las demás
+cuentas, nunca en texto plano. Si ya existe un administrador no crea otro ni
+cambia sus credenciales. El principal no puede quitarse su propio rol,
+suspenderse ni eliminarse.
+
+**Reportes.** El motivo es de una lista cerrada y la descripción es opcional.
+No se puede reportar a uno mismo, un comentario propio, ni repetir el reporte
+sobre el mismo objetivo. `LIMITE_REPORTES_DIARIOS` limita el abuso. Reportar
+no cambia el contenido reportado.
+
+**Panel `/admin`.** Permite filtrar y paginar reportes, ver el snapshot
+original, administrar usuarios y consultar la auditoría. Ocultar, restaurar o
+eliminar comentarios y suspender, reactivar o eliminar usuarios son siempre
+acciones explícitas. Las suspensiones pueden ser permanentes o con vencimiento;
+`ocultar_contenido` decide si se ocultan las reseñas anteriores.
+
+Cada acción guarda administrador, fecha, motivo, estado anterior y nuevo, y nota
+interna en `auditoria_moderacion`, que no se puede modificar ni borrar. Cuando
+una acción resuelve el objetivo, se cierran todos sus reportes abiertos. Los
+administradores pueden navegar y buscar en el catálogo, pero no publicar
+reseñas, respuestas ni reportes.
+
+### Conexión con TMDB
+
+El catálogo, las búsquedas y las fichas comparten un cliente HTTP persistente.
+Por defecto las conexiones salen por IPv4 (`TMDB_FORCE_IPV4=true`); para usar
+IPv4 e IPv6 indistintamente, poné `false` y reiniciá el backend.
+
+Solo se reintentan las lecturas: hasta tres intentos ante cortes, timeouts y
+respuestas 429/500/502/503/504. Las lecturas exitosas se guardan 60 segundos
+(hasta 128 combinaciones de ruta y filtros) y, ante un fallo transitorio, se
+puede usar esa misma lectura hasta cinco minutos. Los errores de autenticación y
+los contenidos inexistentes no usan ese respaldo. Las escrituras nunca se
+reintentan.
 
 ## Deploy en Render
 
-El backend está publicado en **https://cinesfera.onrender.com**.
+El backend está publicado en **https://cinesfera.onrender.com**. El servicio ya
+está creado y conectado al repo: **cada push a `main` dispara un deploy**.
+`render.yaml` (en la raíz del repo) deja la configuración escrita, para poder
+recrear el servicio si hiciera falta.
 
 | | |
 | --- | --- |
@@ -512,16 +487,11 @@ El backend está publicado en **https://cinesfera.onrender.com**.
 | Raíz | `backend/` |
 | Build | `pip install -r requirements.txt` |
 | Start | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Health check | `/health` |
-| URL | `https://cinesfera.onrender.com` |
-
-El servicio ya está creado y conectado al repo, así que los deploys salen solos
-con cada push. `render.yaml` (en la raíz del repo) deja esa configuración
-escrita, para tenerla versionada y poder recrear el servicio si hiciera falta.
+| Health check | `/health` (configurarlo en Settings → Health Check Path) |
 
 ### Variables a cargar en Render
 
-En **Render → cinesfera → Environment**, estas variables hay que agregarlas a mano:
+En **Render → cinesfera → Environment**:
 
 | Variable | Valor |
 | --- | --- |
@@ -529,15 +499,12 @@ En **Render → cinesfera → Environment**, estas variables hay que agregarlas 
 | `API_URL` | `https://cinesfera.onrender.com` |
 | `CORS_ORIGINS` | `https://cinesfera-three.vercel.app` |
 | `TMDB_ACCESS_TOKEN` | Token de lectura de la cuenta de TMDB |
+| `JWT_SECRET_KEY` | Texto largo y secreto, distinto del que se usa en local |
 
 Las de la base (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) ya
-están cargadas. **Nunca** se escriben en el repo.
-
-Del lado del frontend, la contraparte es una sola variable en Vercel:
-`NEXT_PUBLIC_API_URL=https://cinesfera.onrender.com` (ver `frontend/README.md`).
-
-Además, en **Settings** conviene dejar el *Health Check Path* en `/health`, así
-Render sabe cuándo el servicio quedó arriba.
+están cargadas y **nunca** se escriben en el repo. Del lado del frontend, la
+contraparte es `NEXT_PUBLIC_API_URL=https://cinesfera.onrender.com` en Vercel
+(ver `frontend/README.md`).
 
 ### Verificar el deploy
 
@@ -546,10 +513,8 @@ curl https://cinesfera.onrender.com/health
 # {"status":"ok"}
 ```
 
-La documentación queda en `https://cinesfera.onrender.com/docs`.
-
-Para confirmar que CORS quedó bien, el preflight desde el origen del frontend
-tiene que devolver el header `access-control-allow-origin`:
+Para confirmar CORS, el preflight desde el origen del frontend tiene que
+devolver el header `access-control-allow-origin`:
 
 ```bash
 curl -i -X OPTIONS https://cinesfera.onrender.com/auth/login \
@@ -557,105 +522,45 @@ curl -i -X OPTIONS https://cinesfera.onrender.com/auth/login \
   -H "Access-Control-Request-Method: POST" | grep -i access-control-allow-origin
 ```
 
-> Los *preview deployments* de Vercel usan URLs distintas
-> (`cinesfera-three-git-<rama>-....vercel.app`) y **no** están en `CORS_ORIGINS`,
-> así que no van a poder llamar a la API. Si necesitan probar contra el backend
-> real desde una preview, agregá esa URL a la lista (separada por coma).
+> Los *preview deployments* de Vercel usan otras URLs
+> (`cinesfera-three-git-<rama>-....vercel.app`) que **no** están en
+> `CORS_ORIGINS`, así que no pueden llamar a la API. Para probar una preview
+> contra el backend real, agregá su URL a la lista (separada por coma).
 
-### Redeploys
-
-Cada push a `main` dispara un deploy automático. No hace falta hacer nada más.
-
-> **Nota sobre el plan free:** el servicio se duerme tras ~15 minutos sin
-> tráfico, así que la primera request después de un rato puede tardar ~50
-> segundos en responder. Es esperable, no es un error.
+> **Plan free:** el servicio se duerme tras ~15 minutos sin tráfico, así que la
+> primera request después de un rato puede tardar ~50 segundos. Es esperable.
 
 ## Estructura del proyecto
 
 ```
-cinesfera/
-├── render.yaml                 # Blueprint del deploy en Render
-└── backend/
-    ├── app/
-    │   ├── main.py             # App FastAPI: CORS, routers y /health
-    │   ├── database.py         # Motor y sesión de SQLAlchemy
-    │   ├── core/
-    │   │   └── config.py       # Settings: lee .env y variables de entorno
-    │   ├── models/             # Tablas (SQLAlchemy)
-    │   ├── schemas/            # Cuerpos y respuestas (Pydantic)
-    │   ├── services/           # Lógica de negocio
-    │   └── routers/            # Endpoints HTTP
-    ├── requirements.txt        # Dependencias del proyecto
-    ├── .env                    # Config local (NO se versiona)
-    ├── .env.example            # Plantilla del entorno local
-    ├── .env.production.example # Referencia de qué cargar en Render
-    └── .venv/                  # Entorno virtual local (no se versiona)
+backend/
+├── app/
+│   ├── main.py             # App FastAPI: CORS, routers y /health
+│   ├── database.py         # Motor y sesión de SQLAlchemy
+│   ├── core/
+│   │   └── config.py       # Settings: lee .env y variables de entorno
+│   ├── models/             # Tablas (SQLAlchemy)
+│   ├── schemas/            # Cuerpos y respuestas (Pydantic)
+│   ├── services/           # Lógica de negocio
+│   ├── routers/            # Endpoints HTTP
+│   └── catalogue_service/  # Catálogo, búsqueda y landing (TMDB)
+├── migrations/             # Cambios de esquema, en orden
+├── tests/                  # Tests con unittest (ver tests/README.md)
+├── requirements.txt        # Dependencias del proyecto
+├── .env.example            # Plantilla del entorno local
+├── .env.production.example # Referencia de qué cargar en Render
+├── .env                    # Tu config local (NO se versiona)
+└── .venv/                  # Entorno virtual local (NO se versiona)
 ```
 
-## Agregar una nueva dependencia
+## Agregar una dependencia
 
 1. Con el entorno virtual activado, instalá el paquete:
 
    ```bash
-   pip install <paquete>
+   python -m pip install <paquete>
    ```
 
-2. Agregalo a `requirements.txt` (a mano, o regenerando el archivo con `pip freeze > requirements.txt`) y avisá al equipo para que actualicen su entorno con `pip install -r requirements.txt`.
-
-
-## SCRUM-123: valoraciones por usuario y reseña
-
-Aplicar en orden las migraciones `001_agregar_resena_padre.sql` y
-`004_calificaciones_comunidad.sql` antes de usar este backend. La migración comunitaria
-permite `calificacion = null` y crea `calificaciones_resenas` con una clave
-primaria `(usuario_id, resena_id)` que impide duplicados incluso concurrentes.
-No se requieren migraciones adicionales para SCRUM-123.
-
-En `POST /contenidos/{tipo}/{tmdb_id}/resenas`:
-
-- Sin `resena_padre_id`: la reseña original requiere calificación.
-- Con el ID de una reseña original: admite comentario y una valoración
-  de 0.5 a 5 en pasos de 0.5. La valoración y el comentario se guardan
-  en una sola transacción. Un duplicado devuelve `409` sin guardar el comentario.
-- Para comentar sin valorar, omitir `calificacion` o enviar `null`.
-- Las respuestas a comentarios y las autovaloraciones con estrellas
-  se rechazan con `422`. Se pueden responder comentarios sin estrellas.
-
-Las respuestas de creación, listado y perfil admiten `calificacion: null`.
-La tabla `valoraciones_resena` conserva su función previa y es independiente
-de las calificaciones con estrellas de `calificaciones_resenas`.
-
-## Conexión con TMDB
-
-El catálogo, las búsquedas y las fichas comparten un cliente HTTP persistente.
-Por defecto las conexiones salientes usan IPv4 (`TMDB_FORCE_IPV4=true`),
-independientemente del host con el que se inicia Uvicorn. Para habilitar la
-resolución automática de ambas familias, configurar `TMDB_FORCE_IPV4=false` y
-reiniciar el backend.
-
-Solo se reintentan lecturas: hasta tres intentos ante cortes de transporte,
-timeouts y respuestas 429/500/502/503/504. Las lecturas exitosas se conservan
-60 segundos (hasta 128 combinaciones de ruta y filtros); ante un fallo
-transitorio se puede usar esa misma lectura por un máximo de cinco minutos.
-Los errores de autenticación y los contenidos inexistentes no usan ese respaldo.
-
-Publicar reseñas o valoraciones de contenidos que ya están en la base local no
-consulta TMDB. Las operaciones de escritura nunca se reintentan automáticamente.
-
-## SCRUM-127: editar una valoración existente
-
-- `GET /contenidos/{tipo}/{tmdb_id}/valoraciones/mias` devuelve las puntuaciones
-  vigentes del usuario autenticado, con `resena_id` y `calificacion`.
-- `PATCH /contenidos/{tipo}/{tmdb_id}/resenas/{resena_id}/valoracion` recibe
-  únicamente `{"calificacion": 4.5}`. Admite valores de 0.5 a 5 en pasos de 0.5.
-  La identidad se obtiene de la sesión; no admite `usuario_id` ni texto.
-- La actualización modifica la fila existente de `calificaciones_resenas` y
-  devuelve la puntuación, el promedio comunitario y la cantidad de valoraciones.
-  El comentario, su fecha y la puntuación original de la película se conservan.
-- Sin sesión responde `401`; sin valoración propia, `403`; si la reseña padre
-  no pertenece al contenido indicado, `404`; ante datos inválidos, `422`.
-  Las sesiones por cookie requieren el encabezado `X-CSRF-Token`.
-
-El frontend precarga las estrellas, permite cancelar o reintentar y actualiza
-el promedio con la respuesta confirmada del backend. No requiere otra migración
-además de la tabla comunitaria de SCRUM-123.
+2. Agregalo a `requirements.txt` (a mano, o regenerándolo con
+   `python -m pip freeze > requirements.txt`) y avisá al equipo para que corran
+   `python -m pip install -r requirements.txt`.
