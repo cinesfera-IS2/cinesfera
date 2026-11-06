@@ -108,6 +108,10 @@ class RegistroTests(unittest.TestCase):
              datos_validos(nombre_usuario="ana garcia")),
             ("nombre de usuario muy corto", datos_validos(nombre_usuario="an")),
             ("nombre de una letra", datos_validos(nombre="A")),
+            ("nombre con número", datos_validos(nombre="Ana2")),
+            ("nombre con símbolo", datos_validos(nombre="Ana!")),
+            ("apellido con número", datos_validos(apellido="García3")),
+            ("apellido con símbolo", datos_validos(apellido="García_")),
             ("falta el email", faltan_campos)
         ):
             with self.subTest(caso=caso):
@@ -117,6 +121,16 @@ class RegistroTests(unittest.TestCase):
 
                 self.assertEqual(respuesta.status_code, 422, respuesta.text)
                 self.assertEqual(self.cantidad_de_usuarios(), antes)
+
+    def test_nombre_y_apellido_aceptan_letras_unicode_y_espacios(self):
+        respuesta = self.client.post("/auth/register", json=datos_validos(
+            nombre="María José",
+            apellido="Núñez García"
+        ))
+
+        self.assertEqual(respuesta.status_code, 201, respuesta.text)
+        self.assertEqual(respuesta.json()["nombre"], "María José")
+        self.assertEqual(respuesta.json()["apellido"], "Núñez García")
 
 
 if __name__ == "__main__":

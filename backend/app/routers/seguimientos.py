@@ -11,6 +11,7 @@ from app.core.csrf import verificar_csrf
 from app.core.enums import EstadoUsuario, RolUsuario
 from app.database import get_db
 from app.dependencies.auth import obtener_usuario_actual
+from app.models.notificacion import Notificacion
 from app.models.seguimiento import Seguimiento
 from app.models.usuario import Usuario
 from app.schemas.seguimiento import (
@@ -97,6 +98,11 @@ def seguir_usuario(
         fecha_seguimiento=datetime.now(timezone.utc)
     )
     db.add(seguimiento)
+    db.add(Notificacion(
+        usuario_id=usuario_id,
+        actor_id=usuario_actual.id,
+        tipo="nuevo_seguidor",
+    ))
     try:
         db.commit()
     except IntegrityError as error:
