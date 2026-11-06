@@ -146,6 +146,36 @@ describe("RegisterForm", () => {
     ).toBe("true");
   });
 
+  it.each([
+    ["Nombre", "Ana2"],
+    ["Nombre", "Ana!"],
+    ["Apellido", "Torres3"],
+    ["Apellido", "Torres_"],
+  ])("%s rechaza números y símbolos", async (etiqueta, valor) => {
+    const usuario = userEvent.setup();
+    const campo = screen.getByLabelText(etiqueta);
+
+    await usuario.type(campo, valor);
+    await usuario.tab();
+
+    expect(screen.getByText("Solo se permiten letras y espacios.")).toBeTruthy();
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("nombre y apellido aceptan tildes y espacios", async () => {
+    const usuario = userEvent.setup();
+    const nombre = screen.getByLabelText("Nombre");
+    const apellido = screen.getByLabelText("Apellido");
+
+    await usuario.type(nombre, "María José");
+    await usuario.tab();
+    await usuario.type(apellido, "Núñez García");
+    await usuario.tab();
+
+    expect(nombre.getAttribute("aria-invalid")).toBeNull();
+    expect(apellido.getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("el medidor de la contraseña aparece recién al escribirla", async () => {
     expect(screen.queryByText("Al menos un número")).toBeNull();
 

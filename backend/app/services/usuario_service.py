@@ -103,13 +103,23 @@ def _construir_perfil_publico(
         .order_by(Resena.fecha.desc(), Resena.id.desc())
     ).all()
     seguidores = db.scalar(
-        select(func.count()).select_from(Seguimiento).where(
-            Seguimiento.seguido_id == usuario_id
+        select(func.count())
+        .select_from(Seguimiento)
+        .join(Usuario, Seguimiento.seguidor_id == Usuario.id)
+        .where(
+            Seguimiento.seguido_id == usuario_id,
+            Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
         )
     )
     siguiendo = db.scalar(
-        select(func.count()).select_from(Seguimiento).where(
-            Seguimiento.seguidor_id == usuario_id
+        select(func.count())
+        .select_from(Seguimiento)
+        .join(Usuario, Seguimiento.seguido_id == Usuario.id)
+        .where(
+            Seguimiento.seguidor_id == usuario_id,
+            Usuario.estado == EstadoUsuario.ACTIVO,
+            Usuario.rol == RolUsuario.USUARIO,
         )
     )
     return PerfilPublicoRespuesta(
