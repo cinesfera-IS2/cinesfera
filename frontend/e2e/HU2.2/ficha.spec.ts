@@ -1,13 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { buscar } from "../entorno/catalogo";
+import { fichaTecnica } from "../entorno/ficha";
 
 // Los datos vienen de TMDB de verdad: se eligen obras viejas, con datos que ya
 // no cambian (Breaking Bad terminó, así que sus temporadas quedan fijas).
-
-function fichaTecnica(page: Page) {
-  return page.getByRole("complementary", { name: "Ficha técnica" });
-}
 
 /** El valor de un dato de la ficha técnica, por su etiqueta. */
 function datoDeLaFicha(page: Page, etiqueta: string) {
