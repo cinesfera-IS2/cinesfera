@@ -154,3 +154,9 @@ export async function iniciarSesion(page: Page, usuario: DatosUsuario) {
   const respuesta = await page.request.post("/api/auth/login", { data: credencialesDe(usuario) });
   expect(respuesta.ok(), `Login de ${usuario.nombre_usuario} en el navegador`).toBe(true);
 }
+
+/** Deja al navegador con la sesión del administrador principal de los tests. */
+export async function iniciarSesionAdministrador(page: Page) {
+  const respuesta = await page.request.post("/api/auth/login", { data: ADMIN });
+  expect(respuesta.ok(), "Login del administrador en el navegador").toBe(true);
+}
