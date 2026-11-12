@@ -43,4 +43,29 @@ test.describe("HU4.2 · Calificar reseñas ajenas", () => {
     const resenaRecargada = page.getByRole("article").filter({ hasText: textoResena });
     await expect(resenaRecargada.getByText("4/5", { exact: true })).toBeVisible();
   });
+
+  test("4.2.2 en una reseña propia no aparece la opción de calificar", async ({ page }) => {
+    const autor = await crearUsuarioNuevo({ nombre: "Autora", apellido: "Propia" });
+    const textoResena = `Reseña propia sin valoración comunitaria ${autor.nombre_usuario}`;
+
+    await publicarResena(autor, {
+      tipo: "pelicula",
+      tmdbId: 550,
+      texto: textoResena,
+      calificacion: 4.5,
+    });
+    await iniciarSesion(page, autor);
+
+    await page.goto(FICHA);
+    const resenaPropia = page.getByRole("article").filter({ hasText: textoResena });
+    await expect(resenaPropia).toBeVisible();
+    await resenaPropia.getByRole("button", { name: "Responder" }).click();
+
+    const dialogo = page.getByRole("dialog", { name: "Responder reseña" });
+    await expect(dialogo).toBeVisible();
+    await expect(
+      dialogo.getByRole("checkbox", { name: "Incluir valoración" })
+    ).toHaveCount(0);
+    await expect(dialogo.getByRole("radio")).toHaveCount(0);
+  });
 });
