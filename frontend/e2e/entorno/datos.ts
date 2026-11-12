@@ -15,7 +15,16 @@ export const USUARIO_EXISTENTE = {
 };
 
 // Las mismas credenciales que ADMIN_INICIAL_* en backend.mjs.
-const ADMIN = { identificador: "admin_e2e", password: "Admin-E2E-Cinesfera-123" };
+export const ADMINISTRADOR_E2E = {
+  nombre_usuario: "admin_e2e",
+  email: "admin.e2e@example.com",
+  password: "Admin-E2E-Cinesfera-123",
+};
+
+const ADMIN = {
+  identificador: ADMINISTRADOR_E2E.nombre_usuario,
+  password: ADMINISTRADOR_E2E.password,
+};
 
 export type DatosUsuario = typeof USUARIO_EXISTENTE;
 
