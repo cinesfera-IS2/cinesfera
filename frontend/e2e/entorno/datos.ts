@@ -15,7 +15,16 @@ export const USUARIO_EXISTENTE = {
 };
 
 // Las mismas credenciales que ADMIN_INICIAL_* en backend.mjs.
-const ADMIN = { identificador: "admin_e2e", password: "Admin-E2E-Cinesfera-123" };
+export const ADMINISTRADOR_E2E = {
+  nombre_usuario: "admin_e2e",
+  email: "admin.e2e@example.com",
+  password: "Admin-E2E-Cinesfera-123",
+};
+
+const ADMIN = {
+  identificador: ADMINISTRADOR_E2E.nombre_usuario,
+  password: ADMINISTRADOR_E2E.password,
+};
 
 export type DatosUsuario = typeof USUARIO_EXISTENTE;
 
@@ -151,4 +160,10 @@ export async function suspenderUsuario(usuarioId: string) {
 export async function iniciarSesion(page: Page, usuario: DatosUsuario) {
   const respuesta = await page.request.post("/api/auth/login", { data: credencialesDe(usuario) });
   expect(respuesta.ok(), `Login de ${usuario.nombre_usuario} en el navegador`).toBe(true);
+}
+
+/** Deja al navegador con la sesión del administrador principal de los tests. */
+export async function iniciarSesionAdministrador(page: Page) {
+  const respuesta = await page.request.post("/api/auth/login", { data: ADMIN });
+  expect(respuesta.ok(), "Login del administrador en el navegador").toBe(true);
 }
