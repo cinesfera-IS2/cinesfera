@@ -1,22 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { buscar } from "../entorno/catalogo";
+
 // Usan TMDB de verdad (a través del backend de prueba), así que se eligen
 // búsquedas con resultados estables: películas y series viejas y conocidas.
 
-async function buscar(page: Page, texto: string) {
-  await page.getByRole("searchbox", { name: "Buscar películas y series por título" }).fill(texto);
-  await page.getByRole("button", { name: "Buscar" }).click();
+/** Clic en la opción del selector de tipo, como lo haría una persona. */
+async function elegirTipo(page: Page, opcion: "Todo" | "Películas" | "Series") {
+  await page.getByRole("group", { name: "Tipo" }).getByText(opcion, { exact: true }).click();
 }
 
 /**
  * Espera a que se vea el filtro aplicado. Así se leen las tarjetas de la
  * búsqueda nueva y no las de la anterior, que siguen en pantalla mientras carga.
  */
-/** Clic en la opción del selector de tipo, como lo haría una persona. */
-async function elegirTipo(page: Page, opcion: "Todo" | "Películas" | "Series") {
-  await page.getByRole("group", { name: "Tipo" }).getByText(opcion, { exact: true }).click();
-}
-
 async function esperarFiltro(page: Page, etiqueta: string) {
   await expect(page.getByRole("link", { name: `Quitar filtro ${etiqueta}` })).toBeVisible();
 }

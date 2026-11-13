@@ -45,11 +45,17 @@ test.describe("HU1.1 · Registro de usuario", () => {
 
   test("1.1.4 con datos no válidos muestra el error de cada campo", async ({ page }) => {
     await completarRegistro(page, {
+      nombre: "Ana2",
+      apellido: "Torres!",
       nombre_usuario: "ana torres",
       email: "ana@",
       password: "corta",
     });
 
+    for (const etiqueta of ["Nombre", "Apellido"]) {
+      await expect(campo(page, etiqueta)).toHaveAccessibleDescription("Solo se permiten letras y espacios.");
+      await expect(campo(page, etiqueta)).toHaveAttribute("aria-invalid", "true");
+    }
     await expect(campo(page, "Nombre de usuario")).toHaveAccessibleDescription(
       "Solo minúsculas, números, puntos y guiones bajos."
     );

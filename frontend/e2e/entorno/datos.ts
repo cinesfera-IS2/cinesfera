@@ -122,6 +122,13 @@ export async function publicarResena(usuario: DatosUsuario & { id: string }, res
   });
 }
 
+export async function seguirUsuario(seguidor: DatosUsuario, seguidoId: string) {
+  await conSesion(credencialesDe(seguidor), async (api, csrf) => {
+    const respuesta = await api.post(`/usuarios/${seguidoId}/seguir`, { headers: csrf });
+    await esperarOk(respuesta, `Seguir a ${seguidoId}`);
+  });
+}
+
 /** Suspende la cuenta indefinidamente, como lo haría un administrador. */
 export async function suspenderUsuario(usuarioId: string) {
   await conSesion(ADMIN, async (api, csrf) => {
