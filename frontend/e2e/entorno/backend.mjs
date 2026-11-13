@@ -94,6 +94,8 @@ async function main() {
     ...process.env,
     PYTHONPATH: BACKEND,
     ENVIRONMENT: "local",
+    // Con esta URL arma el backend el enlace de las fotos de perfil.
+    API_URL: `http://localhost:${PUERTO_BACKEND}`,
     DATABASE_URL: `postgresql://postgres:postgres@localhost:${PUERTO_POSTGRES}/postgres`,
     DB_SSLMODE: "disable",
     CORS_ORIGINS: `http://localhost:${PUERTO_FRONTEND}`,
