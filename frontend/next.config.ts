@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   // necesitan otra carpeta para no chocar con el que ya esté corriendo.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
+    // El plan Hobby de Vercel agotó la cuota de optimización y /_next/image
+    // responde 402; TMDB ya sirve los pósters en el tamaño que usamos.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
